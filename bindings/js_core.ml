@@ -398,13 +398,18 @@ module Html = struct
           val capability_to_js : capability -> Ojs.t
 
           val _DEPTH_TEST_: t -> capability [@@js.get "DEPTH_TEST"]
+          val _BLEND_: t -> capability [@@js.get "BLEND"]
           val enable: t -> capability -> unit
+          val is_enabled: t -> capability -> bool
+          val disable: t -> capability -> unit
 
           type func = private Ojs.t
           val func_of_js: Ojs.t -> func
           val func_to_js: func -> Ojs.t
 
-          val _LESS_: t -> func
+          val _LESS_: t -> func [@@js.get "LESS"]
+          val _NEVER_: t -> func [@@js.get "NEVER"]
+          val _GREATER_: t -> func [@@js.get "GREATER"]
           val depth_func: t -> func -> unit 
  
         end)
@@ -569,13 +574,18 @@ module Html = struct
          val capability_to_js : capability -> Ojs.t
 
          val _DEPTH_TEST_: t -> capability
+         val _BLEND_: t -> capability
          val enable: t -> capability -> unit
+         val is_enabled: t -> capability -> bool
+         val disable: t -> capability -> unit
 
          type func = private Ojs.t
          val func_of_js: Ojs.t -> func
          val func_to_js: func -> Ojs.t
 
          val _LESS_: t -> func
+         val _GREATER_: t -> func
+         val _NEVER_: t -> func
 
          val depth_func: t -> func -> unit 
        end)
@@ -594,8 +604,8 @@ module Html = struct
      } [@@js]
 
      let default_context_attribute = { 
-       alpha = None;
-       depth = None;
+       alpha = Some true;
+       depth = Some true;
        stencil = None;
        antialias = None;
      }
