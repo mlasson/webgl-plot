@@ -1,7 +1,7 @@
 open Js_core
 open Helper
 open Html.Canvas.WebGl
-open Math 
+open Math
 
 let vertex_shader = {gsl|
   attribute vec3 a_position;
@@ -14,7 +14,7 @@ let vertex_shader = {gsl|
   void main() {
     vec4 pos = u_matrix * vec4(a_position,1);
     vec4 norm = u_matrix * vec4(a_normal,1);
-   
+
     v_position = pos.xyz;
     v_normal = norm.xyz;
     v_color = a_color.xyz;
@@ -39,19 +39,19 @@ let fragment_shader = {gsl|
 |gsl}
 
 type context = {
-   position_location: int; 
+   position_location: int;
    position_buffer: float buffer;
 
-   normal_location: int; 
+   normal_location: int;
    normal_buffer: float buffer;
 
-   color_location: int; 
+   color_location: int;
    color_buffer: float buffer;
-   
-   matrix: uniform_location; 
+
+   matrix: uniform_location;
    light_position: uniform_location;
    ambient_light: uniform_location;
- } 
+ }
 
 type object_data = {
   triangles: Float32Array.t;
@@ -62,19 +62,19 @@ type object_data = {
   size: int
 }
 
-let red = [1.; 0.; 0.] 
-let green = [0.; 1.; 0.] 
+let red = [1.; 0.; 0.]
+let green = [0.; 1.; 0.]
 let blue = [0.; 0.; 1.]
-let ones size = Array.init (3 * size) (fun k -> if k mod 3 = 2 then -1.0 else 0.0) |> Float32Array.new_float32_array 
+let ones size = Array.init (3 * size) (fun k -> if k mod 3 = 2 then -1.0 else 0.0) |> Float32Array.new_float32_array
 
-let repere = 
+let repere =
  [|
    0.; 0.; 0.; 0.; 1.; 0.;
    0.; 0.; 0.; 1.; 0.; 0.;
    0.; 0.; 0.; 0.; 0.; 1.;
  |] |> Float32Array.new_float32_array
 
-let repere_color = 
+let repere_color =
  [|
    1.; 0.; 0.; 1.; 0.; 0.;
    0.; 1.; 0.; 0.; 1.; 0.;
@@ -83,13 +83,13 @@ let repere_color =
 
 let draw_normals = false
 
-let draw_object gl context {size; triangles; normals; line_normals; colors; _ } = 
+let draw_object gl context {size; triangles; normals; line_normals; colors; _ } =
   bind_buffer gl (array_buffer gl) context.position_buffer;
   buffer_data gl (array_buffer gl) triangles (static_draw gl);
 
   bind_buffer gl (array_buffer gl) context.normal_buffer;
   buffer_data gl (array_buffer gl) normals (static_draw gl);
-  
+
   bind_buffer gl (array_buffer gl) context.color_buffer;
   buffer_data gl (array_buffer gl) colors (static_draw gl);
 
@@ -116,103 +116,88 @@ let draw_object gl context {size; triangles; normals; line_normals; colors; _ } 
   buffer_data gl (array_buffer gl) repere_color (static_draw gl);
   draw_arrays gl (_LINES_ gl) 0 6
 
-
-let normals_of_triangle = function 
+let normals_of_triangle = function
   | [[x1; y1; z1]; [x2; y2; z2]; [x3; y3; z3]] ->
-    let xn = (y2 -. y1) *. (z3 -. z1) -. (z2 -. z1) *. (y3 -. y1) in 
-    let yn = (z2 -. z1) *. (x3 -. x1) -. (x2 -. x1) *. (z3 -. z1) in 
+    let xn = (y2 -. y1) *. (z3 -. z1) -. (z2 -. z1) *. (y3 -. y1) in
+    let yn = (z2 -. z1) *. (x3 -. x1) -. (x2 -. x1) *. (z3 -. z1) in
     let zn = (x2 -. x1) *. (y3 -. y1) -. (y2 -. y1) *. (x3 -. x1) in
     let n = sqrt (xn *. xn +. yn *. yn +. zn *. zn) in
     let d = [xn /. n; yn /. n; zn /. n] in
     [d;d;d]
-  | _ -> assert false 
+  | _ -> assert false
 
-let colors_of_triangle _ =
-  let c = [Random.float 1.; Random.float 1.; Random.float 1.] in
-  [c;c;c]
-
-let thing =
-  let a = [ -1.; -1.;  1.; ] in
-  let b = [ -1.;  1.;  1.; ] in
-  let c = [  1.;  1.;  1.; ] in
-  let d = [  1.; -1.;  1.; ] in
-  let e = [ -1.;  1.; -1.; ] in
-  let f = [  1.;  1.; -1.; ] in
-
-  let triangles = 
-    [
-     [b;a;c]; 
-     [c;a;d];
-     [e;b;f];
-     
-     [c;d;f]; 
-     [b;c;f];
-     [a;b;e]; 
-
-     [f;a;e]; 
-     [d;a;f];
-   ]
+let rectangles_of_triangles l =
+  let rec aux acc = function
+    | t1::t2::tl -> aux ([t1;t2] :: acc) tl
+    | [] -> List.rev acc
+    | _ -> assert false
   in
-  let normals = List.flatten (List.map normals_of_triangle triangles) in 
-  let colors = List.flatten (List.map colors_of_triangle triangles) in
-  let triangles = List.flatten triangles in
-  let line_normals =
-   let translate alpha a v = match a, v with 
-     | [x1;y1;z1], [x2;y2;z2] ->
-       [x1 +. alpha *. x2; y1 +. alpha *. y2; z1 +. alpha *. z2]
-     | _ -> assert false
-   in
-   List.flatten (List.map2 (fun a v -> [a; translate 1.0 a v]) triangles normals) in
-  let flatten_array l = Float32Array.new_float32_array (Array.of_list (List.flatten l)) in
-  { 
-    triangles = flatten_array triangles; 
-    normals = flatten_array normals; 
-    colors = flatten_array colors;
-    line_normals = flatten_array line_normals;
-    size = List.length triangles; 
-    local_matrix = Float32Array.new_float32_array [||]
-  }
+  aux [] l
+
+let hsv h s v =
+  let c = s *. v in
+  let h = h /. 60.0 in
+  let x = c *. (1.0 -. abs_float (h -. 2.0 *. floor (h /. 2.0) -. 1.0)) in
+  let r,g,b =
+    if h < 0. || h >= 60. then 0.0, 0.0, 0.0
+    else if h < 1.0 then (c,x,0.0)
+    else if h < 2.0 then (x,c,0.0)
+    else if h < 3.0 then (0.0,c,x)
+    else if h < 4.0 then (0.0,x,c)
+    else if h < 5.0 then (x,0.0,c)
+    else (c,0.0,x)
+  in
+  let m = v -. c in
+  [r +. m; g +. m; b +. m]
+
+let colors_of_rectangle t =
+  match t with
+  | [ [[_; z1; _]; [_; z2; _]; [_; z3; _] ] ; _] ->
+    let average = 0.5 +. (z1 +. z2 +. z3) /. 6. in
+    let c = hsv (359.9 *. average) 1.0 1.0 in
+    [ [c;c;c]; [c;c;c]]
+  | _ -> assert false
 
 let from_triangles triangles =
   let flatten l =
     let rec aux acc =
-      function 
+      function
       | [] -> List.rev acc
       | hd :: tl -> aux (List.rev_append hd acc) tl
     in aux [] l
   in
   print_endline "normals";
-  let normals = 
-    flatten 
-      (List.rev 
-         (List.rev_map normals_of_triangle triangles)) 
-  in 
+  let normals =
+    flatten
+      (List.rev
+         (List.rev_map normals_of_triangle triangles))
+  in
   print_endline "colors";
-  let colors = 
-    flatten (List.rev (List.rev_map colors_of_triangle triangles)) 
+  let colors =
+    flatten (flatten (List.rev (List.rev_map colors_of_rectangle (rectangles_of_triangles triangles))))
   in
   print_endline "flatten";
   let triangles = flatten triangles in
   print_endline "lines";
   let line_normals =
-   let translate alpha a v = match a, v with 
+   let translate alpha a v = match a, v with
      | [x1;y1;z1], [x2;y2;z2] ->
        [x1 +. alpha *. x2; y1 +. alpha *. y2; z1 +. alpha *. z2]
      | _ -> assert false
    in
-   flatten (List.rev_map2 (fun a v -> [a; translate 1.0 a v]) triangles normals) 
+   flatten (List.rev_map2 (fun a v -> [a; translate 1.0 a v]) triangles normals)
   in
   print_endline "arrays";
   let flatten_array l =
-    Float32Array.new_float32_array 
+    Float32Array.new_float32_array
       (Array.of_list (flatten l))
   in
-  { 
-    triangles = flatten_array triangles; 
-    normals = flatten_array normals; 
+  {
+    triangles = flatten_array triangles;
+    normals = flatten_array normals;
     colors = flatten_array colors;
     line_normals = flatten_array line_normals;
-    size = List.length triangles; 
+    size = List.length triangles;
     local_matrix = Float32Array.new_float32_array [||]
   }
 
@@ -224,12 +209,12 @@ let blue = (0.0, 0.0, 1.0)
 
 let angle = ref 0.0
 let tau = 2.0 *. pi
- 
-let plot x y = 
+
+let plot x y =
   (cos (tau *. x) +. (sin (tau *. y))) /. 4.0
 
 let setup_context gl program =
-  let position_location = 
+  let position_location =
     let attrib_location = get_attrib_location gl program "a_position" in
     if attrib_location < 0 then
       error "unable to get 'a_position'"
@@ -241,7 +226,7 @@ let setup_context gl program =
   bind_buffer gl (array_buffer gl) position_buffer;
   vertex_attrib_pointer gl position_location 3 (type_float gl) false 0 0;
 
-  let normal_location = 
+  let normal_location =
     let attrib_location = get_attrib_location gl program "a_normal" in
     if attrib_location < 0 then
       error "unable to get 'a_normal'"
@@ -253,7 +238,7 @@ let setup_context gl program =
   bind_buffer gl (array_buffer gl) normal_buffer;
   vertex_attrib_pointer gl normal_location 3 (type_float gl) false 0 0;
 
-  let color_location = 
+  let color_location =
     let attrib_location = get_attrib_location gl program "a_color" in
     if attrib_location < 0 then
       error "unable to get 'a_color'"
@@ -265,17 +250,17 @@ let setup_context gl program =
   bind_buffer gl (array_buffer gl) color_buffer;
   vertex_attrib_pointer gl color_location 3 (type_float gl) false 0 0;
 
-  let matrix = 
+  let matrix =
     match get_uniform_location gl program "u_matrix" with
     | Some thing -> thing
     | None -> error "unable to get 'u_matrix'"
   in
-  let ambient_light = 
+  let ambient_light =
     match get_uniform_location gl program "u_ambientLight" with
     | Some thing -> thing
     | None -> error "unable to get 'u_ambientLight'"
   in
-  let light_position = 
+  let light_position =
     match get_uniform_location gl program "u_lightPos" with
     | Some thing -> thing
     | None -> error "unable to get 'u_lightPos'"
@@ -287,8 +272,8 @@ let res = 500
 
 let sphere50 = sphere 10 |> from_triangles
 let () = print_endline "computing exp_graph ..."
-let exp_graph = 
-  graph 35 (-1.0) 1.0 (-1.0) 1.0 (fun x y ->
+let exp_graph =
+  graph 20 (-1.0) 1.0 (-1.0) 1.0 (fun x y ->
       let x = 2.0 *. x in
       let y = 2.0 *. y in
       4.0 *. exp (-. (x *. x +. y *. y))) |> (fun x -> print_endline "and all derived data ..."; x)|> from_triangles
@@ -296,18 +281,18 @@ let () = print_endline "done"
 
 let draw_scene gl context clock =
   let angle = 0.001 *. clock in
-  let alpha = 1. /. 4. in 
+  let alpha = 1. /. 4. in
   let matrix =
        translation (0., 0., 0.)
     |> multiply (scale (alpha, alpha, alpha))
-    |> multiply (z_rotation angle) 
-    |> multiply (y_rotation angle) 
-    |> multiply (x_rotation angle) 
+    |> multiply (z_rotation angle)
+    |> multiply (y_rotation angle)
+    |> multiply (x_rotation angle)
     |> multiply (translation (0., 0., 0.))
-    |> multiply make_projection 
+    |> multiply make_projection
   in
   clear gl ((_COLOR_BUFFER_BIT_ gl) lor (_DEPTH_BUFFER_BIT_ gl));
-  uniform_matrix4fv gl context.matrix false 
+  uniform_matrix4fv gl context.matrix false
     (Float32Array.new_float32_array matrix);
   uniform3f gl context.ambient_light 0.2 0.2 0.2;
   uniform3f gl context.light_position 0. 0. (-3.);
@@ -330,14 +315,14 @@ let onload _ = begin
   configure_element  ~attributes:["width", "800"; "height", "800"] canvas;
   Node.append_child main p;
   Node.append_child main canvas;
-  let gl = 
+  let gl =
     match Html.Canvas.(get_context canvas WebGl) with
-    | Some gl -> gl 
-    | None -> error "webgl is not supported" 
+    | Some gl -> gl
+    | None -> error "webgl is not supported"
   in
 
   enable gl (_DEPTH_TEST_ gl);
-  depth_func gl (_LESS_ gl); 
+  depth_func gl (_LESS_ gl);
 
   let vertex_shader = new_shader gl vertex_shader `Vertex in
   let fragment_shader = new_shader gl fragment_shader `Fragment in
