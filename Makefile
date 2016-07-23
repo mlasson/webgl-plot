@@ -2,7 +2,7 @@ OCAMLC=ocamlfind ocamlc
 OCAMLFLAGS=-I bindings
 PPXFLAGS=-package gen_js_api.ppx
 
-MODULES=bindings/js_core math helper drawing main
+MODULES=bindings/js_core math helper textures drawing main
 
 CMOS=$(patsubst %,%.cmo,$(MODULES))
 
@@ -14,9 +14,9 @@ main.byte: $(CMOS)
 	$(OCAMLC) $(OCAMLFLAGS) -no-check-prims -package gen_js_api $(CMOS) -linkpkg -o $@
 
 bindings/js_core.cmo: bindings/js_core.ml
-math.cmo: math.ml
 helper.cmo: helper.ml bindings/js_core.cmi
 drawing.cmo: drawing.ml helper.cmi
+textures.cmo: textures.ml bindings/js_core.cmi
 main.cmo: main.ml
 
 .SUFFIXES: .ml .mli .cmo .cmi

@@ -339,6 +339,7 @@ let onload _ = begin
   configure_element  ~attributes:["width", "800"; "height", "800"] canvas;
   Node.append_child main p;
   Node.append_child main canvas;
+  Node.append_child main (Textures.create_gradient_image document);
   let gl =
     match Html.Canvas.(get_context canvas WebGl) with
     | Some gl -> gl

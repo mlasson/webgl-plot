@@ -272,9 +272,20 @@ module Html = struct
      end)
   end
 
+  module CssColor = struct
+    type t = string[@@js]
+    let red = "#f00"
+    let green = "#0f0"
+    let blue = "#00f"
+  end
+
   module Canvas = struct
     module Canvas = struct (* To be included at the end of the module (to avoid shadowing). *)
       type t = Kinds.Html.canvas Element.t [@@js]
+      include ([%js] : sig
+        val set_width: t -> int -> unit
+        val set_height: t -> int -> unit
+      end)
     end
     
     include struct type webgl [@@js] type svg[@@js] end
@@ -295,11 +306,18 @@ module Html = struct
 
     module Svg = struct
      type t = svg context [@@js]
+     type gradient = private Ojs.t [@@js]
      include ([%js] : sig
        val get_context: Canvas.t -> string ->  t option
+       val set_fill_style: t -> ([`Color of CssColor.t | `Gradient of gradient][@js.union]) -> unit
      end)
      let get_context canvas = 
        get_context canvas "2d"
+     include ([%js] : sig
+       val create_linear_gradient: t -> float -> float -> float -> float -> gradient
+       val add_color_stop: gradient -> float -> CssColor.t -> unit
+       val fill_rect: t -> float -> float -> float -> float -> unit
+     end)
     end
 
     module WebGl = struct
