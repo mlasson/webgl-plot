@@ -273,10 +273,37 @@ module Html = struct
   end
 
   module Canvas = struct
-    type t = Kinds.Html.canvas Element.t [@@js]
-     
+    module Canvas = struct (* To be included at the end of the module (to avoid shadowing). *)
+      type t = Kinds.Html.canvas Element.t [@@js]
+    end
+    
+    include struct type webgl [@@js] type svg[@@js] end
+    include (struct
+      include ([%js] : sig
+                   type untyped = private Ojs.t
+                   val untyped_of_js: Ojs.t -> untyped
+                   val untyped_to_js: untyped -> Ojs.t
+                 end)
+      type 'a context = untyped
+      let context_of_js _ x = untyped_of_js x
+      let context_to_js _ x = untyped_to_js x
+    end : sig 
+               type 'a context = private Ojs.t
+               val context_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a context
+               val context_to_js: ('a -> Ojs.t) -> 'a context -> Ojs.t
+          end)
+
+    module Svg = struct
+     type t = svg context [@@js]
+     include ([%js] : sig
+       val get_context: Canvas.t -> string ->  t option
+     end)
+     let get_context canvas = 
+       get_context canvas "2d"
+    end
+
     module WebGl = struct
-      type t = private Ojs.t [@@js] 
+      type t = webgl context[@@js]
       type fragment[@@js]
       type vertex[@@js]
       type element[@@js]
@@ -399,6 +426,7 @@ module Html = struct
 
           val _DEPTH_TEST_: t -> capability [@@js.get "DEPTH_TEST"]
           val _BLEND_: t -> capability [@@js.get "BLEND"]
+          val _CULL_FACE_: t -> capability [@@js.get "CULL_FACE"]
           val enable: t -> capability -> unit
           val is_enabled: t -> capability -> bool
           val disable: t -> capability -> unit
@@ -412,6 +440,14 @@ module Html = struct
           val _GREATER_: t -> func [@@js.get "GREATER"]
           val depth_func: t -> func -> unit 
  
+          type cull_face_mode = private Ojs.t
+          val cull_face_mode_of_js: Ojs.t -> cull_face_mode
+          val cull_face_mode_to_js: cull_face_mode -> Ojs.t
+          val _FRONT_:t -> cull_face_mode [@@js.get "FRONT"]
+          val _BACK_:t -> cull_face_mode [@@js.get "BACK"]
+          val _FRONT_AND_BACK_:t -> cull_face_mode [@@js.get "FRONT_AND_BACK"]
+          val cull_face: t -> cull_face_mode -> unit
+
         end)
  
         type 'a shader = untyped_shader 
@@ -575,6 +611,7 @@ module Html = struct
 
          val _DEPTH_TEST_: t -> capability
          val _BLEND_: t -> capability
+         val _CULL_FACE_: t -> capability
          val enable: t -> capability -> unit
          val is_enabled: t -> capability -> bool
          val disable: t -> capability -> unit
@@ -588,33 +625,45 @@ module Html = struct
          val _NEVER_: t -> func
 
          val depth_func: t -> func -> unit 
+
+         type cull_face_mode = private Ojs.t
+         val cull_face_mode_of_js: Ojs.t -> cull_face_mode
+         val cull_face_mode_to_js: cull_face_mode -> Ojs.t
+         val _FRONT_:t -> cull_face_mode
+         val _BACK_:t -> cull_face_mode
+         val _FRONT_AND_BACK_:t -> cull_face_mode
+         val cull_face: t -> cull_face_mode -> unit
+
        end)
 
+
+       type context_type =
+         | WebGl [@js "webgl"]
+         [@@js] [@@js.enum]
+
+       type context_attribute = {
+         alpha: bool option;
+         depth: bool option;
+         stencil: bool option;
+         antialias: bool option;
+       } [@@js]
+
+       let default_context_attribute = { 
+         alpha = Some true;
+         depth = Some true;
+         stencil = None;
+         antialias = None;
+       }
+
+       include ([%js] : sig
+         val get_context: Canvas.t -> context_type -> context_attribute -> t option
+       end)
+       let get_context canvas ?(context_attribute = default_context_attribute) context_type = 
+         get_context canvas context_type context_attribute
+
+
      end
-
-     type context_type =
-       | WebGl [@js "webgl"]
-       [@@js] [@@js.enum]
-
-     type context_attribute = {
-       alpha: bool option;
-       depth: bool option;
-       stencil: bool option;
-       antialias: bool option;
-     } [@@js]
-
-     let default_context_attribute = { 
-       alpha = Some true;
-       depth = Some true;
-       stencil = None;
-       antialias = None;
-     }
-
-     include ([%js] : sig
-       val get_context: t -> context_type -> context_attribute -> WebGl.t option
-     end)
-     let get_context canvas ?(context_attribute = default_context_attribute) context_type = 
-       get_context canvas context_type context_attribute
+     include Canvas
   end
 
   let retype x =

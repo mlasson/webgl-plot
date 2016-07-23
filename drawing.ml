@@ -270,13 +270,34 @@ let setup_context gl program =
 
 let res = 500
 
+let scale_triangle alpha = List.map (List.map (( *. ) alpha))
+
+let cube = 
+  let a = [-1.0;-1.0;-1.0] in
+  let b = [-1.0; 1.0;-1.0] in
+  let c = [ 1.0; 1.0;-1.0] in(*   F---G *)
+  let d = [ 1.0;-1.0;-1.0] in(*  /|  /|  *)
+  let e = [-1.0;-1.0; 1.0] in(* B---C |  *)
+  let f = [-1.0; 1.0; 1.0] in(* | E-|-H  *)
+  let g = [ 1.0; 1.0; 1.0] in(* |/  |/   *)
+  let h = [ 1.0;-1.0; 1.0] in(* A---D    *)
+  [[b;a;c];[c;a;d]; (* front *)
+   [a;b;f];[a;f;e]; (* left *)
+   [d;a;h];[h;a;e]; (* bottom *)
+   [b;c;g];[b;g;f]; (* top *)
+   [c;d;h];[c;h;g]; (* right *)
+   [e;f;g];[e;g;h]] (* back *)
+ |> List.map (scale_triangle 2.)
+ |> from_triangles
+
+
 let sphere50 = sphere 10 |> from_triangles
 let () = print_endline "computing exp_graph ..."
 let exp_graph =
-  graph 20 (-1.0) 1.0 (-1.0) 1.0 (fun x y ->
+  graph 20 (-2.0) 2.0 (-2.0) 2.0 (fun x y ->
       let x = 2.0 *. x in
       let y = 2.0 *. y in
-      4.0 *. exp (-. (x *. x +. y *. y))) |> (fun x -> print_endline "and all derived data ..."; x)|> from_triangles
+      -1.0 +. 2.0 *. exp (-. (x *. x +. y *. y))) |> (fun x -> print_endline "and all derived data ..."; x)|> from_triangles
 let () = print_endline "done"
 
 let draw_scene gl context clock =
@@ -296,6 +317,9 @@ let draw_scene gl context clock =
     (Float32Array.new_float32_array matrix);
   uniform3f gl context.ambient_light 0.2 0.2 0.2;
   uniform3f gl context.light_position 0. 0. (-3.);
+  enable gl (_CULL_FACE_ gl);
+  draw_object gl context cube;
+  disable gl (_CULL_FACE_ gl);
   draw_object gl context exp_graph
 
 let loop f =
@@ -322,6 +346,7 @@ let onload _ = begin
   in
 
   enable gl (_DEPTH_TEST_ gl);
+  enable gl (_CULL_FACE_ gl);
   depth_func gl (_LESS_ gl);
 
   let vertex_shader = new_shader gl vertex_shader `Vertex in
