@@ -116,3 +116,45 @@ let graph res xmin xmax ymin ymax f =
     ~dim2:(ymin, ymax)
     (res, res)
     (fun x y -> [x; f x y; y])
+
+let normals_of_triangle = function
+  | [[x1; y1; z1]; [x2; y2; z2]; [x3; y3; z3]] ->
+    let xn = (y2 -. y1) *. (z3 -. z1) -. (z2 -. z1) *. (y3 -. y1) in
+    let yn = (z2 -. z1) *. (x3 -. x1) -. (x2 -. x1) *. (z3 -. z1) in
+    let zn = (x2 -. x1) *. (y3 -. y1) -. (y2 -. y1) *. (x3 -. x1) in
+    let n = sqrt (xn *. xn +. yn *. yn +. zn *. zn) in
+    let d = [xn /. n; yn /. n; zn /. n] in
+    [d;d;d]
+  | _ -> assert false
+
+let rectangles_of_triangles l =
+  let rec aux acc = function
+    | t1::t2::tl -> aux ([t1;t2] :: acc) tl
+    | [] -> List.rev acc
+    | _ -> assert false
+  in
+  aux [] l
+
+let hsv h s v =
+  let c = s *. v in
+  let h = h /. 60.0 in
+  let x = c *. (1.0 -. abs_float (h -. 2.0 *. floor (h /. 2.0) -. 1.0)) in
+  let r,g,b =
+    if h < 0. || h >= 60. then 0.0, 0.0, 0.0
+    else if h < 1.0 then (c,x,0.0)
+    else if h < 2.0 then (x,c,0.0)
+    else if h < 3.0 then (0.0,c,x)
+    else if h < 4.0 then (0.0,x,c)
+    else if h < 5.0 then (x,0.0,c)
+    else (c,0.0,x)
+  in
+  let m = v -. c in
+  [r +. m; g +. m; b +. m]
+
+let colors_of_rectangle t =
+  match t with
+  | [ [[_; z1; _]; [_; z2; _]; [_; z3; _] ] ; _] ->
+    let average = 0.5 +. (z1 +. z2 +. z3) /. 6. in
+    let c = hsv (359.9 *. average) 1.0 1.0 in
+    [ [c;c;c]; [c;c;c]]
+  | _ -> assert false
