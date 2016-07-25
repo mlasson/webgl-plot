@@ -68,7 +68,7 @@ module GraphModel = struct
   uniform vec3 u_ambientLight;
   void main() {
     vec3 lightDirection = normalize(u_lightPos - v_position);
-    float lighting = max(dot(normalize(v_normal), lightDirection), 0.);
+    float lighting = abs(dot(normalize(v_normal), lightDirection));
     gl_FragColor = vec4( v_color * lighting + u_ambientLight, 1);
   }
   |gsl}
@@ -209,52 +209,98 @@ module GraphModel = struct
       draw_arrays gl (_LINES_ gl) 0 (2 * size)
     end
 
-  let from_triangles triangles =
-    let flatten l =
-      let rec aux acc =
-        function
-        | [] -> List.rev acc
-        | hd :: tl -> aux (List.rev_append hd acc) tl
-      in aux [] l
-    in
-    print_endline "normals";
-    let normals =
-      flatten
-        (List.rev
-           (List.rev_map normals_of_triangle triangles))
-    in
-    print_endline "colors";
-    let colors =
-      flatten (flatten (List.rev (List.rev_map colors_of_rectangle (rectangles_of_triangles triangles))))
-    in
-    print_endline "flatten";
-    let triangles = flatten triangles in
-    print_endline "lines";
-    let line_normals =
-      let translate alpha a v = match a, v with
-        | [x1;y1;z1], [x2;y2;z2] ->
-          [x1 +. alpha *. x2; y1 +. alpha *. y2; z1 +. alpha *. z2]
-        | _ -> assert false
-      in
-      flatten (List.rev_map2 (fun a v -> [a; translate 1.0 a v]) triangles normals)
-    in
-    print_endline "arrays";
-    let flatten_array l =
-      Float32Array.new_float32_array
-        (Array.of_list (flatten l))
-    in
-    {
-      triangles = flatten_array triangles;
-      normals = flatten_array normals;
-      colors = flatten_array colors;
-      line_normals = flatten_array line_normals;
-      size = List.length triangles;
-      local_matrix = Float32Array.new_float32_array [||]
-    }
-
-
 
 end
+
+let () = print_endline "computing exp_graph ..."
+let exp_graph_triangles =
+  graph 20 (-. pi) pi (-. pi) pi (fun x y ->
+      let x = 1.5 *. x in
+      let y = 1.5 *. y in
+      sin (sqrt (x *. x +.  y *. y)))
+
+let x_min,x_max,y_min,y_max,z_min,z_max  = 
+  match exp_graph_triangles with
+  | ([x;y;z]::tl1)::tl2 ->
+  let x_min, x_max = ref x, ref x in
+  let y_min, y_max = ref y, ref y in
+  let z_min, z_max = ref z, ref z in
+  List.iter (fun l -> 
+    List.iter (function [x;y;z] ->
+         if x < !x_min then x_min := x;
+         if x > !x_max then x_max := x;
+         if y < !y_min then y_min := y;
+         if y > !y_max then y_max := y;
+         if z < !z_min then z_min := z;
+         if z > !z_max then z_max := z
+      | _ -> assert false) l) (tl1::tl2);
+     (!x_min,!x_max, !y_min,!y_max,!z_min,!z_max)
+  | _ -> assert false
+
+let range_x = x_max -. x_min
+let range_y = y_max -. y_min
+let range_z = z_max -. z_min
+
+let move_x = -. range_x /. 2.0 -. x_min
+let move_y = -. range_y /. 2.0 -. y_min
+let move_z = -. range_z /. 2.0 -. z_min
+
+let scale_x = 1.0 /. range_x
+let scale_y = 1.0 /. range_y
+let scale_z = 1.0 /. range_z
+
+let colors_of_triangle t =
+  match t with
+  | [[_; y1; _]; [_; y2; _]; [_; y3; _]] ->
+    let c y = hsv (359.9 *. (y -. y_min) /. range_y) 1.0 1.0 in
+    [c y1; c y2;c y3] 
+  | _ -> assert false
+
+
+let from_triangles triangles =
+  let open GraphModel in
+  let flatten l =
+    let rec aux acc =
+      function
+      | [] -> List.rev acc
+      | hd :: tl -> aux (List.rev_append hd acc) tl
+    in aux [] l
+  in
+  print_endline "normals";
+  let normals =
+    flatten
+      (List.rev
+         (List.rev_map normals_of_triangle triangles))
+  in
+  print_endline "colors";
+  let colors =
+    flatten (List.rev (List.rev_map colors_of_triangle triangles))
+  in
+  print_endline "flatten";
+  let triangles = flatten triangles in
+  print_endline "lines";
+  let line_normals =
+    let translate alpha a v = match a, v with
+      | [x1;y1;z1], [x2;y2;z2] ->
+        [x1 +. alpha *. x2; y1 +. alpha *. y2; z1 +. alpha *. z2]
+      | _ -> assert false
+    in
+    flatten (List.rev_map2 (fun a v -> [a; translate 1.0 a v]) triangles normals)
+  in
+  print_endline "arrays";
+  let flatten_array l =
+    Float32Array.new_float32_array
+      (Array.of_list (flatten l))
+  in
+  {
+    triangles = flatten_array triangles;
+    normals = flatten_array normals;
+    colors = flatten_array colors;
+    line_normals = flatten_array line_normals;
+    size = List.length triangles;
+    local_matrix = Float32Array.new_float32_array [||]
+  }
+
 
 module RepereModel= struct
 
@@ -353,14 +399,14 @@ let cube =
       [0.; 1.], [1.; 1.],
       [0.; 0.], [1.; 0.]
     in
-    let a = [-1.0;-1.0;-1.0] in
-    let b = [-1.0; 1.0;-1.0] in
-    let c = [ 1.0; 1.0;-1.0] in (*   F---G *)
-    let d = [ 1.0;-1.0;-1.0] in (*  /|  /|  *)
-    let e = [-1.0;-1.0; 1.0] in (* B---C |  *)
-    let f = [-1.0; 1.0; 1.0] in (* | E-|-H  *)
-    let g = [ 1.0; 1.0; 1.0] in (* |/  |/   *)
-    let h = [ 1.0;-1.0; 1.0] in (* A---D    *)
+    let a = [x_min;y_min;z_min] in
+    let b = [x_min;y_max;z_min] in
+    let c = [x_max;y_max;z_min] in (*   F---G *)
+    let d = [x_max;y_min;z_min] in (*  /|  /|  *)
+    let e = [x_min;y_min;z_max] in (* B---C |  *)
+    let f = [x_min;y_max;z_max] in (* | E-|-H  *)
+    let g = [x_max;y_max;z_max] in (* |/  |/   *)
+    let h = [x_max;y_min;z_max] in (* A---D    *)
     [[b,tl;a,bl;c,tr];[c,tr;a,bl;d,br]; (* front *)
      [a,bl;b,tl;f,tr];[a,bl;f,tr;e,br]; (* left *)
      [d,br;a,bl;h,tr];[h,tr;a,bl;e,tl]; (* bottom *)
@@ -374,7 +420,7 @@ let cube =
     Float32Array.new_float32_array
       (Array.of_list (List.flatten (List.flatten l)))
   in
-  let triangles = List.map (scale_triangle 2.) triangles in
+  let triangles = List.map (scale_triangle 1.) triangles in
   flatten_array triangles, flatten_array texcoords
 
 let draw_cube gl texture matrix =
@@ -392,25 +438,19 @@ let draw_cube gl texture matrix =
 
 
 end
+let exp_graph = from_triangles exp_graph_triangles
 
-let () = print_endline "computing exp_graph ..."
-let exp_graph_triangles =
-  graph 100 (-2.0) 2.0 (-2.0) 2.0 (fun x y ->
-      let x = 2.0 *. x in
-      let y = 2.0 *. y in
-      -1.0 +. 2.0 *. exp (-. (x *. x +. y *. y)))
-let exp_graph = GraphModel.from_triangles exp_graph_triangles
 let () = print_endline "done"
 
-let draw_scene gl texture clock ((x,y) as point) =
-  let angle = 0.001 *. clock in
-  let alpha = 1. /. 4. in
+let last_update = ref 0.0 
+
+let draw_scene gl texture clock (angle_x, angle_y, angle_z) (x,y) =
   let matrix =
-       translation (0., 0., 0.)
-    |> multiply (scale (alpha, alpha, alpha))
-    |> multiply (z_rotation angle)
-    |> multiply (y_rotation angle)
-    |> multiply (x_rotation angle)
+       translation (move_x, move_y, move_z)
+    |> multiply (scale (scale_x, scale_y, scale_z))
+    |> multiply (z_rotation angle_z)
+    |> multiply (y_rotation angle_y)
+    |> multiply (x_rotation angle_x)
     |> multiply (translation (0., 0., 0.))
     |> multiply make_projection
   in
@@ -418,11 +458,11 @@ let draw_scene gl texture clock ((x,y) as point) =
   let matrix' =
        make_projection
     |> multiply (translation (0., 0., 0.))
-    |> multiply (x_rotation (-. angle))
-    |> multiply (y_rotation (-. angle))
-    |> multiply (z_rotation (-. angle))
-    |> multiply (scale (1. /. alpha, 1. /. alpha, 1. /. alpha))
-    |> multiply (translation (0., 0., 0.))
+    |> multiply (x_rotation (-. angle_x))
+    |> multiply (y_rotation (-. angle_y))
+    |> multiply (z_rotation (-. angle_z))
+    |> multiply (scale (1. /. scale_x, 1. /. scale_y, 1. /. scale_z))
+    |> multiply (translation (-. move_x, -. move_y, -. move_z))
   in
 
   let o = multiply_vector matrix' [|x;y;0.0;1.0|] in
@@ -439,7 +479,9 @@ let draw_scene gl texture clock ((x,y) as point) =
   let open GraphModel in begin
     load gl;
     draw_object gl matrix exp_graph;
-    begin match ray_triangles o e exp_graph_triangles with
+    if clock -. !last_update > 0.2 then begin
+     last_update := clock;
+      match ray_triangles o e exp_graph_triangles with
     | Some [p1;p2;p3] -> draw_point gl (p1, p2, p3)
     | _ -> ()
     end;
@@ -464,6 +506,33 @@ let onload _ = begin
 
   Node.append_child main p;
   Node.append_child main canvas;
+
+  let pointer = ref (0.0, 0.0) in
+  let theta = ref (0., 0., 0.) in
+  let moving = ref false in
+
+
+  let open Event in
+  add_event_listener canvas mousemove (fun evt ->
+    let x = 2.0 *. (float (offsetX evt)) /. 800.0 -. 1.0 in
+    let y = 1.0 -. 2.0 *. (float (offsetY evt)) /. 800.0 in
+    let button = buttons evt in
+    if button = 1 then begin
+      if !moving then begin
+        let dx, dy =
+          let x', y' = !pointer in
+          x -. x', y -. y'
+        in
+        let tx, ty, tz = !theta in
+        let ty = ty +. dx in
+        let tx = tx -. dy in
+        let tz = tz in
+        theta := tx, ty, tz;
+      end;
+      moving := true;
+    end else moving := false;
+    pointer := (x,y));
+
   let texture_canvas = Textures.create_grid_texture document in
   Node.append_child main texture_canvas;
 
@@ -481,11 +550,11 @@ let onload _ = begin
   let texture = create_texture gl in
   bind_texture gl (_TEXTURE_2D_ gl) texture;
   tex_image_2D gl (_TEXTURE_2D_ gl) 0 (_RGBA_ gl) (_RGBA_ gl) (type_unsigned_byte gl)  (`Canvas texture_canvas);
-print_endline "first";
+  print_endline "first";
   tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MAG_FILTER_ gl) (_LINEAR_ gl);
-print_endline "second";
+  print_endline "second";
   tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MIN_FILTER_ gl) (_LINEAR_ gl);
-print_endline "done";
+  print_endline "done";
 
   GraphModel.initialize gl;
 
@@ -494,5 +563,5 @@ print_endline "done";
     let t = clock -. !previous_time in
     previous_time := clock;
     Node.set_text_content fps (Printf.sprintf "%.2f fps" (1000.0 /. t));
-    draw_scene gl texture clock (0., 0.));
+    draw_scene gl texture clock !theta !pointer);
 end

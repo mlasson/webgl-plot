@@ -266,24 +266,54 @@ end
 
 module Html = struct
 
-  module Event = struct
-    include (struct
-      type 'a event = string
-      let mousemove = "mousemove"
+  module Event : sig
+    type 'a event = private string
+    val event_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a event
+    val event_to_js: ('a -> Ojs.t) -> 'a event -> Ojs.t
 
-      include ([%js] : sig
-        type untyped = private Ojs.t
-        val untyped_of_js: Ojs.t -> untyped
-        val untyped_to_js: untyped -> Ojs.t
-      end)
+    type 'a event_listener = private Ojs.t
+    val event_listener_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a event_listener
+    val event_listener_to_js: ('a -> Ojs.t) -> 'a event_listener -> Ojs.t
 
+    type mouse
+    val mouse_of_js: Ojs.t -> mouse
+    val mouse_to_js: mouse -> Ojs.t
 
-    end : sig
-      type 'a event = private string
-      val mousemove
-    end)
+    val mousemove : mouse event
 
+    val screenX: mouse event_listener -> int
+    val screenY: mouse event_listener -> int
+    val clientX: mouse event_listener -> int
+    val clientY: mouse event_listener -> int
+    val offsetX: mouse event_listener -> int
+    val offsetY: mouse event_listener -> int
+    val buttons: mouse event_listener -> int
 
+    val add_event_listener:  Kinds.Node.element Node.t -> 'a event -> ('a event_listener -> unit) -> unit
+  end = struct
+    type mouse[@@js]
+
+    type 'a event = string
+    let event_of_js _ x = [%js.to: string] x
+    let event_to_js _ x = [%js.of: string] x
+
+    type 'a event_listener = Ojs.t
+    let event_listener_of_js _ x = x
+    let event_listener_to_js _ x = x
+
+    let mousemove = "mousemove"
+
+    include
+      ([%js] : sig
+         val screenX: mouse event_listener -> int
+         val screenY: mouse event_listener -> int
+         val clientX: mouse event_listener -> int
+         val clientY: mouse event_listener -> int
+         val offsetX: mouse event_listener -> int
+         val offsetY: mouse event_listener -> int
+         val buttons: mouse event_listener -> int
+         val add_event_listener: Kinds.Node.element Node.t -> string -> (Ojs.t -> unit) -> unit
+       end)
   end
 
   module Input = struct

@@ -188,13 +188,6 @@ let hsv h s v =
   let m = v -. c in
   [r +. m; g +. m; b +. m]
 
-let colors_of_rectangle t =
-  match t with
-  | [ [[_; z1; _]; [_; z2; _]; [_; z3; _] ] ; _] ->
-    let average = 0.5 +. (z1 +. z2 +. z3) /. 6. in
-    let c = hsv (359.9 *. average) 1.0 1.0 in
-    [ [c;c;c]; [c;c;c]]
-  | _ -> assert false
 
 let epsilon = 0.000001
 
