@@ -73,6 +73,18 @@ module GraphModel = struct
   }
   |gsl}
 
+  let rebind gl {position_location; position_buffer; normal_location; normal_buffer; color_location; color_buffer; } =
+    enable_vertex_attrib_array gl position_location;
+    bind_buffer gl (array_buffer gl) position_buffer;
+    vertex_attrib_pointer gl position_location 3 (type_float gl) false 0 0;
+    enable_vertex_attrib_array gl normal_location;
+    bind_buffer gl (array_buffer gl) normal_buffer;
+    vertex_attrib_pointer gl normal_location 3 (type_float gl) false 0 0;
+    enable_vertex_attrib_array gl color_location;
+    bind_buffer gl (array_buffer gl) color_buffer;
+    vertex_attrib_pointer gl color_location 3 (type_float gl) false 0 0
+
+
   let setup_context gl program =
     let position_location =
       let attrib_location = get_attrib_location gl program "a_position" in
@@ -81,11 +93,7 @@ module GraphModel = struct
       else
         attrib_location
     in
-    enable_vertex_attrib_array gl position_location;
     let position_buffer = create_buffer gl in
-    bind_buffer gl (array_buffer gl) position_buffer;
-    vertex_attrib_pointer gl position_location 3 (type_float gl) false 0 0;
-
     let normal_location =
       let attrib_location = get_attrib_location gl program "a_normal" in
       if attrib_location < 0 then
@@ -93,11 +101,7 @@ module GraphModel = struct
       else
         attrib_location
     in
-    enable_vertex_attrib_array gl normal_location;
     let normal_buffer = create_buffer gl in
-    bind_buffer gl (array_buffer gl) normal_buffer;
-    vertex_attrib_pointer gl normal_location 3 (type_float gl) false 0 0;
-
     let color_location =
       let attrib_location = get_attrib_location gl program "a_color" in
       if attrib_location < 0 then
@@ -105,11 +109,7 @@ module GraphModel = struct
       else
         attrib_location
     in
-    enable_vertex_attrib_array gl color_location;
     let color_buffer = create_buffer gl in
-    bind_buffer gl (array_buffer gl) color_buffer;
-    vertex_attrib_pointer gl color_location 3 (type_float gl) false 0 0;
-
     let matrix =
       match get_uniform_location gl program "u_matrix" with
       | Some thing -> thing
@@ -133,33 +133,52 @@ module GraphModel = struct
     let context = ref None
   end
 
-  let context () = 
-    match !State.context with 
-    | None -> failwith "context: require init" 
+  let context () =
+    match !State.context with
+    | None -> failwith "context: require init"
     | Some ctx -> ctx
 
   let load gl =
-    match !State.program with 
-    | None -> failwith "Unable to load model, require initialization first"
-    | Some program -> begin
+    match !State.program, !State.context with
+    | Some program, Some context -> begin
       Html.Canvas.WebGl.use_program gl program;
-      State.context := Some (setup_context gl program)
+      rebind gl context
     end
+    | _ -> failwith "Unable to load model, require initialization first"
 
   let initialize gl =
     let vertex_shader = new_shader gl vertex_shader `Vertex in
     let fragment_shader = new_shader gl fragment_shader `Fragment in
     let program = compile_program gl vertex_shader fragment_shader in
-    State.program := Some program
+    State.program := Some program;
+    State.context := Some (setup_context gl program)
 
   let ones size =
     Array.init (3 * size) (fun k -> if k mod 3 = 2 then 1.0 else 0.0) |> Float32Array.new_float32_array
 
   let draw_normals = false
 
+  let draw_point gl (x,y,z) =
+      let context = context () in
+      let l = 0.1 in
+      let points = [| x+.l;y;z;x-.l;y;z;
+                      x;y+.l;z;x;y-.l;z;
+                      x;y;z+.l;x;y;z-.l |] in
+      bind_buffer gl (array_buffer gl) context.position_buffer;
+      buffer_data gl (array_buffer gl) (Float32Array.new_float32_array points) (static_draw gl);
+
+      bind_buffer gl (array_buffer gl) context.normal_buffer;
+      buffer_data gl (array_buffer gl) (ones (2 * 3)) (static_draw gl);
+
+      bind_buffer gl (array_buffer gl) context.color_buffer;
+      buffer_data gl (array_buffer gl) (ones (2 * 3)) (static_draw gl);
+
+      draw_arrays gl (_LINES_ gl) 0 (2 * 3)
+
+
   let draw_object gl matrix {size; triangles; normals; line_normals; colors; _ } =
-    let context = context () in 
-    uniform_matrix4fv gl context.matrix false 
+    let context = context () in
+    uniform_matrix4fv gl context.matrix false
            (Float32Array.new_float32_array matrix);
     uniform3f gl context.ambient_light 0.2 0.2 0.2;
     uniform3f gl context.light_position 0. 0. (-3.);
@@ -234,12 +253,12 @@ module GraphModel = struct
     }
 
 
-  
+
 end
 
 module RepereModel= struct
 
-	let vertex_shader = 
+	let vertex_shader =
 		{gsl|
 		attribute vec3 a_position;
 		attribute vec2 a_texcoord;
@@ -298,8 +317,8 @@ module RepereModel= struct
       | Some thing -> thing
       | None -> error "unable to get 'u_matrix'"
     in
-    { 
-      position_location; 
+    {
+      position_location;
       position_buffer; matrix; texcoord_location; texcoord_buffer }
 
   let scale_triangle alpha = List.map (List.map (( *. ) alpha))
@@ -308,14 +327,14 @@ module RepereModel= struct
     let program = ref None
     let context = ref None
   end
-  
-  let context () = 
-    match !State.context with 
-    | None -> failwith "context: require init" 
+
+  let context () =
+    match !State.context with
+    | None -> failwith "context: require init"
     | Some ctx -> ctx
 
   let load gl =
-    match !State.program with 
+    match !State.program with
     | None -> failwith "Unable to load model, require initialization first"
     | Some program -> begin
       Html.Canvas.WebGl.use_program gl program;
@@ -328,9 +347,9 @@ module RepereModel= struct
     let program = compile_program gl vertex_shader fragment_shader in
     State.program := Some program
 
-let cube = 
-  let triangles, texcoords = 
-    let tl, tr, bl, br = 
+let cube =
+  let triangles, texcoords =
+    let tl, tr, bl, br =
       [0.; 1.], [1.; 1.],
       [0.; 0.], [1.; 0.]
     in
@@ -358,31 +377,32 @@ let cube =
   let triangles = List.map (scale_triangle 2.) triangles in
   flatten_array triangles, flatten_array texcoords
 
-let draw_cube gl texture matrix = 
+let draw_cube gl texture matrix =
   let context = context () in
   enable gl (_CULL_FACE_ gl);
-  uniform_matrix4fv gl context.matrix false 
+  uniform_matrix4fv gl context.matrix false
        (Float32Array.new_float32_array matrix);
-  bind_texture gl (_TEXTURE_2D_ gl) texture; 
+  bind_texture gl (_TEXTURE_2D_ gl) texture;
   bind_buffer gl (array_buffer gl) context.position_buffer;
   buffer_data gl (array_buffer gl) (fst cube) (static_draw gl);
   bind_buffer gl (array_buffer gl) context.texcoord_buffer;
   buffer_data gl (array_buffer gl) (snd cube) (static_draw gl);
   draw_arrays gl (_TRIANGLES_ gl) 0 36;
-  disable gl (_CULL_FACE_ gl) 
+  disable gl (_CULL_FACE_ gl)
 
 
 end
 
 let () = print_endline "computing exp_graph ..."
-let exp_graph =
-  graph 20 (-2.0) 2.0 (-2.0) 2.0 (fun x y ->
+let exp_graph_triangles =
+  graph 100 (-2.0) 2.0 (-2.0) 2.0 (fun x y ->
       let x = 2.0 *. x in
       let y = 2.0 *. y in
-      -1.0 +. 2.0 *. exp (-. (x *. x +. y *. y))) |> (fun x -> print_endline "and all derived data ..."; x)|> GraphModel.from_triangles
+      -1.0 +. 2.0 *. exp (-. (x *. x +. y *. y)))
+let exp_graph = GraphModel.from_triangles exp_graph_triangles
 let () = print_endline "done"
 
-let draw_scene gl texture clock =
+let draw_scene gl texture clock ((x,y) as point) =
   let angle = 0.001 *. clock in
   let alpha = 1. /. 4. in
   let matrix =
@@ -395,13 +415,35 @@ let draw_scene gl texture clock =
     |> multiply make_projection
   in
 
+  let matrix' =
+       make_projection
+    |> multiply (translation (0., 0., 0.))
+    |> multiply (x_rotation (-. angle))
+    |> multiply (y_rotation (-. angle))
+    |> multiply (z_rotation (-. angle))
+    |> multiply (scale (1. /. alpha, 1. /. alpha, 1. /. alpha))
+    |> multiply (translation (0., 0., 0.))
+  in
+
+  let o = multiply_vector matrix' [|x;y;0.0;1.0|] in
+  let e = multiply_vector matrix' [|x;y;-1.0;1.0|] in
+  let o, e = match o, e with
+    | [|x1;y1;z1;w1|], [|x2;y2;z2;w2|] ->
+       [x1 /. w1; y1 /. w1; z1 /. w1], [x2 /. w2; y2 /. w2; z2 /. w2]
+    | _ -> assert false
+  in
   clear gl ((_COLOR_BUFFER_BIT_ gl) lor (_DEPTH_BUFFER_BIT_ gl));
   RepereModel.load gl;
   RepereModel.draw_cube gl texture matrix;
 
   let open GraphModel in begin
     load gl;
-    draw_object gl matrix exp_graph
+    draw_object gl matrix exp_graph;
+    begin match ray_triangles o e exp_graph_triangles with
+    | Some [p1;p2;p3] -> draw_point gl (p1, p2, p3)
+    | _ -> ()
+    end;
+
   end
 
 let loop f =
@@ -419,7 +461,7 @@ let onload _ = begin
   let fps = create "div" in
   Node.append_child main fps;
   configure_element  ~attributes:["width", "800"; "height", "800"] canvas;
-  
+
   Node.append_child main p;
   Node.append_child main canvas;
   let texture_canvas = Textures.create_grid_texture document in
@@ -437,12 +479,12 @@ let onload _ = begin
   RepereModel.load gl;
 
   let texture = create_texture gl in
-  bind_texture gl (_TEXTURE_2D_ gl) texture; 
+  bind_texture gl (_TEXTURE_2D_ gl) texture;
   tex_image_2D gl (_TEXTURE_2D_ gl) 0 (_RGBA_ gl) (_RGBA_ gl) (type_unsigned_byte gl)  (`Canvas texture_canvas);
 print_endline "first";
   tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MAG_FILTER_ gl) (_LINEAR_ gl);
 print_endline "second";
-  tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MIN_FILTER_ gl) (_LINEAR_ gl); 
+  tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MIN_FILTER_ gl) (_LINEAR_ gl);
 print_endline "done";
 
   GraphModel.initialize gl;
@@ -452,5 +494,5 @@ print_endline "done";
     let t = clock -. !previous_time in
     previous_time := clock;
     Node.set_text_content fps (Printf.sprintf "%.2f fps" (1000.0 /. t));
-    draw_scene gl texture clock);
+    draw_scene gl texture clock (0., 0.));
 end

@@ -210,7 +210,7 @@ val alert: string -> unit
 
 module Console : sig
   val log: Ojs.t -> unit
-end[@js.scope "console"] = [%js] 
+end[@js.scope "console"] = [%js]
 
 include ([%js] : sig
   val set_interval: (unit -> unit) -> float -> unit
@@ -262,9 +262,30 @@ module Float32Array = struct
    include ([%js] : sig
      val new_float32_array: float array -> t [@@js.new]
    end)
-end 
+end
 
 module Html = struct
+
+  module Event = struct
+    include (struct
+      type 'a event = string
+      let mousemove = "mousemove"
+
+      include ([%js] : sig
+        type untyped = private Ojs.t
+        val untyped_of_js: Ojs.t -> untyped
+        val untyped_to_js: untyped -> Ojs.t
+      end)
+
+
+    end : sig
+      type 'a event = private string
+      val mousemove
+    end)
+
+
+  end
+
   module Input = struct
      type t = Kinds.Html.input Element.t [@@js]
      include ([%js] : sig
@@ -287,7 +308,7 @@ module Html = struct
         val set_height: t -> int -> unit
       end)
     end
-    
+
     include struct type webgl [@@js] type svg[@@js] end
     include (struct
       include ([%js] : sig
@@ -298,7 +319,7 @@ module Html = struct
       type 'a context = untyped
       let context_of_js _ x = untyped_of_js x
       let context_to_js _ x = untyped_to_js x
-    end : sig 
+    end : sig
                type 'a context = private Ojs.t
                val context_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a context
                val context_to_js: ('a -> Ojs.t) -> 'a context -> Ojs.t
@@ -310,7 +331,7 @@ module Html = struct
      include ([%js] : sig
        val get_context: Canvas.t -> string ->  t option
      end)
-     let get_context canvas = 
+     let get_context canvas =
        get_context canvas "2d"
      include ([%js] : sig
        val set_fill_style: t -> ([`Color of CssColor.t | `Gradient of gradient][@js.union]) -> unit
@@ -338,7 +359,7 @@ module Html = struct
       type array_buffer[@@js]
 
       include (struct
-        include ([%js] : sig 
+        include ([%js] : sig
           type shader_parameter = private Ojs.t
           val shader_parameter_of_js: Ojs.t -> shader_parameter
           val shader_parameter_to_js: shader_parameter -> Ojs.t
@@ -351,7 +372,7 @@ module Html = struct
           val untyped_shader_type_of_js: Ojs.t -> untyped_shader_type
           val untyped_shader_type_to_js: untyped_shader_type -> Ojs.t
 
-          val vertex_shader_type: t -> untyped_shader_type[@@js.get "VERTEX_SHADER"] 
+          val vertex_shader_type: t -> untyped_shader_type[@@js.get "VERTEX_SHADER"]
           val fragment_shader_type: t -> untyped_shader_type [@@js.get "FRAGMENT_SHADER"]
 
           val shader_delete_status: t -> shader_parameter [@@js.get "DELETE_STATUS"]
@@ -363,7 +384,7 @@ module Html = struct
           val shader_source: t -> untyped_shader -> string -> unit
           val compile_shader: t -> untyped_shader -> unit
           val get_shader_info_log: t -> untyped_shader -> string
-          
+
           type program = private Ojs.t
           val program_of_js: Ojs.t -> program
           val program_to_js: program -> Ojs.t
@@ -383,7 +404,7 @@ module Html = struct
           val program_attached_shaders: t -> untyped_program_parameter [@@js.get "ATTACHED_SHADERS"]
           val program_active_attibutes: t -> untyped_program_parameter [@@js.get "ACTIVE_ATTRIBUTES"]
           val program_active_uniforms: t -> untyped_program_parameter [@@js.get "ACTIVE_UNIFORMS"]
- 
+
           val get_program_parameter: t -> program -> untyped_program_parameter -> Ojs.t
           val get_attrib_location: t -> program -> string -> int
           type uniform_location = private Ojs.t
@@ -403,7 +424,7 @@ module Html = struct
           val static_draw: t -> usage [@@js.get "STATIC_DRAW"]
           val dynamic_draw: t -> usage [@@js.get "DYNAMIC_DRAW"]
           val stream_draw: t -> usage [@@js.get "STREAM_DRAW"]
-         
+
           type untyped_buffer = private Ojs.t
           val untyped_buffer_of_js: Ojs.t -> untyped_buffer
           val untyped_buffer_to_js: untyped_buffer -> Ojs.t
@@ -412,17 +433,17 @@ module Html = struct
           type untyped_data = private Ojs.t
           val untyped_data_of_js: Ojs.t -> untyped_data
           val untyped_data_to_js: untyped_data -> Ojs.t
-          
+
           val bind_buffer: t -> untyped_buffer_kind -> untyped_buffer -> unit
           val buffer_data: t -> untyped_buffer_kind -> Ojs.t -> usage -> unit
- 
+
           type data_type = private Ojs.t
           val data_type_of_js: Ojs.t -> data_type
           val data_type_to_js: data_type -> Ojs.t
           val type_float: t -> data_type[@@js.get "FLOAT"]
           val type_unsigned_byte: t -> data_type[@@js.get "UNSIGNED_BYTE"]
           val enable_vertex_attrib_array: t -> int -> unit
-          val vertex_attrib_pointer: t -> int -> int -> data_type -> bool -> int -> int -> unit 
+          val vertex_attrib_pointer: t -> int -> int -> data_type -> bool -> int -> int -> unit
 
           type mask = int
           val mask_of_js: Ojs.t -> mask
@@ -430,21 +451,21 @@ module Html = struct
           val _COLOR_BUFFER_BIT_: t -> mask[@@js.get "COLOR_BUFFER_BIT"]
           val _DEPTH_BUFFER_BIT_: t -> mask[@@js.get "DEPTH_BUFFER_BIT"]
           val clear: t -> mask -> unit
-          
+
 
           type mode = private Ojs.t
           val mode_of_js: Ojs.t -> mode
           val mode_to_js: mode -> Ojs.t
-          
+
           val _TRIANGLES_: t -> mode [@@js.get "TRIANGLES"]
           val _POINTS_: t -> mode [@@js.get "POINTS"]
           val _TRIANGLE_STRIP_: t -> mode [@@js.get "TRIANGLE_STRIP"]
           val _LINE_STRIP_: t -> mode [@@js.get "LINE_STRIP"]
           val _LINES_:t -> mode [@@js.get "LINES"]
 
-          
+
           val draw_arrays: t -> mode -> int -> int -> unit
-          
+
           val uniform4f: t -> uniform_location -> float -> float -> float -> float -> unit
           val uniform3f: t -> uniform_location -> float -> float -> float -> unit
           val uniform_matrix4fv: t -> uniform_location -> bool -> Float32Array.t -> unit
@@ -467,8 +488,8 @@ module Html = struct
           val _LESS_: t -> func [@@js.get "LESS"]
           val _NEVER_: t -> func [@@js.get "NEVER"]
           val _GREATER_: t -> func [@@js.get "GREATER"]
-          val depth_func: t -> func -> unit 
- 
+          val depth_func: t -> func -> unit
+
           type cull_face_mode = private Ojs.t
           val cull_face_mode_of_js: Ojs.t -> cull_face_mode
           val cull_face_mode_to_js: cull_face_mode -> Ojs.t
@@ -482,7 +503,7 @@ module Html = struct
           val texture_of_js: Ojs.t -> texture
           val texture_to_js: texture -> Ojs.t
           val create_texture: t -> texture[@@js.call]
- 
+
           type target = private Ojs.t
           val target_of_js: Ojs.t -> target
           val target_to_js: target -> Ojs.t
@@ -495,7 +516,7 @@ module Html = struct
           val format_to_js: format -> Ojs.t
           val _RGBA_: t -> format [@@js.get "RGBA"]
 
-          val bind_texture: t -> target -> texture -> unit 
+          val bind_texture: t -> target -> texture -> unit
           val tex_image_2D: t -> target -> int -> format -> format -> data_type -> ([`Canvas of Canvas.t][@js.union]) -> unit
 
           type texture_parameter = private Ojs.t
@@ -513,8 +534,8 @@ module Html = struct
           val tex_parameteri: t -> target -> texture_parameter -> texture_parameter_value -> unit
 
         end)
- 
-        type 'a shader = untyped_shader 
+
+        type 'a shader = untyped_shader
         let shader_of_js _ = untyped_shader_of_js
         let shader_to_js _ = untyped_shader_to_js
 
@@ -522,50 +543,50 @@ module Html = struct
         let shader_type_of_js _ = untyped_shader_type_of_js
         let shader_type_to_js _ = untyped_shader_type_to_js
 
-        let retype_shader gl shader = 
+        let retype_shader gl shader =
           let x = get_shader_parameter gl shader (shader_type gl) in
           if untyped_shader_type_of_js x = vertex_shader_type gl then
             `Vertex (shader : vertex shader)
           else if untyped_shader_type_of_js x = fragment_shader_type gl then
             `Fragment (shader : fragment shader)
-          else assert false 
+          else assert false
 
-        let get_shader_parameter gl shader parameter = 
-          Ojs.bool_of_js (get_shader_parameter gl shader parameter) 
+        let get_shader_parameter gl shader parameter =
+          Ojs.bool_of_js (get_shader_parameter gl shader parameter)
 
         type 'a program_parameter = untyped_program_parameter
 
-        let program_parameter_of_js _ = untyped_program_parameter_of_js 
+        let program_parameter_of_js _ = untyped_program_parameter_of_js
         let program_parameter_to_js _ = untyped_program_parameter_to_js
-        
-        let get_program_int_parameter gl shader x = 
+
+        let get_program_int_parameter gl shader x =
           Ojs.int_of_js (get_program_parameter gl shader x)
-        let get_program_bool_parameter gl shader x = 
+        let get_program_bool_parameter gl shader x =
           Ojs.bool_of_js (get_program_parameter gl shader x)
 
-        type 'a buffer = untyped_buffer 
+        type 'a buffer = untyped_buffer
         let buffer_of_js _ = untyped_buffer_of_js
         let buffer_to_js _ = untyped_buffer_to_js
 
-        type 'a data = untyped_data 
+        type 'a data = untyped_data
         let data_of_js _ = untyped_data_of_js
         let data_to_js _ = untyped_data_to_js
 
-        type 'a buffer_kind = untyped_buffer_kind 
+        type 'a buffer_kind = untyped_buffer_kind
         let buffer_kind_of_js _ = untyped_buffer_kind_of_js
         let buffer_kind_to_js _ = untyped_buffer_kind_to_js
- 
-        let buffer_data_size gl kind data usage = 
+
+        let buffer_data_size gl kind data usage =
           buffer_data gl kind (Ojs.int_to_js data) usage
 
         let buffer_array_data gl kind data usage =
           buffer_data gl kind (Float32Array.t_to_js data) usage
-         
+
        end : sig
          type shader_parameter = private Ojs.t
          val shader_parameter_of_js: Ojs.t -> shader_parameter
          val shader_parameter_to_js: shader_parameter -> Ojs.t
- 
+
          type 'a shader = private Ojs.t
          val shader_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a shader
          val shader_to_js: ('a -> Ojs.t) -> 'a shader -> Ojs.t
@@ -604,7 +625,7 @@ module Html = struct
          val program_validate_status: t -> bool program_parameter
          val program_attached_shaders: t -> int program_parameter
          val program_active_attibutes: t -> int program_parameter
-         val program_active_uniforms: t -> int program_parameter 
+         val program_active_uniforms: t -> int program_parameter
 
          val get_program_int_parameter: t -> program -> int program_parameter -> int
          val get_program_bool_parameter: t -> program -> bool program_parameter -> bool
@@ -636,7 +657,7 @@ module Html = struct
          type 'a data = private Ojs.t
          val data_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a data
          val data_to_js: ('a -> Ojs.t) -> 'a data -> Ojs.t
-          
+
          val bind_buffer: t -> 'a buffer_kind -> 'a buffer -> unit
          val buffer_data_size: t -> 'a buffer_kind -> int -> usage -> unit
          val buffer_data: t -> 'a buffer_kind -> Float32Array.t -> usage -> unit
@@ -647,7 +668,7 @@ module Html = struct
          val type_float: t -> data_type
          val type_unsigned_byte: t -> data_type
          val enable_vertex_attrib_array: t -> int -> unit
-         val vertex_attrib_pointer: t -> int -> int -> data_type -> bool -> int -> int -> unit 
+         val vertex_attrib_pointer: t -> int -> int -> data_type -> bool -> int -> int -> unit
 
          type mask = int
          val mask_of_js: Ojs.t -> mask
@@ -669,7 +690,7 @@ module Html = struct
          val uniform4f: t -> uniform_location -> float -> float -> float -> float -> unit
          val uniform3f: t -> uniform_location -> float -> float -> float -> unit
          val uniform_matrix4fv: t -> uniform_location -> bool -> Float32Array.t -> unit
-         
+
          type capability = private Ojs.t
          val capability_of_js : Ojs.t -> capability
          val capability_to_js : capability -> Ojs.t
@@ -689,7 +710,7 @@ module Html = struct
          val _GREATER_: t -> func
          val _NEVER_: t -> func
 
-         val depth_func: t -> func -> unit 
+         val depth_func: t -> func -> unit
 
          type cull_face_mode = private Ojs.t
          val cull_face_mode_of_js: Ojs.t -> cull_face_mode
@@ -703,7 +724,7 @@ module Html = struct
           val texture_of_js: Ojs.t -> texture
           val texture_to_js: texture -> Ojs.t
           val create_texture: t -> texture
- 
+
           type target = private Ojs.t
           val target_of_js: Ojs.t -> target
           val target_to_js: target -> Ojs.t
@@ -716,7 +737,7 @@ module Html = struct
           val format_to_js: format -> Ojs.t
           val _RGBA_: t -> format
 
-          val bind_texture: t -> target -> texture -> unit 
+          val bind_texture: t -> target -> texture -> unit
           val tex_image_2D: t -> target -> int -> format -> format -> data_type -> [`Canvas of Canvas.t] -> unit
 
           type texture_parameter = private Ojs.t
@@ -748,7 +769,7 @@ module Html = struct
          antialias: bool option;
        } [@@js]
 
-       let default_context_attribute = { 
+       let default_context_attribute = {
          alpha = Some true;
          depth = Some true;
          stencil = None;
@@ -758,7 +779,7 @@ module Html = struct
        include ([%js] : sig
          val get_context: Canvas.t -> context_type -> context_attribute -> t option
        end)
-       let get_context canvas ?(context_attribute = default_context_attribute) context_type = 
+       let get_context canvas ?(context_attribute = default_context_attribute) context_type =
          get_context canvas context_type context_attribute
 
 

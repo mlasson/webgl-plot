@@ -15,9 +15,10 @@ main.byte: $(CMOS)
 
 bindings/js_core.cmo: bindings/js_core.ml
 helper.cmo: helper.ml bindings/js_core.cmo
-drawing.cmo: drawing.ml helper.cmi bindings/js_core.cmo textures.cmo
+drawing.cmo: drawing.ml helper.cmo bindings/js_core.cmo textures.cmo
 textures.cmo: textures.ml bindings/js_core.cmo
 main.cmo: main.ml
+math.cmo: math.ml
 
 .SUFFIXES: .ml .mli .cmo .cmi
 
