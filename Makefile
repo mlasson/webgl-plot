@@ -14,9 +14,9 @@ main.byte: $(CMOS)
 	$(OCAMLC) $(OCAMLFLAGS) -no-check-prims -package gen_js_api $(CMOS) -linkpkg -o $@
 
 bindings/js_core.cmo: bindings/js_core.ml
-helper.cmo: helper.ml bindings/js_core.cmi
-drawing.cmo: drawing.ml helper.cmi bindings/js_core.cmi textures.cmo
-textures.cmo: textures.ml bindings/js_core.cmi
+helper.cmo: helper.ml bindings/js_core.cmo
+drawing.cmo: drawing.ml helper.cmi bindings/js_core.cmo textures.cmo
+textures.cmo: textures.ml bindings/js_core.cmo
 main.cmo: main.ml
 
 .SUFFIXES: .ml .mli .cmo .cmi
