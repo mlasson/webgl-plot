@@ -1,3 +1,21 @@
+let hashtbl_to_list table = 
+  let keys = 
+    List.sort_uniq compare 
+      (Hashtbl.fold (fun k _ acc -> k :: acc) table []) 
+  in
+  List.rev_map (fun key -> key, Hashtbl.find_all table key) keys
+
+let choose f l =
+  let rec aux acc = function 
+    | [] -> List.rev acc
+    | hd :: tl ->
+      begin match f hd with 
+        | Some hd -> aux (hd :: acc) tl
+        | None -> aux acc tl
+      end
+  in
+  aux [] l
+
 type four
 type three 
 type two
@@ -6,7 +24,7 @@ let pi = 3.1415926535897932384626433832795
 let sq x = x *. x
 
 module Vector : sig 
-  type 'a vector = float array
+  type 'a vector = private float array
   type ('a, 'b) times
   type ('a, 'b) matrix = ('a, 'b) times vector
   type 'a square_matrix = ('a, 'a) matrix
@@ -79,7 +97,8 @@ end = struct
   let normalize v = scale (1.0 /. norm v) v
 
   let four_to_three = function 
-    | [| x;y;z;t |] -> [| x /. y; y /. t; z /. t |]
+    | [| x;y;z;t |] -> 
+      [| x /. t; y /. t; z /. t |]
     | _ -> assert false
 
 
@@ -209,6 +228,48 @@ type vec3 = three Vector.vector
 type vec4 = four Vector.vector
 type mat4 = (four, four) Vector.matrix
 
+module Param = struct
+
+  let iter_range min max steps f =
+    let step = (max -. min) /. (float steps) in
+    let cur = ref min in
+    for _ = 1 to steps do
+      let next = !cur +. step in
+      f !cur next;
+      cur := next;
+    done
+
+  let parametrize2d ?(dim1 = (0.0, 1.0))
+      ?(dim2 = (0.0, 1.0)) (res1, res2) f =
+    let result = ref [] in
+    iter_range (fst dim1) (snd dim1) res1
+      begin fun t1 t1' ->
+        iter_range (fst dim2) (snd dim2) res2
+          begin fun t2 t2' ->
+            let a, b, c, d = f t1 t2, f t1' t2, f t1' t2', f t1 t2' in
+            result := (b,a,c) :: (c,a,d) :: !result;
+          end
+      end;
+    List.rev !result
+
+  let sphere res =
+    parametrize2d
+      ~dim1:(0.0, 2.0 *. pi)
+      ~dim2:(0.0, pi)
+      (res, res)
+      (fun theta phi ->
+         Vector.of_three
+           (cos theta *. sin phi, sin theta *. sin phi, cos phi))
+
+  let graph res xmin xmax ymin ymax f =
+    parametrize2d
+      ~dim1:(xmin, xmax)
+      ~dim2:(ymin, ymax)
+      (res, res)
+      (fun x y -> Vector.of_three (x, f x y, y))
+
+end
+
 module Triangles = struct
   open Vector 
 
@@ -251,27 +312,14 @@ module Triangles = struct
           else
             None
 
-  let choose f l =
-    let rec aux acc = function 
-      | [] -> List.rev acc
-      | hd :: tl ->
-        begin match f hd with
-          | Some x -> aux (x :: acc) tl
-          | None -> aux acc tl
-        end
-    in aux [] l
-
-  let ray_triangles o e l =
-    let d = Vector.sub e o in
-    let hits =
-      choose (fun (a,b,c) -> triangle_intersection o d a b c) l
-    in
-    match
-      List.sort (fun (d, _) (d', _) -> compare d d') 
-        (List.map (fun p -> Vector.dist e p, p) hits)
-    with
-    | (_, p) :: _ -> Some p
-    | _ -> None
+  type box = {
+    x_min : float;
+    x_max : float;
+    y_min : float;
+    y_max : float;
+    z_min : float;
+    z_max : float;
+  }
 
   let bounding_box l = 
     let iter f (x,y,z) = 
@@ -291,9 +339,163 @@ module Triangles = struct
               if y < !y_min then y_min := y;
               if y > !y_max then y_max := y;
               if z < !z_min then z_min := z;
-              if z > !z_max then z_max := z) p) (hd::tl);
-      (!x_min,!x_max, !y_min,!y_max,!z_min,!z_max)
+              if z > !z_max then z_max := z) p)
+        (hd::tl);
+      { 
+        x_min = !x_min;
+        x_max = !x_max;
+        y_min = !y_min;
+        y_max = !y_max;
+        z_min = !z_min;
+        z_max = !z_max
+      }
     | _ -> failwith "bounding_box: empty list"
+
+  type rect = {
+    x_min : float;
+    z_min : float;
+    x_max : float;
+    z_max : float;
+  }
+
+  let ray_box ({x_min; x_max; z_min; z_max} : rect) (a : vec2) (b: vec2) = 
+    let (x_a,z_a) = Vector.to_two a in
+    let (x_b,z_b) = Vector.to_two b in
+    if abs_float x_a < epsilon then 
+      x_min < x_b && x_b < x_max
+    else if abs_float z_a < epsilon then
+      z_min < z_b && z_b < z_max
+    else begin
+      let l = (x_min -. x_b) /. x_a in
+      let l' = (z_min -. z_b) /. z_a in
+
+      let r = (x_max -. x_b) /. x_a in
+      let r' = (z_max -. z_b) /. z_a in
+      
+      if x_a > 0.0 then
+        if z_a > 0.0 then
+          max l l' <= min r r'
+        else
+          max l r' <= min r l'
+      else
+        if z_a > 0.0 then
+          max r l' <= min l r'
+        else  
+          max r r' <= min l l'
+    end
+
+  let rec dicho f i j = 
+    if i >= j then
+       if f j then 
+         Some j 
+       else
+         None
+    else 
+      let p = (i + j) / 2 in 
+      if f p then
+        dicho f i p
+      else
+        dicho f (p + 1) j
+
+  let rec forward f i j =
+    if f (i + j) then 
+      if j = 1 then
+        i + j
+      else
+        forward f (i + (j / 2)) 1
+    else
+      forward f i (2 * j)
+
+  let build_boxes triangles = 
+    let {x_min; x_max; z_min; z_max; _} : box = bounding_box triangles in
+    let boxes = 
+      let results = ref [] in
+      Param.iter_range x_min x_max 100
+        begin fun x x' ->
+          Param.iter_range z_min z_max 100
+            begin fun z z' ->
+              let rect : rect = 
+                { 
+                  x_min = x; 
+                  x_max = x'; 
+                  z_min = z; 
+                  z_max = z'
+                }  
+              in
+              results := rect :: !results
+            end
+        end;
+      Array.of_list (List.rev !results)
+    in 
+    let nb_boxes = Array.length boxes in 
+    Printf.printf "nb_boxes = %d\n%!" nb_boxes;
+    let table = Hashtbl.create 1000 in
+    List.iter (fun ((a,b,c) as triangle) -> 
+        let x_a, _, z_a = Vector.to_three a in
+        let x_b, _, z_b = Vector.to_three b in
+        let x_c, _, z_c = Vector.to_three c in  
+        let box_of x z = 
+          let i = 
+            match dicho (fun i -> boxes.(i).x_max >= x) 0 (nb_boxes - 1) with
+            | None -> 
+              assert (x -. boxes.(nb_boxes - 1).x_max <= 1e-8);
+              nb_boxes - 1
+            | Some i -> i
+          in
+          let x_bound = boxes.(i).x_max in
+          let j = 
+            (forward (fun k ->
+                 k >= nb_boxes || boxes.(k).x_max > x_bound) i 1) - 1 
+          in
+          let k = 
+            match dicho (fun i -> boxes.(i).z_max >= z) i j with
+            | None ->
+              (*
+              Printf.printf "%.2f %.2f %d %d\n%!" x z i j;
+              Printf.printf "%d: x_min = %.2f, x_max = %.2f, z_min = %.2f, z_max = %.2f\n%!" i (boxes.(i).x_min) (boxes.(i).x_max) (boxes.(i).z_min) (boxes.(i).z_max);
+              Printf.printf "%d: x_min = %.2f, x_max = %.2f, z_min = %.2f, z_max = %.2f\n%!" j (boxes.(j).x_min) (boxes.(j).x_max) (boxes.(j).z_min) (boxes.(j).z_max); *)
+              assert (z -. boxes.(j).z_max <= 1e-8);
+              j
+            | Some k -> k
+          in
+          let box = boxes.(k) in
+          Hashtbl.add table box triangle
+        in
+        box_of x_a z_a;
+        box_of x_b z_b;
+        box_of x_c z_c
+      ) triangles;
+    hashtbl_to_list table
+
+  let ray_triangles ?table o e l =
+    let d = Vector.sub e o in
+    let l =
+      match table with 
+      | None -> [l]
+      | Some table -> 
+        let x_d, _, z_d = Vector.to_three d in
+        let x_e, _, z_e = Vector.to_three e in
+        let d = Vector.of_two (x_d, z_d) in
+        let e = Vector.of_two (x_e, z_e) in
+        choose (fun (box, triangles) -> 
+            if ray_box box d e then
+              Some triangles
+            else
+              None
+          ) table
+    in
+    let size = List.fold_left (fun acc l -> acc + List.length l) 0 l in
+    Printf.printf "size = %d, nb_boxes = %d\n%!" size (List.length l);
+    let hits =
+      List.map (choose (fun (a,b,c) -> triangle_intersection o d a b c)) l
+      |> List.flatten
+    in
+    match
+      List.sort (fun (d, _) (d', _) -> compare d d') 
+        (List.map (fun p -> Vector.dist e p, p) hits)
+    with
+    | (_, p) :: _ -> Some p
+    | _ -> None
 
 end
 
@@ -318,44 +520,4 @@ module Color = struct
 end
 
 
-module Param = struct
 
-  let iter_range min max steps f =
-    let step = (max -. min) /. (float steps) in
-    let cur = ref min in
-    for _ = 1 to steps do
-      let next = !cur +. step in
-      f !cur next;
-      cur := next;
-    done
-
-  let parametrize2d ?(dim1 = (0.0, 1.0))
-      ?(dim2 = (0.0, 1.0)) (res1, res2) f =
-    let result = ref [] in
-    iter_range (fst dim1) (snd dim1) res1
-      begin fun t1 t1' ->
-        iter_range (fst dim2) (snd dim2) res2
-          begin fun t2 t2' ->
-            let a, b, c, d = f t1 t2, f t1' t2, f t1' t2', f t1 t2' in
-            result := (b,a,c) :: (c,a,d) :: !result;
-          end
-      end;
-    List.rev !result
-
-  let sphere res =
-    parametrize2d
-      ~dim1:(0.0, 2.0 *. pi)
-      ~dim2:(0.0, pi)
-      (res, res)
-      (fun theta phi ->
-         Vector.of_three
-           (cos theta *. sin phi, sin theta *. sin phi, cos phi))
-
-  let graph res xmin xmax ymin ymax f =
-    parametrize2d
-      ~dim1:(xmin, xmax)
-      ~dim2:(ymin, ymax)
-      (res, res)
-      (fun x y -> Vector.of_three (x, f x y, y))
-
-end

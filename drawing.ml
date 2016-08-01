@@ -207,12 +207,10 @@ end
 
 let () = print_endline "computing exp_graph ..."
 let exp_graph_triangles =
-  Param.graph 20 (-. pi) pi (-. pi) pi (fun x y ->
-      let x = 1.5 *. x in
-      let y = 1.5 *. y in
-      sin (sqrt (x *. x +.  y *. y)))
+  Param.graph 400 (-. pi) pi (-. pi) pi (fun x y ->
+     ((* sin (sqrt *) (x *. x +.  y *. y)))
 
-let x_min,x_max,y_min,y_max,z_min,z_max  = 
+let {Triangles.x_min;x_max;y_min;y_max;z_min;z_max} = 
   Triangles.bounding_box exp_graph_triangles
 
 let range_x = x_max -. x_min
@@ -429,6 +427,11 @@ let draw_cube gl texture matrix =
 
 
 end
+
+let () = print_endline "table"
+let box_table = Triangles.build_boxes exp_graph_triangles 
+
+let () = print_endline "triangles"
 let exp_graph = from_triangles exp_graph_triangles
 
 let () = print_endline "done"
@@ -460,7 +463,7 @@ let draw_scene gl texture clock (angle_x, angle_y, angle_z) (x,y) =
 
   let o = 
     four_to_three 
-     (multiply_vector matrix' (Vector.of_four (x,y,0.0,1.0)))
+     (multiply_vector matrix' (Vector.of_four (x,y,1.0,1.0)))
   in
   let e = 
     four_to_three 
@@ -468,15 +471,18 @@ let draw_scene gl texture clock (angle_x, angle_y, angle_z) (x,y) =
   in
   clear gl ((_COLOR_BUFFER_BIT_ gl) lor (_DEPTH_BUFFER_BIT_ gl));
   RepereModel.load gl;
-  RepereModel.draw_cube gl texture matrix;
+  RepereModel.draw_cube gl texture (matrix :> float array);
 
   let open GraphModel in begin
     load gl;
-    draw_object gl matrix exp_graph;
-    if clock -. !last_update > 0.2 then begin
+    draw_object gl (matrix :> float array) exp_graph;
+    if false && clock -. !last_update > 0.2 then begin
      last_update := clock;
-     match Triangles.ray_triangles o e exp_graph_triangles with
-     | Some p -> let (p1,p2,p3) = Vector.to_three p in draw_point gl (p1, p2, p3)
+     let box_table = Some box_table in
+     match Triangles.ray_triangles ?table:box_table o e exp_graph_triangles with
+     | Some p -> 
+      let (x,y,z) = Vector.to_three p in
+      draw_point gl (x,y,z)
      | _ -> ()
      end;
   end
@@ -509,6 +515,7 @@ let onload _ = begin
   add_event_listener canvas mousemove (fun evt ->
     let x = 2.0 *. (float (offsetX evt)) /. 800.0 -. 1.0 in
     let y = 1.0 -. 2.0 *. (float (offsetY evt)) /. 800.0 in
+    Printf.printf "computed: %.2f %.2f\n%!" x y;
     let button = buttons evt in
     if button = 1 then begin
       if !moving then begin
@@ -552,9 +559,16 @@ let onload _ = begin
   GraphModel.initialize gl;
 
   let previous_time = ref 0.0 in
+  let fps_counter = ref 0 in
+  let update_freq = 30 in
   loop (fun clock ->
-    let t = clock -. !previous_time in
-    previous_time := clock;
-    Node.set_text_content fps (Printf.sprintf "%.2f fps" (1000.0 /. t));
+    incr fps_counter;
+    if !fps_counter = update_freq then begin
+      let t = (clock -. !previous_time) /. (float update_freq) in
+      previous_time := clock;
+      fps_counter := 0;
+      Node.set_text_content fps 
+        (Printf.sprintf "%.2f fps" (1000.0 /. t));
+    end;
     draw_scene gl texture clock !theta !pointer);
 end

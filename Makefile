@@ -15,7 +15,7 @@ main.byte: $(CMOS)
 
 bindings/js_core.cmo: bindings/js_core.ml
 helper.cmo: helper.ml bindings/js_core.cmo
-drawing.cmo: drawing.ml helper.cmo bindings/js_core.cmo textures.cmo
+drawing.cmo: math.cmo drawing.ml helper.cmo bindings/js_core.cmo textures.cmo
 textures.cmo: textures.ml bindings/js_core.cmo
 main.cmo: main.ml bindings/js_core.cmo drawing.cmo
 math.cmo: math.ml
