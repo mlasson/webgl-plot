@@ -1,29 +1,42 @@
-let hashtbl_to_list table = 
-  let keys = 
-    List.sort_uniq compare 
-      (Hashtbl.fold (fun k _ acc -> k :: acc) table []) 
-  in
-  List.rev_map (fun key -> key, Hashtbl.find_all table key) keys
+module List = struct
+  include List
 
-let choose f l =
-  let rec aux acc = function 
-    | [] -> List.rev acc
-    | hd :: tl ->
-      begin match f hd with 
-        | Some hd -> aux (hd :: acc) tl
-        | None -> aux acc tl
-      end
-  in
-  aux [] l
+  let hashtbl_to_list table =
+    let keys =
+      List.sort_uniq compare
+        (Hashtbl.fold (fun k _ acc -> k :: acc) table [])
+    in
+    List.rev_map (fun key -> key, Hashtbl.find_all table key) keys
+
+  let choose f l =
+    let rec aux acc = function
+      | [] -> List.rev acc
+      | hd :: tl ->
+        begin match f hd with
+          | Some hd -> aux (hd :: acc) tl
+          | None -> aux acc tl
+        end
+    in
+    aux [] l
+
+  let flatten l =
+    let rec aux acc =
+      function
+      | [] -> List.rev acc
+      | hd :: tl -> aux (List.rev_append hd acc) tl
+    in aux [] l
+
+  let map f l = List.rev_map f l |> List.rev
+end
 
 type four
-type three 
+type three
 type two
 
 let pi = 3.1415926535897932384626433832795
 let sq x = x *. x
 
-module Vector : sig 
+module Vector : sig
   type 'a vector = private float array
   type ('a, 'b) times
   type ('a, 'b) matrix = ('a, 'b) times vector
@@ -88,7 +101,7 @@ end = struct
     let n = Array.length u in
     assert (Array.length v = n);
     let res = ref 0.0 in
-    for i = 0 to n - 1 do 
+    for i = 0 to n - 1 do
       res := !res +. u.(i) *. v.(i)
     done;
     !res
@@ -96,22 +109,21 @@ end = struct
   let scale alpha = Array.map (( *. ) alpha)
   let normalize v = scale (1.0 /. norm v) v
 
-  let four_to_three = function 
-    | [| x;y;z;t |] -> 
+  let four_to_three = function
+    | [| x;y;z;t |] ->
       [| x /. t; y /. t; z /. t |]
     | _ -> assert false
 
-
-  let dist u v = 
+  let dist u v =
     let n = Array.length u in
     assert (Array.length v = n);
     let res = ref 0.0 in
-    for i = 0 to n - 1 do 
+    for i = 0 to n - 1 do
       res := !res +. sq (u.(i) -. v.(i))
     done;
     sqrt !res
 
-  let cross v1 v2 = 
+  let cross v1 v2 =
     let x1, y1, z1 = to_three v1 in
     let x2, y2, z2 = to_three v2 in
     let xn = y1 *. z2 -. z1 *. y2 in
@@ -169,7 +181,7 @@ end = struct
 
   module Const = struct
 
-    let translation v = 
+    let translation v =
       let (x,y,z) = to_three v in
       [|
         1.;  0.;  0.;  0.;
@@ -271,9 +283,9 @@ module Param = struct
 end
 
 module Triangles = struct
-  open Vector 
+  open Vector
 
-  let normal_of_triangle a b c = 
+  let normal_of_triangle a b c =
     let x1, y1, z1 = Vector.to_three a in
     let x2, y2, z2 = Vector.to_three b in
     let x3, y3, z3 = Vector.to_three c in
@@ -284,7 +296,7 @@ module Triangles = struct
     (of_three (xn /. n, yn /. n, zn /. n))
 
   let epsilon = 0.0000001
- 
+
   (* https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm *)
   let triangle_intersection o d v1 v2 v3 =
     let open Vector in
@@ -321,17 +333,17 @@ module Triangles = struct
     z_max : float;
   }
 
-  let bounding_box l = 
-    let iter f (x,y,z) = 
-      f x; f y; f z 
+  let bounding_box l =
+    let iter f (x,y,z) =
+      f x; f y; f z
     in
-    match l with 
+    match l with
     | ((first, _, _) as hd )::tl ->
       let x,y,z = Vector.to_three first in
       let x_min, x_max = ref x, ref x in
       let y_min, y_max = ref y, ref y in
       let z_min, z_max = ref z, ref z in
-      List.iter (fun p -> 
+      List.iter (fun p ->
           iter (function next ->
               let x, y, z = Vector.to_three next in
               if x < !x_min then x_min := x;
@@ -341,7 +353,7 @@ module Triangles = struct
               if z < !z_min then z_min := z;
               if z > !z_max then z_max := z) p)
         (hd::tl);
-      { 
+      {
         x_min = !x_min;
         x_max = !x_max;
         y_min = !y_min;
@@ -358,10 +370,10 @@ module Triangles = struct
     z_max : float;
   }
 
-  let ray_box ({x_min; x_max; z_min; z_max} : rect) (a : vec2) (b: vec2) = 
+  let ray_box ({x_min; x_max; z_min; z_max} : rect) (a : vec2) (b: vec2) =
     let (x_a,z_a) = Vector.to_two a in
     let (x_b,z_b) = Vector.to_two b in
-    if abs_float x_a < epsilon then 
+    if abs_float x_a < epsilon then
       x_min < x_b && x_b < x_max
     else if abs_float z_a < epsilon then
       z_min < z_b && z_b < z_max
@@ -371,7 +383,7 @@ module Triangles = struct
 
       let r = (x_max -. x_b) /. x_a in
       let r' = (z_max -. z_b) /. z_a in
-      
+
       if x_a > 0.0 then
         if z_a > 0.0 then
           max l l' <= min r r'
@@ -380,25 +392,25 @@ module Triangles = struct
       else
         if z_a > 0.0 then
           max r l' <= min l r'
-        else  
+        else
           max r r' <= min l l'
     end
 
-  let rec dicho f i j = 
+  let rec dicho f i j =
     if i >= j then
-       if f j then 
-         Some j 
+       if f j then
+         Some j
        else
          None
-    else 
-      let p = (i + j) / 2 in 
+    else
+      let p = (i + j) / 2 in
       if f p then
         dicho f i p
       else
         dicho f (p + 1) j
 
   let rec forward f i j =
-    if f (i + j) then 
+    if f (i + j) then
       if j = 1 then
         i + j
       else
@@ -406,54 +418,52 @@ module Triangles = struct
     else
       forward f i (2 * j)
 
-  let build_boxes triangles = 
+  type ray_table = (rect * (vec3 * vec3 * vec3) list) list
+
+  let build_ray_table triangles =
+    let size = int_of_float (sqrt (float (List.length triangles)) /. 10.0) in
     let {x_min; x_max; z_min; z_max; _} : box = bounding_box triangles in
-    let boxes = 
+    let boxes =
       let results = ref [] in
-      Param.iter_range x_min x_max 100
+      Param.iter_range x_min x_max size
         begin fun x x' ->
-          Param.iter_range z_min z_max 100
+          Param.iter_range z_min z_max size
             begin fun z z' ->
-              let rect : rect = 
-                { 
-                  x_min = x; 
-                  x_max = x'; 
-                  z_min = z; 
+              let rect : rect =
+                {
+                  x_min = x;
+                  x_max = x';
+                  z_min = z;
                   z_max = z'
-                }  
+                }
               in
               results := rect :: !results
             end
         end;
       Array.of_list (List.rev !results)
-    in 
-    let nb_boxes = Array.length boxes in 
-    Printf.printf "nb_boxes = %d\n%!" nb_boxes;
-    let table = Hashtbl.create 1000 in
-    List.iter (fun ((a,b,c) as triangle) -> 
+    in
+    let nb_boxes = Array.length boxes in
+    let table = Hashtbl.create nb_boxes in
+    List.iter (fun ((a,b,c) as triangle) ->
         let x_a, _, z_a = Vector.to_three a in
         let x_b, _, z_b = Vector.to_three b in
-        let x_c, _, z_c = Vector.to_three c in  
-        let box_of x z = 
-          let i = 
+        let x_c, _, z_c = Vector.to_three c in
+        let box_of x z =
+          let i =
             match dicho (fun i -> boxes.(i).x_max >= x) 0 (nb_boxes - 1) with
-            | None -> 
+            | None ->
               assert (x -. boxes.(nb_boxes - 1).x_max <= 1e-8);
               nb_boxes - 1
             | Some i -> i
           in
           let x_bound = boxes.(i).x_max in
-          let j = 
+          let j =
             (forward (fun k ->
-                 k >= nb_boxes || boxes.(k).x_max > x_bound) i 1) - 1 
+                 k >= nb_boxes || boxes.(k).x_max > x_bound) i 1) - 1
           in
-          let k = 
+          let k =
             match dicho (fun i -> boxes.(i).z_max >= z) i j with
             | None ->
-              (*
-              Printf.printf "%.2f %.2f %d %d\n%!" x z i j;
-              Printf.printf "%d: x_min = %.2f, x_max = %.2f, z_min = %.2f, z_max = %.2f\n%!" i (boxes.(i).x_min) (boxes.(i).x_max) (boxes.(i).z_min) (boxes.(i).z_max);
-              Printf.printf "%d: x_min = %.2f, x_max = %.2f, z_min = %.2f, z_max = %.2f\n%!" j (boxes.(j).x_min) (boxes.(j).x_max) (boxes.(j).z_min) (boxes.(j).z_max); *)
               assert (z -. boxes.(j).z_max <= 1e-8);
               j
             | Some k -> k
@@ -465,33 +475,28 @@ module Triangles = struct
         box_of x_b z_b;
         box_of x_c z_c
       ) triangles;
-    hashtbl_to_list table
+    List.hashtbl_to_list table
 
-  let ray_triangles ?table o e l =
+  let ray_triangles table o e =
     let d = Vector.sub e o in
     let l =
-      match table with 
-      | None -> [l]
-      | Some table -> 
-        let x_d, _, z_d = Vector.to_three d in
-        let x_e, _, z_e = Vector.to_three e in
-        let d = Vector.of_two (x_d, z_d) in
-        let e = Vector.of_two (x_e, z_e) in
-        choose (fun (box, triangles) -> 
-            if ray_box box d e then
-              Some triangles
-            else
-              None
-          ) table
+      let x_d, _, z_d = Vector.to_three d in
+      let x_e, _, z_e = Vector.to_three e in
+      let d = Vector.of_two (x_d, z_d) in
+      let e = Vector.of_two (x_e, z_e) in
+      List.choose (fun (box, triangles) ->
+          if ray_box box d e then
+            Some triangles
+          else
+            None
+        ) table
     in
-    let size = List.fold_left (fun acc l -> acc + List.length l) 0 l in
-    Printf.printf "size = %d, nb_boxes = %d\n%!" size (List.length l);
     let hits =
-      List.map (choose (fun (a,b,c) -> triangle_intersection o d a b c)) l
+      List.map (List.choose (fun (a,b,c) -> triangle_intersection o d a b c)) l
       |> List.flatten
     in
     match
-      List.sort (fun (d, _) (d', _) -> compare d d') 
+      List.sort (fun (d, _) (d', _) -> compare d d')
         (List.map (fun p -> Vector.dist e p, p) hits)
     with
     | (_, p) :: _ -> Some p
@@ -503,8 +508,8 @@ module Color = struct
   let hsv h s v =
     let c = s *. v in
     let h = h /. 60.0 in
-    let x = 
-      c *. (1.0 -. abs_float (h -. 2.0 *. floor (h /. 2.0) -. 1.0)) 
+    let x =
+      c *. (1.0 -. abs_float (h -. 2.0 *. floor (h /. 2.0) -. 1.0))
     in
     let r,g,b =
       if h < 0. || h >= 60. then 0.0, 0.0, 0.0

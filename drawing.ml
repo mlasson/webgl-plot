@@ -4,6 +4,110 @@ open Html
 open Canvas.WebGl
 open Math
 
+module Surface = struct
+
+  type surface = {
+    triangles: (vec3 * vec3 * vec3) list;
+    normals: (vec3 * vec3 * vec3) list;
+    colors: (vec3 * vec3 * vec3) list;
+  }
+
+  type flat_surface = {
+    size: int;
+
+    triangles_array: Float32Array.t;
+    normals_array: Float32Array.t;
+    colors_array: Float32Array.t;
+
+    bounds: Triangles.box;
+
+    ray_table: Triangles.ray_table;
+  }
+
+  let flatten_triangles l =
+    let size = List.length l in
+    let array = Array.create_float (3 * 3 * size) in
+    let k = ref 0 in
+    List.iter (fun (a,b,c) ->
+        let (x_a,y_a,z_a) = Vector.to_three a in
+        let (x_b,y_b,z_b) = Vector.to_three b in
+        let (x_c,y_c,z_c) = Vector.to_three c in
+        array.(!k) <- x_a;
+        array.(!k + 1) <- y_a;
+        array.(!k + 2) <- z_a;
+        array.(!k + 3) <- x_b;
+        array.(!k + 4) <- y_b;
+        array.(!k + 5) <- z_b;
+        array.(!k + 6) <- x_c;
+        array.(!k + 7) <- y_c;
+        array.(!k + 8) <- z_c;
+        k := !k + 9) l;
+    Float32Array.new_float32_array array
+
+  let flat { triangles; normals; colors} =
+    let bounds = Triangles.bounding_box triangles in
+    let triangles_array = flatten_triangles triangles in
+    let normals_array = flatten_triangles normals in
+    let colors_array = flatten_triangles colors in
+    let ray_table = Triangles.build_ray_table triangles in
+    { size = 3 * (List.length triangles);
+      bounds; triangles_array; normals_array; colors_array; ray_table }
+
+  let from_fun res x_min x_max y_min y_max f =
+    let triangles = Param.graph res x_min x_max y_min y_max f in
+    let normals =
+      List.map (fun (a,b,c) ->
+          let n = Triangles.normal_of_triangle a b c in
+          (n, n, n)) triangles
+    in
+    let colors =
+      List.map (fun (a, b, c) ->
+          let (_, y1, _) = Vector.to_three a in
+          let (_, y2, _) = Vector.to_three b in
+          let (_, y3, _) = Vector.to_three c in
+          let c y = Math.Color.hsv (359.9 *. (y -. y_min) /. (y_max -. y_min)) 1.0 1.0 in
+          (c y1, c y2,c y3)) triangles
+    in
+    { triangles; normals; colors}
+
+  let world_matrix {Triangles.x_max; x_min; y_max; y_min; z_min; z_max} (angle_x, angle_y, angle_z) =
+    let open Vector in
+    let open Const in
+    let range_x = x_max -. x_min in
+    let range_y = y_max -. y_min in
+    let range_z = z_max -. z_min in
+
+    let move_x = -. range_x /. 2.0 -. x_min in
+    let move_y = -. range_y /. 2.0 -. y_min in
+    let move_z = -. range_z /. 2.0 -. z_min in
+
+    let scale_x = 1.0 /. range_x in
+    let scale_y = 1.0 /. range_y in
+    let scale_z = 1.0 /. range_z in
+
+    let matrix =
+      translation (of_three (move_x, move_y, move_z))
+      |> multiply (scale (of_three (scale_x, scale_y, scale_z)))
+      |> multiply (z_rotation angle_z)
+      |> multiply (y_rotation angle_y)
+      |> multiply (x_rotation angle_x)
+      |> multiply projection
+    in
+
+    let matrix' =
+      projection
+      |> multiply (x_rotation (-. angle_x))
+      |> multiply (y_rotation (-. angle_y))
+      |> multiply (z_rotation (-. angle_z))
+      |> multiply (scale
+                     (Vector.of_three (1. /. scale_x, 1. /. scale_y, 1. /. scale_z)))
+      |> multiply (translation
+                     (Vector.of_three (-. move_x, -. move_y, -. move_z)))
+    in
+    matrix, matrix'
+
+end
+
 module GraphModel = struct
 
   type context = {
@@ -152,24 +256,24 @@ module GraphModel = struct
   let draw_normals = false
 
   let draw_point gl (x,y,z) =
-      let context = context () in
-      let l = 0.1 in
-      let points = [| x+.l;y;z;x-.l;y;z;
-                      x;y+.l;z;x;y-.l;z;
-                      x;y;z+.l;x;y;z-.l |] in
-      bind_buffer gl (array_buffer gl) context.position_buffer;
-      buffer_data gl (array_buffer gl) (Float32Array.new_float32_array points) (static_draw gl);
+    let context = context () in
+    let l = 0.1 in
+    let points = [| x+.l;y;z;x-.l;y;z;
+                    x;y+.l;z;x;y-.l;z;
+                    x;y;z+.l;x;y;z-.l |] in
+    bind_buffer gl (array_buffer gl) context.position_buffer;
+    buffer_data gl (array_buffer gl) (Float32Array.new_float32_array points) (static_draw gl);
 
-      bind_buffer gl (array_buffer gl) context.normal_buffer;
-      buffer_data gl (array_buffer gl) (ones (2 * 3)) (static_draw gl);
+    bind_buffer gl (array_buffer gl) context.normal_buffer;
+    buffer_data gl (array_buffer gl) (ones (2 * 3)) (static_draw gl);
 
-      bind_buffer gl (array_buffer gl) context.color_buffer;
-      buffer_data gl (array_buffer gl) (ones (2 * 3)) (static_draw gl);
+    bind_buffer gl (array_buffer gl) context.color_buffer;
+    buffer_data gl (array_buffer gl) (ones (2 * 3)) (static_draw gl);
 
-      draw_arrays gl (_LINES_ gl) 0 (2 * 3)
+    draw_arrays gl (_LINES_ gl) 0 (2 * 3)
 
 
-  let draw_object gl matrix {size; triangles; normals; line_normals; colors; _ } =
+  let draw_object gl matrix {Surface.size; triangles_array; normals_array; colors_array; _ } =
     let context = context () in
     uniform_matrix4fv gl context.matrix false
            (Float32Array.new_float32_array matrix);
@@ -179,140 +283,41 @@ module GraphModel = struct
     disable gl (_CULL_FACE_ gl);
 
     bind_buffer gl (array_buffer gl) context.position_buffer;
-    buffer_data gl (array_buffer gl) triangles (static_draw gl);
+    buffer_data gl (array_buffer gl) triangles_array (static_draw gl);
 
     bind_buffer gl (array_buffer gl) context.normal_buffer;
-    buffer_data gl (array_buffer gl) normals (static_draw gl);
+    buffer_data gl (array_buffer gl) normals_array (static_draw gl);
 
     bind_buffer gl (array_buffer gl) context.color_buffer;
-    buffer_data gl (array_buffer gl) colors (static_draw gl);
+    buffer_data gl (array_buffer gl) colors_array (static_draw gl);
 
     draw_arrays gl (_TRIANGLES_ gl) 0 size;
-
-    if draw_normals then begin
-      bind_buffer gl (array_buffer gl) context.position_buffer;
-      buffer_data gl (array_buffer gl) line_normals (static_draw gl);
-
-      bind_buffer gl (array_buffer gl) context.normal_buffer;
-      buffer_data gl (array_buffer gl) (ones (2 * size)) (static_draw gl);
-
-      bind_buffer gl (array_buffer gl) context.color_buffer;
-      buffer_data gl (array_buffer gl) (ones (2 * size)) (static_draw gl);
-
-      draw_arrays gl (_LINES_ gl) 0 (2 * size)
-    end
-
-
 end
 
-let () = print_endline "computing exp_graph ..."
-let exp_graph_triangles =
-  Param.graph 400 (-. pi) pi (-. pi) pi (fun x y ->
-     ((* sin (sqrt *) (x *. x +.  y *. y)))
-
-let {Triangles.x_min;x_max;y_min;y_max;z_min;z_max} = 
-  Triangles.bounding_box exp_graph_triangles
-
-let range_x = x_max -. x_min
-let range_y = y_max -. y_min
-let range_z = z_max -. z_min
-
-let move_x = -. range_x /. 2.0 -. x_min
-let move_y = -. range_y /. 2.0 -. y_min
-let move_z = -. range_z /. 2.0 -. z_min
-
-let scale_x = 1.0 /. range_x
-let scale_y = 1.0 /. range_y
-let scale_z = 1.0 /. range_z
-
-let colors_of_triangle (a,b,c) =
-  let (_, y1, _) = Vector.to_three a in
-  let (_, y2, _) = Vector.to_three b in
-  let (_, y3, _) = Vector.to_three c in
-  let c y = Math.Color.hsv (359.9 *. (y -. y_min) /. range_y) 1.0 1.0 in
-  [c y1; c y2;c y3] 
-
-let from_triangles triangles =
-  let open GraphModel in
-
-  let normals_of_triangle (a,b,c) = 
-    let n = Triangles.normal_of_triangle a b c in 
-    [n;n;n]
-  in
-  let flatten l =
-    let rec aux acc =
-      function
-      | [] -> List.rev acc
-      | hd :: tl -> aux (List.rev_append hd acc) tl
-    in aux [] l
-  in
-  let flatten_triangles l = 
-    let rec aux acc =
-      function
-      | [] -> List.rev acc
-      | (a,b,c) :: tl -> aux (c :: b :: a ::acc) tl
-    in aux [] l
-  in
-  let normals =
-    flatten
-      (List.rev
-         (List.rev_map normals_of_triangle triangles))
-  in
-  print_endline "colors";
-  let colors =
-    flatten (List.rev (List.rev_map colors_of_triangle triangles))
-  in
-  print_endline "flatten";
-  let triangles = flatten_triangles triangles in
-  print_endline "lines";
-  let line_normals =
-    let translate alpha a v = 
-      match Vector.to_three a, Vector.to_three v with
-      | (x1,y1,z1), (x2,y2,z2) ->
-        Vector.of_three 
-          (x1 +. alpha *. x2, y1 +. alpha *. y2, z1 +. alpha *. z2)
-    in
-    flatten 
-      (List.rev_map2 (fun a v -> [a; translate 1.0 a v]) 
-         triangles normals)
-  in
-  print_endline "arrays";
-  let flatten_array l =
-    Float32Array.new_float32_array
-      (Vector.flatten l)
-  in
-  {
-    triangles = flatten_array triangles;
-    normals = flatten_array normals;
-    colors = flatten_array colors;
-    line_normals = flatten_array line_normals;
-    size = List.length triangles;
-    local_matrix = Float32Array.new_float32_array [||]
-  }
 
 
 module RepereModel= struct
+  let vertex_shader =
+  {gsl|
+        attribute vec3 a_position;
+        attribute vec2 a_texcoord;
+        uniform mat4 u_matrix;
+        varying vec2 v_texcoord;
+        void main() {
+          gl_Position = u_matrix * vec4(a_position,1);
+          v_texcoord = a_texcoord;
+        }
+  |gsl}
 
-	let vertex_shader =
-		{gsl|
-		attribute vec3 a_position;
-		attribute vec2 a_texcoord;
-		uniform mat4 u_matrix;
-		varying vec2 v_texcoord;
-		void main() {
-			gl_Position = u_matrix * vec4(a_position,1);
-			v_texcoord = a_texcoord;
-		}
-		|gsl}
-
-	let fragment_shader = {gsl|
-		precision mediump float;
-		varying vec2 v_texcoord;
-		uniform sampler2D u_texture;
-		void main() {
-    gl_FragColor = texture2D(u_texture, v_texcoord);
-		}
-	|gsl}
+  let fragment_shader =
+  {gsl|
+        precision mediump float;
+        varying vec2 v_texcoord;
+        uniform sampler2D u_texture;
+        void main() {
+          gl_FragColor = texture2D(u_texture, v_texcoord);
+        }
+  |gsl}
 
   type context = {
     position_location: int;
@@ -356,7 +361,6 @@ module RepereModel= struct
       position_location;
       position_buffer; matrix; texcoord_location; texcoord_buffer }
 
-  let scale_triangle alpha = List.map (List.map (( *. ) alpha))
 
   module State = struct
     let program = ref None
@@ -382,109 +386,89 @@ module RepereModel= struct
     let program = compile_program gl vertex_shader fragment_shader in
     State.program := Some program
 
-let cube =
-  let triangles, texcoords =
-    let tl, tr, bl, br =
-      [0.; 1.], [1.; 1.],
-      [0.; 0.], [1.; 0.]
+  type cube = {
+    texture: texture;
+    triangles: Float32Array.t;
+    texcoords: Float32Array.t;
+  }
+
+  let build_cube {Triangles.x_min; x_max; y_min; y_max; z_min; z_max} texture =
+    let triangles, texcoords =
+      let tl, tr, bl, br =
+        [0.; 1.], [1.; 1.],
+        [0.; 0.], [1.; 0.]
+      in
+      let a = [x_min;y_min;z_min] in
+      let b = [x_min;y_max;z_min] in
+      let c = [x_max;y_max;z_min] in (*   F---G *)
+      let d = [x_max;y_min;z_min] in (*  /|  /|  *)
+      let e = [x_min;y_min;z_max] in (* B---C |  *)
+      let f = [x_min;y_max;z_max] in (* | E-|-H  *)
+      let g = [x_max;y_max;z_max] in (* |/  |/   *)
+      let h = [x_max;y_min;z_max] in (* A---D    *)
+      [[b,tl;a,bl;c,tr];[c,tr;a,bl;d,br]; (* front *)
+       [a,bl;b,tl;f,tr];[a,bl;f,tr;e,br]; (* left *)
+       [d,br;a,bl;h,tr];[h,tr;a,bl;e,tl]; (* bottom *)
+       [b,bl;c,br;g,tr];[b,bl;g,tr;f,tl]; (* top *)
+       [c,tl;d,bl;h,br];[c,tl;h,br;g,tr]; (* right *)
+       [e,bl;f,tl;g,tr];[e,bl;g,tr;h,br]] (* back *)
+      |> List.map List.split
+      |> List.split
     in
-    let a = [x_min;y_min;z_min] in
-    let b = [x_min;y_max;z_min] in
-    let c = [x_max;y_max;z_min] in (*   F---G *)
-    let d = [x_max;y_min;z_min] in (*  /|  /|  *)
-    let e = [x_min;y_min;z_max] in (* B---C |  *)
-    let f = [x_min;y_max;z_max] in (* | E-|-H  *)
-    let g = [x_max;y_max;z_max] in (* |/  |/   *)
-    let h = [x_max;y_min;z_max] in (* A---D    *)
-    [[b,tl;a,bl;c,tr];[c,tr;a,bl;d,br]; (* front *)
-     [a,bl;b,tl;f,tr];[a,bl;f,tr;e,br]; (* left *)
-     [d,br;a,bl;h,tr];[h,tr;a,bl;e,tl]; (* bottom *)
-     [b,bl;c,br;g,tr];[b,bl;g,tr;f,tl]; (* top *)
-     [c,tl;d,bl;h,br];[c,tl;h,br;g,tr]; (* right *)
-     [e,bl;f,tl;g,tr];[e,bl;g,tr;h,br]] (* back *)
-   |> List.map List.split
-   |> List.split
-  in
-  let flatten_array l =
-    Float32Array.new_float32_array
-      (Array.of_list (List.flatten (List.flatten l)))
-  in
-  let triangles = List.map (scale_triangle 1.) triangles in
-  flatten_array triangles, flatten_array texcoords
+    let flatten_array l =
+      Float32Array.new_float32_array
+        (Array.of_list (List.flatten (List.flatten l)))
+    in
+    ({ triangles = flatten_array triangles;
+      texcoords = flatten_array texcoords;
+      texture } : cube)
 
-let draw_cube gl texture matrix =
-  let context = context () in
-  enable gl (_CULL_FACE_ gl);
-  uniform_matrix4fv gl context.matrix false
-       (Float32Array.new_float32_array matrix);
-  bind_texture gl (_TEXTURE_2D_ gl) texture;
-  bind_buffer gl (array_buffer gl) context.position_buffer;
-  buffer_data gl (array_buffer gl) (fst cube) (static_draw gl);
-  bind_buffer gl (array_buffer gl) context.texcoord_buffer;
-  buffer_data gl (array_buffer gl) (snd cube) (static_draw gl);
-  draw_arrays gl (_TRIANGLES_ gl) 0 36;
-  disable gl (_CULL_FACE_ gl)
-
+  let draw_cube gl {texture; texcoords; triangles} matrix =
+    let context = context () in
+    enable gl (_CULL_FACE_ gl);
+    uniform_matrix4fv gl context.matrix false
+      (Float32Array.new_float32_array matrix);
+    bind_texture gl (_TEXTURE_2D_ gl) texture;
+    bind_buffer gl (array_buffer gl) context.position_buffer;
+    buffer_data gl (array_buffer gl) triangles (static_draw gl);
+    bind_buffer gl (array_buffer gl) context.texcoord_buffer;
+    buffer_data gl (array_buffer gl) texcoords (static_draw gl);
+    draw_arrays gl (_TRIANGLES_ gl) 0 36;
+    disable gl (_CULL_FACE_ gl)
 
 end
 
-let () = print_endline "table"
-let box_table = Triangles.build_boxes exp_graph_triangles 
+let last_update = ref 0.0
 
-let () = print_endline "triangles"
-let exp_graph = from_triangles exp_graph_triangles
+let ray_casting = true
 
-let () = print_endline "done"
+let draw_scene gl clock cube ({Surface.bounds; ray_table; _ } as surface) angle (x,y) =
+  let matrix, matrix' = Surface.world_matrix bounds angle in
 
-let last_update = ref 0.0 
-
-let draw_scene gl texture clock (angle_x, angle_y, angle_z) (x,y) =
-  let open Vector in
-  let open Const in
-  let matrix =
-       translation (Vector.of_three (move_x, move_y, move_z))
-    |> multiply (scale (Vector.of_three (scale_x, scale_y, scale_z)))
-    |> multiply (z_rotation angle_z)
-    |> multiply (y_rotation angle_y)
-    |> multiply (x_rotation angle_x)
-    |> multiply projection
-  in
-
-  let matrix' =
-       projection
-    |> multiply (x_rotation (-. angle_x))
-    |> multiply (y_rotation (-. angle_y))
-    |> multiply (z_rotation (-. angle_z))
-    |> multiply (scale 
-        (Vector.of_three (1. /. scale_x, 1. /. scale_y, 1. /. scale_z)))
-    |> multiply (translation
-        (Vector.of_three (-. move_x, -. move_y, -. move_z)))
-  in
-
-  let o = 
-    four_to_three 
-     (multiply_vector matrix' (Vector.of_four (x,y,1.0,1.0)))
-  in
-  let e = 
-    four_to_three 
-      (multiply_vector matrix' (Vector.of_four (x,y,-1.0,1.0)))
-  in
   clear gl ((_COLOR_BUFFER_BIT_ gl) lor (_DEPTH_BUFFER_BIT_ gl));
-  RepereModel.load gl;
-  RepereModel.draw_cube gl texture (matrix :> float array);
 
-  let open GraphModel in begin
-    load gl;
-    draw_object gl (matrix :> float array) exp_graph;
-    if false && clock -. !last_update > 0.2 then begin
-     last_update := clock;
-     let box_table = Some box_table in
-     match Triangles.ray_triangles ?table:box_table o e exp_graph_triangles with
-     | Some p -> 
+  RepereModel.load gl;
+  RepereModel.draw_cube gl cube (matrix :> float array);
+
+  GraphModel.load gl;
+  GraphModel.draw_object gl (matrix :> float array) surface;
+
+  if clock -. !last_update > 0.2 then begin
+    let open Vector in
+    let o =
+      four_to_three
+        (multiply_vector matrix' (Vector.of_four (x,y,1.0,1.0)))
+    in
+    let e =
+      four_to_three
+        (multiply_vector matrix' (Vector.of_four (x,y,-1.0,1.0)))
+    in
+    last_update := clock;
+    match Triangles.ray_triangles ray_table o e with
+    | Some p ->
       let (x,y,z) = Vector.to_three p in
-      draw_point gl (x,y,z)
-     | _ -> ()
-     end;
+      GraphModel.draw_point gl (x,y,z)
+    | _ -> ()
   end
 
 let loop f =
@@ -497,19 +481,16 @@ let onload _ = begin
   let open Helper in
   Random.self_init ();
   let main = element_of_id "main" in
-  let p = create ~text:"hello world !" "p" in
   let canvas = Document.create_html_canvas document in
   let fps = create "div" in
   Node.append_child main fps;
   configure_element  ~attributes:["width", "800"; "height", "800"] canvas;
 
-  Node.append_child main p;
   Node.append_child main canvas;
 
   let pointer = ref (0.0, 0.0) in
-  let theta = ref (0., 0., 0.) in
+  let angle = ref (0., 0., 0.) in
   let moving = ref false in
-
 
   let open Event in
   add_event_listener canvas mousemove (fun evt ->
@@ -523,11 +504,10 @@ let onload _ = begin
           let x', y' = !pointer in
           x -. x', y -. y'
         in
-        let tx, ty, tz = !theta in
+        let tx, ty, tz = !angle in
         let ty = ty +. dx in
         let tx = tx -. dy in
-        let tz = tz in
-        theta := tx, ty, tz;
+        angle := tx, ty, tz;
       end;
       moving := true;
     end else moving := false;
@@ -550,11 +530,14 @@ let onload _ = begin
   let texture = create_texture gl in
   bind_texture gl (_TEXTURE_2D_ gl) texture;
   tex_image_2D gl (_TEXTURE_2D_ gl) 0 (_RGBA_ gl) (_RGBA_ gl) (type_unsigned_byte gl)  (`Canvas texture_canvas);
-  print_endline "first";
   tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MAG_FILTER_ gl) (_LINEAR_ gl);
-  print_endline "second";
   tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MIN_FILTER_ gl) (_LINEAR_ gl);
-  print_endline "done";
+
+  let {Surface.bounds; _} as surface =
+   Surface.from_fun 400 (-. pi) pi (-. pi) pi (fun x y -> sin (sqrt (x *. x +. y *. y)))
+   |> Surface.flat
+  in
+  let cube = RepereModel.build_cube bounds texture in
 
   GraphModel.initialize gl;
 
@@ -567,8 +550,8 @@ let onload _ = begin
       let t = (clock -. !previous_time) /. (float update_freq) in
       previous_time := clock;
       fps_counter := 0;
-      Node.set_text_content fps 
+      Node.set_text_content fps
         (Printf.sprintf "%.2f fps" (1000.0 /. t));
     end;
-    draw_scene gl texture clock !theta !pointer);
+    draw_scene gl clock cube surface !angle !pointer);
 end
