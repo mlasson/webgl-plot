@@ -1,6 +1,6 @@
 OCAMLC=ocamlfind ocamlc
-OCAMLFLAGS=-I bindings
-PPXFLAGS=-package gen_js_api.ppx
+OCAMLFLAGS=-I bindings -w +a-4-29-30-40-41-42-44-45-48 -strict-sequence -strict-formats
+PPXFLAGS=-package lwt -package gen_js_api.ppx
 
 MODULES=bindings/js_core math helper textures drawing main
 
@@ -11,14 +11,14 @@ main.js: main.byte
 	js_of_ocaml --pretty -o main.js +gen_js_api/ojs_runtime.js main.byte
 
 main.byte: $(CMOS)
-	$(OCAMLC) $(OCAMLFLAGS) -no-check-prims -package gen_js_api $(CMOS) -linkpkg -o $@
+	$(OCAMLC) $(OCAMLFLAGS) -no-check-prims -package lwt -package gen_js_api $(CMOS) -linkpkg -o $@
 
 bindings/js_core.cmo: bindings/js_core.ml
 helper.cmo: helper.ml bindings/js_core.cmo
 drawing.cmo: math.cmo drawing.ml helper.cmo bindings/js_core.cmo textures.cmo
 textures.cmo: textures.ml bindings/js_core.cmo
 main.cmo: main.ml bindings/js_core.cmo drawing.cmo
-math.cmo: math.ml
+math.cmo: math.ml bindings/js_core.cmo 
 
 .SUFFIXES: .ml .mli .cmo .cmi
 

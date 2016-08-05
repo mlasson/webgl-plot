@@ -267,51 +267,58 @@ end
 module Html = struct
 
   module Event : sig
-    type 'a event = private string
+    type 'a event_name = private string
+    val event_name_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a event_name
+    val event_name_to_js: ('a -> Ojs.t) -> 'a event_name -> Ojs.t
+
+    type 'a event = private Ojs.t
     val event_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a event
     val event_to_js: ('a -> Ojs.t) -> 'a event -> Ojs.t
-
-    type 'a event_listener = private Ojs.t
-    val event_listener_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a event_listener
-    val event_listener_to_js: ('a -> Ojs.t) -> 'a event_listener -> Ojs.t
 
     type mouse
     val mouse_of_js: Ojs.t -> mouse
     val mouse_to_js: mouse -> Ojs.t
 
-    val mousemove : mouse event
+    val mousemove : mouse event_name
+    val contextmenu : mouse event_name
+    val change : unit event_name
 
-    val screenX: mouse event_listener -> int
-    val screenY: mouse event_listener -> int
-    val clientX: mouse event_listener -> int
-    val clientY: mouse event_listener -> int
-    val offsetX: mouse event_listener -> int
-    val offsetY: mouse event_listener -> int
-    val buttons: mouse event_listener -> int
+    val screenX: mouse event -> int
+    val screenY: mouse event -> int
+    val clientX: mouse event -> int
+    val clientY: mouse event -> int
+    val offsetX: mouse event -> int
+    val offsetY: mouse event -> int
+    val buttons: mouse event -> int
 
-    val add_event_listener:  Kinds.Node.element Node.t -> 'a event -> ('a event_listener -> unit) -> unit
+    val prevent_default: 'a event -> unit
+
+    val add_event_listener: Kinds.Node.element Node.t -> 'a event_name -> ('a event -> unit) -> unit
   end = struct
     type mouse[@@js]
 
-    type 'a event = string
-    let event_of_js _ x = [%js.to: string] x
-    let event_to_js _ x = [%js.of: string] x
+    type 'a event_name = string
+    let event_name_of_js _ x = [%js.to: string] x
+    let event_name_to_js _ x = [%js.of: string] x
 
-    type 'a event_listener = Ojs.t
-    let event_listener_of_js _ x = x
-    let event_listener_to_js _ x = x
+    type 'a event = Ojs.t
+    let event_of_js _ x = x
+    let event_to_js _ x = x
 
     let mousemove = "mousemove"
+    let change = "change"
+    let contextmenu = "contextmenu"
 
     include
       ([%js] : sig
-         val screenX: mouse event_listener -> int
-         val screenY: mouse event_listener -> int
-         val clientX: mouse event_listener -> int
-         val clientY: mouse event_listener -> int
-         val offsetX: mouse event_listener -> int
-         val offsetY: mouse event_listener -> int
-         val buttons: mouse event_listener -> int
+         val screenX: mouse event -> int
+         val screenY: mouse event -> int
+         val clientX: mouse event -> int
+         val clientY: mouse event -> int
+         val offsetX: mouse event -> int
+         val offsetY: mouse event -> int
+         val buttons: mouse event -> int
+         val prevent_default: Ojs.t -> unit [@@js.call]
          val add_event_listener: Kinds.Node.element Node.t -> string -> (Ojs.t -> unit) -> unit
        end)
   end
@@ -320,6 +327,8 @@ module Html = struct
      type t = Kinds.Html.input Element.t [@@js]
      include ([%js] : sig
        val files: t -> FileList.t
+       val value: t -> string
+       val set_value: t -> string -> unit
      end)
   end
 
@@ -609,9 +618,6 @@ module Html = struct
         let buffer_data_size gl kind data usage =
           buffer_data gl kind (Ojs.int_to_js data) usage
 
-        let buffer_array_data gl kind data usage =
-          buffer_data gl kind (Float32Array.t_to_js data) usage
-
        end : sig
          type shader_parameter = private Ojs.t
          val shader_parameter_of_js: Ojs.t -> shader_parameter
@@ -790,6 +796,7 @@ module Html = struct
 
        type context_type =
          | WebGl [@js "webgl"]
+         | Experimental [@js "experimental-webgl"]
          [@@js] [@@js.enum]
 
        type context_attribute = {
@@ -809,6 +816,7 @@ module Html = struct
        include ([%js] : sig
          val get_context: Canvas.t -> context_type -> context_attribute -> t option
        end)
+
        let get_context canvas ?(context_attribute = default_context_attribute) context_type =
          get_context canvas context_type context_attribute
 

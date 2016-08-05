@@ -1,8 +1,10 @@
+open Math
+open Computations
 open Js_core
 open Helper
 open Html
 open Canvas.WebGl
-open Math
+
 
 module Surface = struct
 
@@ -20,7 +22,6 @@ module Surface = struct
     colors_array: Float32Array.t;
 
     bounds: Triangles.box;
-
     ray_table: Triangles.ray_table;
   }
 
@@ -28,7 +29,7 @@ module Surface = struct
     let size = List.length l in
     let array = Array.create_float (3 * 3 * size) in
     let k = ref 0 in
-    List.iter (fun (a,b,c) ->
+    Computations.(iter_chunks 1000 (fun (a,b,c) ->
         let (x_a,y_a,z_a) = Vector.to_three a in
         let (x_b,y_b,z_b) = Vector.to_three b in
         let (x_c,y_c,z_c) = Vector.to_three c in
@@ -41,34 +42,72 @@ module Surface = struct
         array.(!k + 6) <- x_c;
         array.(!k + 7) <- y_c;
         array.(!k + 8) <- z_c;
-        k := !k + 9) l;
-    Float32Array.new_float32_array array
+        k := !k + 9) l >>= (fun () ->
+    return (Float32Array.new_float32_array array)))
 
-  let flat { triangles; normals; colors} =
+  let flat context { triangles; normals; colors} =
+    let open Computations in
     let bounds = Triangles.bounding_box triangles in
-    let triangles_array = flatten_triangles triangles in
-    let normals_array = flatten_triangles normals in
-    let colors_array = flatten_triangles colors in
-    let ray_table = Triangles.build_ray_table triangles in
-    { size = 3 * (List.length triangles);
-      bounds; triangles_array; normals_array; colors_array; ray_table }
+    context # status "Preparing data ...";
+    context # push;
+    context # progress 0.0;
+    flatten_triangles triangles >>= fun triangles_array ->
+      context # progress 0.25;
+      flatten_triangles normals >>= fun normals_array ->
+        context # progress 0.5;
+        flatten_triangles colors >>= fun colors_array ->
+            context # progress 0.75;
+            Triangles.build_ray_table context triangles >>= fun ray_table ->
+            context # progress 1.;
+            context # pop;
+            delay () >>= (fun () ->
+            return { size = 3 * (List.length triangles);
+              bounds; triangles_array; normals_array; colors_array; ray_table })
 
-  let from_fun res x_min x_max y_min y_max f =
-    let triangles = Param.graph res x_min x_max y_min y_max f in
-    let normals =
-      List.map (fun (a,b,c) ->
-          let n = Triangles.normal_of_triangle a b c in
-          (n, n, n)) triangles
+  let from_fun ?(context = Computations.console_context) res x_min x_max y_min y_max f =
+    let open Computations in
+    context # push;
+    context # progress 0.0;
+    let triangles =
+      Param.graph_computation ~context res x_min x_max y_min y_max f
     in
-    let colors =
-      List.map (fun (a, b, c) ->
-          let (_, y1, _) = Vector.to_three a in
-          let (_, y2, _) = Vector.to_three b in
-          let (_, y3, _) = Vector.to_three c in
-          let c y = Math.Color.hsv (359.9 *. (y -. y_min) /. (y_max -. y_min)) 1.0 1.0 in
-          (c y1, c y2,c y3)) triangles
-    in
-    { triangles; normals; colors}
+    triangles
+    >>= fun triangles ->
+      let nb_triangles = List.length triangles in
+      context # status "Computing the normals ...";
+      context # progress (1.0 /. 3.0);
+      (delay ()) >>= (fun () ->
+        let cpt = ref 0 in
+        let chunks = 600 in
+          Computations.map_chunks ~delay:(fun () ->
+              cpt := !cpt + chunks;
+              context # progress (1.0 /. 3.0 +. 1.0 /. 3.0 *. (float !cpt) /. (float nb_triangles));
+              delay ()
+            ) chunks (fun (a,b,c) ->
+              let n = Triangles.normal_of_triangle a b c in
+              (n, n, n)) triangles)
+
+    >>= fun normals ->
+    context # status "Computing the colors ...";
+    context # progress (2.0 /. 3.0);
+    (delay ()) >>= (fun () ->
+        let cpt = ref 0 in
+        let chunks = 1000 in
+        Computations.map_chunks ~delay:(fun () ->
+              cpt := !cpt + chunks;
+              context # progress (2.0 /. 3.0 +. 1.0 /.3.0 *. (float !cpt) /. (float nb_triangles));
+              delay ()
+            ) chunks (fun (a,b,c) ->
+            let (_, y1, _) = Vector.to_three a in
+            let (_, y2, _) = Vector.to_three b in
+            let (_, y3, _) = Vector.to_three c in
+            let c y = Math.Color.hsv (359.9 *. (y -. y_min) /. (y_max -. y_min)) 1.0 1.0 in
+            (c y1, c y2,c y3)) triangles)
+
+   >>= fun colors ->
+      context # progress (3.0 /. 3.0);
+      context # pop;
+      return { triangles; normals; colors}
 
   let world_matrix {Triangles.x_max; x_min; y_max; y_min; z_min; z_max} (angle_x, angle_y, angle_z) =
     let open Vector in
@@ -94,17 +133,17 @@ module Surface = struct
       |> multiply projection
     in
 
+    let proportions = of_three (range_x, range_y, range_z) in
     let matrix' =
       projection
       |> multiply (x_rotation (-. angle_x))
       |> multiply (y_rotation (-. angle_y))
       |> multiply (z_rotation (-. angle_z))
-      |> multiply (scale
-                     (Vector.of_three (1. /. scale_x, 1. /. scale_y, 1. /. scale_z)))
+      |> multiply (scale proportions)
       |> multiply (translation
-                     (Vector.of_three (-. move_x, -. move_y, -. move_z)))
+                     (of_three (-. move_x, -. move_y, -. move_z)))
     in
-    matrix, matrix'
+    proportions, matrix, matrix'
 
 end
 
@@ -120,36 +159,35 @@ module GraphModel = struct
     color_location: int;
     color_buffer: float buffer;
 
-    matrix: uniform_location;
+    world_matrix: uniform_location;
+    object_matrix: uniform_location;
     light_position: uniform_location;
     ambient_light: uniform_location;
   }
 
-  type object_data = {
-    triangles: Float32Array.t;
-    normals: Float32Array.t;
-    colors: Float32Array.t;
-    line_normals: Float32Array.t;
-    local_matrix: Float32Array.t;
-    size: int
-  }
-
-
   let vertex_shader = {gsl|
+
   attribute vec3 a_position;
   attribute vec3 a_normal;
   attribute vec3 a_color;
-  uniform mat4 u_matrix;
+
+  uniform mat4 u_world_matrix;
+  uniform mat4 u_object_matrix;
+
+
   varying mediump vec3 v_position;
   varying mediump vec3 v_normal;
   varying mediump vec3 v_color;
+
   void main() {
-    vec4 pos = u_matrix * vec4(a_position,1);
-    vec4 norm = u_matrix * vec4(a_normal,1);
+
+    vec4 pos = u_world_matrix * u_object_matrix * vec4(a_position,1);
+    vec4 norm = u_world_matrix * u_object_matrix * vec4(a_normal,1);
 
     v_position = pos.xyz;
     v_normal = norm.xyz;
     v_color = a_color.xyz;
+
     gl_Position = pos;
   }
   |gsl}
@@ -163,14 +201,15 @@ module GraphModel = struct
 
   uniform vec3 u_lightPos;
   uniform vec3 u_ambientLight;
+
   void main() {
     vec3 lightDirection = normalize(u_lightPos - v_position);
     float lighting = abs(dot(normalize(v_normal), lightDirection));
-    gl_FragColor = vec4( v_color * lighting + u_ambientLight, 1);
+    gl_FragColor = vec4( v_color * (lighting + u_ambientLight), 1);
   }
   |gsl}
 
-  let rebind gl {position_location; position_buffer; normal_location; normal_buffer; color_location; color_buffer; } =
+  let rebind gl {position_location; position_buffer; normal_location; normal_buffer; color_location; color_buffer; _ } =
     enable_vertex_attrib_array gl position_location;
     bind_buffer gl (array_buffer gl) position_buffer;
     vertex_attrib_pointer gl position_location 3 (type_float gl) false 0 0;
@@ -207,10 +246,15 @@ module GraphModel = struct
         attrib_location
     in
     let color_buffer = create_buffer gl in
-    let matrix =
-      match get_uniform_location gl program "u_matrix" with
+    let world_matrix =
+      match get_uniform_location gl program "u_world_matrix" with
       | Some thing -> thing
-      | None -> error "unable to get 'u_matrix'"
+      | None -> error "unable to get 'u_world_matrix'"
+    in
+    let object_matrix =
+      match get_uniform_location gl program "u_object_matrix" with
+      | Some thing -> thing
+      | None -> error "unable to get 'u_object_matrix'"
     in
     let ambient_light =
       match get_uniform_location gl program "u_ambientLight" with
@@ -222,63 +266,34 @@ module GraphModel = struct
       | Some thing -> thing
       | None -> error "unable to get 'u_lightPos'"
     in
+    { position_location; position_buffer; world_matrix; object_matrix; ambient_light; light_position; normal_location; normal_buffer; color_location; color_buffer }
 
-    { position_location; position_buffer; matrix; ambient_light; light_position; normal_location; normal_buffer; color_location; color_buffer }
+  type state = {
+    program: program;
+    gl: Html.Canvas.WebGl.t;
+    context: context;
+  }
 
-  module State = struct
-    let program = ref None
-    let context = ref None
-  end
-
-  let context () =
-    match !State.context with
-    | None -> failwith "context: require init"
-    | Some ctx -> ctx
-
-  let load gl =
-    match !State.program, !State.context with
-    | Some program, Some context -> begin
-      Html.Canvas.WebGl.use_program gl program;
-      rebind gl context
-    end
-    | _ -> failwith "Unable to load model, require initialization first"
+  let load {gl; program; context} =
+    Html.Canvas.WebGl.use_program gl program;
+    rebind gl context
 
   let initialize gl =
     let vertex_shader = new_shader gl vertex_shader `Vertex in
     let fragment_shader = new_shader gl fragment_shader `Fragment in
     let program = compile_program gl vertex_shader fragment_shader in
-    State.program := Some program;
-    State.context := Some (setup_context gl program)
+    {gl; program; context = setup_context gl program}
 
-  let ones size =
-    Array.init (3 * size) (fun k -> if k mod 3 = 2 then 1.0 else 0.0) |> Float32Array.new_float32_array
-
-  let draw_normals = false
-
-  let draw_point gl (x,y,z) =
-    let context = context () in
-    let l = 0.1 in
-    let points = [| x+.l;y;z;x-.l;y;z;
-                    x;y+.l;z;x;y-.l;z;
-                    x;y;z+.l;x;y;z-.l |] in
-    bind_buffer gl (array_buffer gl) context.position_buffer;
-    buffer_data gl (array_buffer gl) (Float32Array.new_float32_array points) (static_draw gl);
-
-    bind_buffer gl (array_buffer gl) context.normal_buffer;
-    buffer_data gl (array_buffer gl) (ones (2 * 3)) (static_draw gl);
-
-    bind_buffer gl (array_buffer gl) context.color_buffer;
-    buffer_data gl (array_buffer gl) (ones (2 * 3)) (static_draw gl);
-
-    draw_arrays gl (_LINES_ gl) 0 (2 * 3)
-
-
-  let draw_object gl matrix {Surface.size; triangles_array; normals_array; colors_array; _ } =
-    let context = context () in
-    uniform_matrix4fv gl context.matrix false
-           (Float32Array.new_float32_array matrix);
+  let set_light {gl; context; _} (x, y, z) =
     uniform3f gl context.ambient_light 0.2 0.2 0.2;
-    uniform3f gl context.light_position 0. 0. (-3.);
+    uniform3f gl context.light_position x y z
+
+  let draw_object {gl; context; _} world_matrix object_matrix size triangles_array normals_array colors_array =
+    uniform_matrix4fv gl context.world_matrix false
+           (Float32Array.new_float32_array world_matrix);
+    uniform_matrix4fv gl context.object_matrix false
+           (Float32Array.new_float32_array object_matrix);
+
 
     disable gl (_CULL_FACE_ gl);
 
@@ -291,7 +306,35 @@ module GraphModel = struct
     bind_buffer gl (array_buffer gl) context.color_buffer;
     buffer_data gl (array_buffer gl) colors_array (static_draw gl);
 
-    draw_arrays gl (_TRIANGLES_ gl) 0 size;
+    draw_arrays gl (_TRIANGLES_ gl) 0 size
+
+  let identity_matrix = [|1.0; 0.0; 0.0; 0.0; 0.0; 1.0; 0.0; 0.0; 0.0; 0.0; 1.0; 0.0; 0.0; 0.0; 0.0; 1.0 |]
+
+  let draw_surface graph_model world_matrix {Surface.size; triangles_array; normals_array; colors_array;  _ } =
+    draw_object graph_model world_matrix identity_matrix size triangles_array normals_array colors_array
+
+  let flatten_triangles l =
+    Array.of_list (List.flatten (List.map (fun (a,b,c) ->
+        let (x_a,y_a,z_a) = Vector.to_three a in
+        let (x_b,y_b,z_b) = Vector.to_three b in
+        let (x_c,y_c,z_c) = Vector.to_three c in
+        [x_a;y_a;z_a;x_b;y_b;z_b;x_c;y_c;z_c]) l)) |> Float32Array.new_float32_array
+
+  let sphere10 =
+    let surface = Math.Param.sphere 20 in
+    let size = 3 * List.length surface in
+    let triangles = flatten_triangles surface in
+    let red = Vector.of_three (1.0, 0.0, 0.0) in
+    let colors = List.map (fun _ -> (red, red, red)) surface |> flatten_triangles in
+    (size, triangles, colors)
+
+  let draw_point graph_model world_matrix r pos =
+    let r = Vector.scale 0.01 r in
+    let object_matrix = (Vector.Const.scale_translation r pos :> float array) in
+    let size, triangles_array, colors_array = sphere10 in
+    draw_object graph_model world_matrix object_matrix size triangles_array triangles_array colors_array
+
+
 end
 
 
@@ -347,11 +390,7 @@ module RepereModel= struct
       else
         attrib_location
     in
-    enable_vertex_attrib_array gl texcoord_location;
     let texcoord_buffer = create_buffer gl in
-    bind_buffer gl (array_buffer gl) texcoord_buffer;
-    vertex_attrib_pointer gl texcoord_location 2 (type_float gl) false 0 0;
-
     let matrix =
       match get_uniform_location gl program "u_matrix" with
       | Some thing -> thing
@@ -361,30 +400,29 @@ module RepereModel= struct
       position_location;
       position_buffer; matrix; texcoord_location; texcoord_buffer }
 
+  let rebind gl {position_location; position_buffer; texcoord_location; texcoord_buffer; _} =
+    enable_vertex_attrib_array gl position_location;
+    bind_buffer gl (array_buffer gl) position_buffer;
+    vertex_attrib_pointer gl position_location 3 (type_float gl) false 0 0;
+    enable_vertex_attrib_array gl texcoord_location;
+    bind_buffer gl (array_buffer gl) texcoord_buffer;
+    vertex_attrib_pointer gl texcoord_location 2 (type_float gl) false 0 0;
 
-  module State = struct
-    let program = ref None
-    let context = ref None
-  end
+  type state = {
+    program: program;
+    gl: Html.Canvas.WebGl.t;
+    context: context;
+  }
 
-  let context () =
-    match !State.context with
-    | None -> failwith "context: require init"
-    | Some ctx -> ctx
-
-  let load gl =
-    match !State.program with
-    | None -> failwith "Unable to load model, require initialization first"
-    | Some program -> begin
-      Html.Canvas.WebGl.use_program gl program;
-      State.context := Some (setup_context gl program)
-    end
+  let load {gl; program; context} =
+    Html.Canvas.WebGl.use_program gl program;
+    rebind gl context
 
   let initialize gl =
     let vertex_shader = new_shader gl vertex_shader `Vertex in
     let fragment_shader = new_shader gl fragment_shader `Fragment in
     let program = compile_program gl vertex_shader fragment_shader in
-    State.program := Some program
+    {gl; program; context = setup_context gl program}
 
   type cube = {
     texture: texture;
@@ -423,8 +461,7 @@ module RepereModel= struct
       texcoords = flatten_array texcoords;
       texture } : cube)
 
-  let draw_cube gl {texture; texcoords; triangles} matrix =
-    let context = context () in
+  let draw_cube {gl; context; _} {texture; texcoords; triangles} matrix =
     enable gl (_CULL_FACE_ gl);
     uniform_matrix4fv gl context.matrix false
       (Float32Array.new_float32_array matrix);
@@ -438,20 +475,20 @@ module RepereModel= struct
 
 end
 
+
 let last_update = ref 0.0
 
 let ray_casting = true
 
-let draw_scene gl clock cube ({Surface.bounds; ray_table; _ } as surface) angle (x,y) =
-  let matrix, matrix' = Surface.world_matrix bounds angle in
+let draw_scene gl repere_model graph_model clock cube ({Surface.bounds; ray_table; _ } as surface) angle (x,y) =
+  let proportions, matrix, matrix' = Surface.world_matrix bounds angle in
 
   clear gl ((_COLOR_BUFFER_BIT_ gl) lor (_DEPTH_BUFFER_BIT_ gl));
 
-  RepereModel.load gl;
-  RepereModel.draw_cube gl cube (matrix :> float array);
+  RepereModel.load repere_model;
+  RepereModel.draw_cube repere_model cube (matrix :> float array);
 
-  GraphModel.load gl;
-  GraphModel.draw_object gl (matrix :> float array) surface;
+  GraphModel.load graph_model;
 
   if clock -. !last_update > 0.2 then begin
     let open Vector in
@@ -464,30 +501,29 @@ let draw_scene gl clock cube ({Surface.bounds; ray_table; _ } as surface) angle 
         (multiply_vector matrix' (Vector.of_four (x,y,-1.0,1.0)))
     in
     last_update := clock;
+    GraphModel.set_light graph_model (1.0,1.0,-2.0);
     match Triangles.ray_triangles ray_table o e with
     | Some p ->
-      let (x,y,z) = Vector.to_three p in
-      GraphModel.draw_point gl (x,y,z)
+      GraphModel.draw_point graph_model (matrix :> float array) proportions p
     | _ -> ()
-  end
+  end;
+  GraphModel.draw_surface graph_model (matrix :> float array) surface
 
+
+
+
+let generation = ref 0
 let loop f =
+  incr generation;
+  let current_generation = !generation in
   let rec aux x =
     f x;
-    Window.request_animation_frame window aux;
+    if current_generation = !generation then
+      Window.request_animation_frame window aux;
   in aux 0.0
 
-let onload _ = begin
-  let open Helper in
-  Random.self_init ();
-  let main = element_of_id "main" in
-  let canvas = Document.create_html_canvas document in
-  let fps = create "div" in
-  Node.append_child main fps;
-  configure_element  ~attributes:["width", "800"; "height", "800"] canvas;
 
-  Node.append_child main canvas;
-
+let initialize canvas fps gl repere_model graph_model surface cube =
   let pointer = ref (0.0, 0.0) in
   let angle = ref (0., 0., 0.) in
   let moving = ref false in
@@ -496,7 +532,6 @@ let onload _ = begin
   add_event_listener canvas mousemove (fun evt ->
     let x = 2.0 *. (float (offsetX evt)) /. 800.0 -. 1.0 in
     let y = 1.0 -. 2.0 *. (float (offsetY evt)) /. 800.0 in
-    Printf.printf "computed: %.2f %.2f\n%!" x y;
     let button = buttons evt in
     if button = 1 then begin
       if !moving then begin
@@ -513,34 +548,6 @@ let onload _ = begin
     end else moving := false;
     pointer := (x,y));
 
-  let texture_canvas = Textures.create_grid_texture document in
-  Node.append_child main texture_canvas;
-
-  let gl =
-    match Html.Canvas.(get_context canvas WebGl) with
-    | Some gl -> gl
-    | None -> error "webgl is not supported"
-  in
-  enable gl (_DEPTH_TEST_ gl);
-  depth_func gl (_LESS_ gl);
-
-  RepereModel.initialize gl;
-  RepereModel.load gl;
-
-  let texture = create_texture gl in
-  bind_texture gl (_TEXTURE_2D_ gl) texture;
-  tex_image_2D gl (_TEXTURE_2D_ gl) 0 (_RGBA_ gl) (_RGBA_ gl) (type_unsigned_byte gl)  (`Canvas texture_canvas);
-  tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MAG_FILTER_ gl) (_LINEAR_ gl);
-  tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MIN_FILTER_ gl) (_LINEAR_ gl);
-
-  let {Surface.bounds; _} as surface =
-   Surface.from_fun 400 (-. pi) pi (-. pi) pi (fun x y -> sin (sqrt (x *. x +. y *. y)))
-   |> Surface.flat
-  in
-  let cube = RepereModel.build_cube bounds texture in
-
-  GraphModel.initialize gl;
-
   let previous_time = ref 0.0 in
   let fps_counter = ref 0 in
   let update_freq = 30 in
@@ -553,5 +560,92 @@ let onload _ = begin
       Node.set_text_content fps
         (Printf.sprintf "%.2f fps" (1000.0 /. t));
     end;
-    draw_scene gl clock cube surface !angle !pointer);
-end
+    draw_scene gl repere_model graph_model clock cube surface !angle !pointer)
+
+
+let progress_bars () =
+    let progress_bars = create "div" ~class_name:"progress" in
+    let stack = Stack.create () in
+    let add_bar () =
+      let bar = create "div" ~class_name:"bar" in
+      let inner = create "div" ~class_name:"inner" in
+      Node.append_child progress_bars bar;
+      Node.append_child bar inner;
+      Stack.push (bar, inner) stack
+    in
+    let width_of_float x = Printf.sprintf "width:%2.2f%%;" (100.0 *. x) in
+    object
+      method element = progress_bars
+
+      method status text =
+        print_endline text;
+        if Stack.is_empty stack then add_bar ();
+        configure_element ~text (snd (Stack.top stack))
+
+      method progress x =
+        if Stack.is_empty stack then add_bar ();
+        configure_element ~style:(width_of_float x) (snd (Stack.top stack))
+
+      method push = add_bar ()
+
+      method pop = try
+          let bar, _ = Stack.pop stack in
+          Node.remove_child progress_bars bar
+        with _ -> ()
+    end
+
+
+type layout = {
+  width: int;
+  height: int
+}
+
+let new_plot {width; height; _} data =
+  let main = create "div" in
+  let progress_bars = progress_bars () in
+  Node.append_child main (progress_bars # element);
+  let context = (progress_bars :> Computations.context) in
+  let canvas = Document.create_html_canvas document in
+  Event.add_event_listener canvas Event.contextmenu Event.prevent_default;
+  let fps = create "div" in
+  configure_element ~attributes:["width", string_of_int width; "height", string_of_int height] canvas;
+  let texture_canvas = Textures.create_grid_texture document in
+  let gl =
+    match get_context canvas WebGl with
+    | Some gl -> gl
+    | None ->
+      match get_context canvas Experimental with
+      | Some gl -> gl
+      | None -> error "webgl is not supported"
+  in
+  enable gl (_DEPTH_TEST_ gl);
+  depth_func gl (_LESS_ gl);
+
+  let texture = create_texture gl in
+  let repere_model = RepereModel.initialize gl in
+  RepereModel.load repere_model;
+  bind_texture gl (_TEXTURE_2D_ gl) texture;
+  tex_image_2D gl (_TEXTURE_2D_ gl) 0 (_RGBA_ gl) (_RGBA_ gl) (type_unsigned_byte gl)  (`Canvas texture_canvas);
+  tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MAG_FILTER_ gl) (_LINEAR_ gl);
+  tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MIN_FILTER_ gl) (_LINEAR_ gl);
+  let graph_model = GraphModel.initialize gl in
+
+  Node.append_child main canvas;
+  Node.append_child main fps;
+  Node.append_child main texture_canvas;
+
+  let thread =
+    begin
+      context # status "Initializing ...";
+      delay () >>= fun () -> begin
+        Surface.flat context data >>= fun ({Surface.bounds; _} as surface) ->
+        let cube = RepereModel.build_cube bounds texture in
+        initialize canvas fps gl repere_model graph_model surface cube;
+        Node.remove_child main (progress_bars # element);
+        return ()
+      end
+    end
+  in
+  on_failure thread (fun e -> Printf.printf "Failure: '%s'\n%!" (Printexc.to_string e));
+  on_success thread (fun () -> Printf.printf "Success \\o/\n%!");
+  return main

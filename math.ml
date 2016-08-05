@@ -1,12 +1,79 @@
+module Computations = struct
+  include Lwt
+
+  class type context = object
+    method status : string -> unit
+    method progress : float -> unit
+    method push: unit
+    method pop: unit
+  end
+
+  let console_context = object
+    method status x = print_endline x
+    method progress x = Printf.printf "%2.2f%%\n%!" (100.0 *. x)
+    method push = print_endline "-->"
+    method pop = print_endline "<--"
+  end
+
+  let delay () =
+    let res, t = wait () in
+    Js_core.set_timeout (wakeup t) 0.0;
+    res
+
+  let rec range f min max =
+    if min <= max then
+      (f min) >>= (fun () -> range f (min + 1) max)
+    else return ()
+
+  let map_chunks ?(delay = delay) size f l =
+    let rec aux acc k l =
+      if k = 0 then begin
+       delay () >>= (fun () -> aux acc size l)
+      end else begin
+        match l with
+        | [] -> return (List.rev acc)
+        | hd :: tl -> aux ((f hd) :: acc) (k - 1) tl
+      end
+    in
+    aux [] size l
+
+  let iter_chunks ?(delay = delay) size f l =
+    let rec aux k l =
+      if k = 0 then begin
+       delay () >>= (fun () -> aux size l)
+      end else begin
+        match l with
+        | [] -> return ()
+        | hd :: tl ->
+          f hd;
+          aux (k - 1) tl
+      end
+    in
+    aux size l
+
+  let delay_chunks context size max =
+    let cpt = ref 0 in
+    let max = float max in
+    fun () -> cpt := !cpt + size; context#progress ((float !cpt) /. max); delay ()
+
+  let hashtbl_to_list context table =
+    context # push;
+    context # progress 0.0;
+    delay ()
+    >>= fun () ->
+    return (List.sort_uniq compare
+              (Hashtbl.fold (fun k _ acc -> k :: acc) table []))
+    >>= fun keys ->
+      let n = List.length keys in
+      let chunks = 100 in
+      let delay = delay_chunks context chunks n in
+      map_chunks chunks ~delay (fun key -> key, Hashtbl.find_all table key) keys
+   >>= fun result -> context # pop; return result
+
+end
+
 module List = struct
   include List
-
-  let hashtbl_to_list table =
-    let keys =
-      List.sort_uniq compare
-        (Hashtbl.fold (fun k _ acc -> k :: acc) table [])
-    in
-    List.rev_map (fun key -> key, Hashtbl.find_all table key) keys
 
   let choose f l =
     let rec aux acc = function
@@ -74,6 +141,7 @@ module Vector : sig
   module Const : sig
     val scale: three vector -> four square_matrix
     val translation: three vector -> four square_matrix
+    val scale_translation: three vector -> three vector -> four square_matrix
     val x_rotation: float -> four square_matrix
     val y_rotation: float -> four square_matrix
     val z_rotation: float -> four square_matrix
@@ -199,6 +267,16 @@ end = struct
         0.;  0.;  0.;  1.
       |]
 
+    let scale_translation a v =
+      let (a,b,c) = to_three a in
+      let (x,y,z) = to_three v in
+      [|
+         a;  0.;  0.;  0.;
+        0.;   b;  0.;  0.;
+        0.;  0.;   c;  0.;
+         x;   y;   z;  1.
+      |]
+
     let x_rotation rad =
       let c = cos rad in
       let s = sin rad in [|
@@ -251,6 +329,15 @@ module Param = struct
       cur := next;
     done
 
+  let iter_range_computation min max steps f =
+    let step = (max -. min) /. (float steps) in
+    let cur = ref min in
+    Computations.range (fun _ ->
+      let next = !cur +. step in
+      f !cur next;
+      cur := next;
+      Computations.delay ()) 1 steps
+
   let parametrize2d ?(dim1 = (0.0, 1.0))
       ?(dim2 = (0.0, 1.0)) (res1, res2) f =
     let result = ref [] in
@@ -263,6 +350,27 @@ module Param = struct
           end
       end;
     List.rev !result
+
+  let parametrize2d_computation ?(context = Computations.console_context)
+      ?(dim1 = (0.0, 1.0))
+      ?(dim2 = (0.0, 1.0)) (res1, res2) f =
+    let result = ref [] in
+    let cpt = ref 0 in
+    context # status "Computing the graph of the function ...";
+    context # push;
+    Computations.(bind
+      (iter_range_computation (fst dim1) (snd dim1) res1
+         begin fun t1 t1' ->
+           context # progress ((float !cpt) /. (float res1));
+           incr cpt;
+           iter_range (fst dim2) (snd dim2) res2
+             begin fun t2 t2' ->
+               let a, b, c, d = f t1 t2, f t1' t2, f t1' t2', f t1 t2' in
+               result := (b,a,c) :: (c,a,d) :: !result;
+             end
+         end)
+      (fun () -> context # pop; return (List.rev !result)))
+
 
   let sphere res =
     parametrize2d
@@ -280,6 +388,12 @@ module Param = struct
       (res, res)
       (fun x y -> Vector.of_three (x, f x y, y))
 
+  let graph_computation ?context res xmin xmax ymin ymax f =
+    parametrize2d_computation ?context
+      ~dim1:(xmin, xmax)
+      ~dim2:(ymin, ymax)
+      (res, res)
+      (fun x y -> Vector.of_three (x, f x y, y))
 end
 
 module Triangles = struct
@@ -397,8 +511,9 @@ module Triangles = struct
     end
 
   let rec dicho f i j =
+    Printf.printf "%d <-> %d\n%!" i j;
     if i >= j then
-       if f j then
+       if i = j && f j then
          Some j
        else
          None
@@ -420,8 +535,9 @@ module Triangles = struct
 
   type ray_table = (rect * (vec3 * vec3 * vec3) list) list
 
-  let build_ray_table triangles =
-    let size = int_of_float (sqrt (float (List.length triangles)) /. 10.0) in
+  let build_ray_table context triangles =
+    let nb_triangles = List.length triangles in
+    let size = max (int_of_float (sqrt (float nb_triangles) /. 10.0)) 1 in
     let {x_min; x_max; z_min; z_max; _} : box = bounding_box triangles in
     let boxes =
       let results = ref [] in
@@ -444,7 +560,13 @@ module Triangles = struct
     in
     let nb_boxes = Array.length boxes in
     let table = Hashtbl.create nb_boxes in
-    List.iter (fun ((a,b,c) as triangle) ->
+    let chunks = 1000 in
+    let cpt = ref 0 in
+    context # status "Computing ray casting table ...";
+    context # push;
+    Computations.(iter_chunks
+~delay:(fun () -> cpt := !cpt + chunks; context # progress ((float !cpt) /. (float nb_triangles)); delay ()) 1000 (fun ((a,b,c) as triangle) ->
+        print_endline "here 1";
         let x_a, _, z_a = Vector.to_three a in
         let x_b, _, z_b = Vector.to_three b in
         let x_c, _, z_c = Vector.to_three c in
@@ -456,11 +578,14 @@ module Triangles = struct
               nb_boxes - 1
             | Some i -> i
           in
+          print_endline "there 2";
           let x_bound = boxes.(i).x_max in
+          print_endline "there 3";
           let j =
             (forward (fun k ->
                  k >= nb_boxes || boxes.(k).x_max > x_bound) i 1) - 1
           in
+          print_endline "there 4";
           let k =
             match dicho (fun i -> boxes.(i).z_max >= z) i j with
             | None ->
@@ -468,14 +593,17 @@ module Triangles = struct
               j
             | Some k -> k
           in
+          print_endline "there 5";
           let box = boxes.(k) in
+          print_endline "there 6";
           Hashtbl.add table box triangle
         in
         box_of x_a z_a;
         box_of x_b z_b;
         box_of x_c z_c
-      ) triangles;
-    List.hashtbl_to_list table
+      ) triangles >>= fun () -> context # pop; delay () >>= fun () ->
+         context # status "Almost done ...";
+         Computations.hashtbl_to_list context table)
 
   let ray_triangles table o e =
     let d = Vector.sub e o in
