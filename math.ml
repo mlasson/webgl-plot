@@ -511,7 +511,6 @@ module Triangles = struct
     end
 
   let rec dicho f i j =
-    Printf.printf "%d <-> %d\n%!" i j;
     if i >= j then
        if i = j && f j then
          Some j
@@ -566,7 +565,6 @@ module Triangles = struct
     context # push;
     Computations.(iter_chunks
 ~delay:(fun () -> cpt := !cpt + chunks; context # progress ((float !cpt) /. (float nb_triangles)); delay ()) 1000 (fun ((a,b,c) as triangle) ->
-        print_endline "here 1";
         let x_a, _, z_a = Vector.to_three a in
         let x_b, _, z_b = Vector.to_three b in
         let x_c, _, z_c = Vector.to_three c in
@@ -578,14 +576,11 @@ module Triangles = struct
               nb_boxes - 1
             | Some i -> i
           in
-          print_endline "there 2";
           let x_bound = boxes.(i).x_max in
-          print_endline "there 3";
           let j =
             (forward (fun k ->
                  k >= nb_boxes || boxes.(k).x_max > x_bound) i 1) - 1
           in
-          print_endline "there 4";
           let k =
             match dicho (fun i -> boxes.(i).z_max >= z) i j with
             | None ->
@@ -593,9 +588,7 @@ module Triangles = struct
               j
             | Some k -> k
           in
-          print_endline "there 5";
           let box = boxes.(k) in
-          print_endline "there 6";
           Hashtbl.add table box triangle
         in
         box_of x_a z_a;
