@@ -1,4 +1,4 @@
-open Js_core
+open Dom
 
 let () = Window.set_onload window (fun _ ->
   let open Drawing in

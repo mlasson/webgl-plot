@@ -1,4 +1,4 @@
-open Js_core
+open Dom
 
 let error s =
   alert ("Error: "^s);

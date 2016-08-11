@@ -1,8 +1,8 @@
-open Js_core
+open Dom
 open Html
 open Canvas.Svg
 
-let rainbow context width = 
+let rainbow context width =
   let gradient = create_linear_gradient context 0.0 0.0 width 0.0 in
   add_color_stop gradient 0.0 CssColor.red;
   add_color_stop gradient 0.5 CssColor.green;
@@ -12,7 +12,7 @@ let rainbow context width =
 let ticks = 10
 let tick_height = 0.03
 
-let draw_ticks context width height = 
+let draw_ticks context width height =
   let w = width /. (float ticks) in
   let h = tick_height *. height in
   begin_path context;
@@ -29,12 +29,12 @@ let draw_ticks context width height =
   close_path context;
   stroke context
 
-let create_grid_texture ?(width = 512) ?(height = 512) document = 
-  let canvas = Document.create_html_canvas document in 
+let create_grid_texture ?(width = 512) ?(height = 512) document =
+  let canvas = Document.create_html_canvas document in
   Canvas.set_width canvas width;
   Canvas.set_height canvas height;
 
-  let context = 
+  let context =
     match get_context canvas with
     | None -> failwith "get_context"
     | Some x -> x

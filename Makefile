@@ -2,7 +2,7 @@ OCAMLC=ocamlfind ocamlc
 OCAMLFLAGS=-I bindings -w +a-4-29-30-40-41-42-44-45-48 -strict-sequence -strict-formats
 PPXFLAGS=-package lwt -package gen_js_api.ppx
 
-MODULES=bindings/js_core math helper textures drawing main
+MODULES=dom computations math helper textures drawing main
 
 CMOS=$(patsubst %,%.cmo,$(MODULES))
 
@@ -13,12 +13,13 @@ main.js: main.byte
 main.byte: $(CMOS)
 	$(OCAMLC) $(OCAMLFLAGS) -no-check-prims -package lwt -package gen_js_api $(CMOS) -linkpkg -o $@
 
-bindings/js_core.cmo: bindings/js_core.ml
-helper.cmo: helper.ml bindings/js_core.cmo
-drawing.cmo: math.cmo drawing.ml helper.cmo bindings/js_core.cmo textures.cmo
-textures.cmo: textures.ml bindings/js_core.cmo
-main.cmo: main.ml bindings/js_core.cmo drawing.cmo
-math.cmo: math.ml bindings/js_core.cmo 
+dom.cmo: dom.ml
+helper.cmo: helper.ml dom.cmo
+drawing.cmo: math.cmo drawing.ml helper.cmo dom.cmo textures.cmo
+textures.cmo: textures.ml dom.cmo
+main.cmo: main.ml dom.cmo drawing.cmo
+computations.cmo: computations.ml dom.cmo
+math.cmo: math.ml dom.cmo 
 
 .SUFFIXES: .ml .mli .cmo .cmi
 
@@ -31,4 +32,4 @@ math.cmo: math.ml bindings/js_core.cmo
 .PHONY: clean
 
 clean:
-	rm -f main.js main.byte *.cm* bindings/*.cm*
+	rm -f main.js main.byte *.cm* 
