@@ -1,5 +1,5 @@
 open Math
-open Computations
+open Asynchronous_computations
 open Js_bindings
 open Helper
 open Html
@@ -29,7 +29,7 @@ module Surface = struct
     let size = List.length l in
     let array = Array.create_float (3 * 3 * size) in
     let k = ref 0 in
-    Computations.(iter_chunks 1000 (fun (a,b,c) ->
+    iter_chunks 1000 (fun (a,b,c) ->
         let (x_a,y_a,z_a) = Vector.to_three a in
         let (x_b,y_b,z_b) = Vector.to_three b in
         let (x_c,y_c,z_c) = Vector.to_three c in
@@ -43,10 +43,9 @@ module Surface = struct
         array.(!k + 7) <- y_c;
         array.(!k + 8) <- z_c;
         k := !k + 9) l >>= (fun () ->
-    return (Float32Array.new_float32_array array)))
+    return (Float32Array.new_float32_array array))
 
   let flat context { triangles; normals; colors} =
-    let open Computations in
     let bounds = Triangles.bounding_box triangles in
     context # status "Preparing data ...";
     context # push;
@@ -64,8 +63,7 @@ module Surface = struct
             return { size = 3 * (List.length triangles);
               bounds; triangles_array; normals_array; colors_array; ray_table })
 
-  let from_fun ?(context = Computations.console_context) res x_min x_max y_min y_max f =
-    let open Computations in
+  let from_fun ?(context = console_context) res x_min x_max y_min y_max f =
     context # push;
     context # progress 0.0;
     let triangles =
@@ -79,13 +77,13 @@ module Surface = struct
       (delay ()) >>= (fun () ->
         let cpt = ref 0 in
         let chunks = 600 in
-          Computations.map_chunks ~delay:(fun () ->
-              cpt := !cpt + chunks;
-              context # progress (1.0 /. 3.0 +. 1.0 /. 3.0 *. (float !cpt) /. (float nb_triangles));
-              delay ()
-            ) chunks (fun (a,b,c) ->
-              let n = Triangles.normal_of_triangle a b c in
-              (n, n, n)) triangles)
+        map_chunks ~delay:(fun () ->
+            cpt := !cpt + chunks;
+            context # progress (1.0 /. 3.0 +. 1.0 /. 3.0 *. (float !cpt) /. (float nb_triangles));
+            delay ()
+          ) chunks (fun (a,b,c) ->
+            let n = Triangles.normal_of_triangle a b c in
+            (n, n, n)) triangles)
 
     >>= fun normals ->
     context # status "Computing the colors ...";
@@ -93,7 +91,7 @@ module Surface = struct
     (delay ()) >>= (fun () ->
         let cpt = ref 0 in
         let chunks = 1000 in
-        Computations.map_chunks ~delay:(fun () ->
+        map_chunks ~delay:(fun () ->
               cpt := !cpt + chunks;
               context # progress (2.0 /. 3.0 +. 1.0 /.3.0 *. (float !cpt) /. (float nb_triangles));
               delay ()
@@ -604,7 +602,7 @@ let new_plot {width; height; _} data =
   let main = create "div" in
   let progress_bars = progress_bars () in
   Node.append_child main (progress_bars # element);
-  let context = (progress_bars :> Computations.context) in
+  let context = (progress_bars :> context) in
   let canvas = Document.create_html_canvas document in
   Event.add_event_listener canvas Event.contextmenu Event.prevent_default;
   let fps = create "div" in

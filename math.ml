@@ -258,11 +258,11 @@ module Param = struct
   let iter_range_computation min max steps f =
     let step = (max -. min) /. (float steps) in
     let cur = ref min in
-    Computations.range (fun _ ->
+    Asynchronous_computations.range (fun _ ->
       let next = !cur +. step in
       f !cur next;
       cur := next;
-      Computations.delay ()) 1 steps
+      Asynchronous_computations.delay ()) 1 steps
 
   let parametrize2d ?(dim1 = (0.0, 1.0))
       ?(dim2 = (0.0, 1.0)) (res1, res2) f =
@@ -277,14 +277,14 @@ module Param = struct
       end;
     List.rev !result
 
-  let parametrize2d_computation ?(context = Computations.console_context)
+  let parametrize2d_computation ?(context = Asynchronous_computations.console_context)
       ?(dim1 = (0.0, 1.0))
       ?(dim2 = (0.0, 1.0)) (res1, res2) f =
     let result = ref [] in
     let cpt = ref 0 in
     context # status "Computing the graph of the function ...";
     context # push;
-    Computations.(bind
+    Asynchronous_computations.(bind
       (iter_range_computation (fst dim1) (snd dim1) res1
          begin fun t1 t1' ->
            context # progress ((float !cpt) /. (float res1));
@@ -489,7 +489,7 @@ module Triangles = struct
     let cpt = ref 0 in
     context # status "Computing ray casting table ...";
     context # push;
-    Computations.(iter_chunks
+    Asynchronous_computations.(iter_chunks
 ~delay:(fun () -> cpt := !cpt + chunks; context # progress ((float !cpt) /. (float nb_triangles)); delay ()) 1000 (fun ((a,b,c) as triangle) ->
         let x_a, _, z_a = Vector.to_three a in
         let x_b, _, z_b = Vector.to_three b in
@@ -522,7 +522,7 @@ module Triangles = struct
         box_of x_c z_c
       ) triangles >>= fun () -> context # pop; delay () >>= fun () ->
          context # status "Almost done ...";
-         Computations.hashtbl_to_list context table)
+         Asynchronous_computations.hashtbl_to_list context table)
 
   let ray_triangles table o e =
     let d = Vector.sub e o in

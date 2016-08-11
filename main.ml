@@ -13,7 +13,7 @@ let () = Window.set_onload window (fun _ ->
   Node.append_child main panel;
 
   let open Math in
-  let open Computations in
+  let open Asynchronous_computations in
   resolution # on_change (function None -> () | Some res ->
     removeAll panel;
     Node.append_child panel (progress_bars # element);

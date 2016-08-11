@@ -2,7 +2,7 @@ OCAMLC=ocamlfind ocamlc
 OCAMLFLAGS=-I bindings -w +a-4-29-30-40-41-42-44-45-48 -strict-sequence -strict-formats
 PPXFLAGS=-package lwt -package gen_js_api.ppx
 
-MODULES=js_bindings computations math helper textures drawing main
+MODULES=js_bindings asynchronous_computations math helper textures drawing main
 
 CMOS=$(patsubst %,%.cmo,$(MODULES))
 
@@ -18,7 +18,7 @@ helper.cmo: helper.ml js_bindings.cmo
 drawing.cmo: math.cmo drawing.ml helper.cmo js_bindings.cmo textures.cmo
 textures.cmo: textures.ml js_bindings.cmo
 main.cmo: main.ml js_bindings.cmo drawing.cmo
-computations.cmo: computations.ml js_bindings.cmo
+asynchronous_computations.cmo: asynchronous_computations.ml js_bindings.cmo
 math.cmo: math.ml js_bindings.cmo 
 
 .SUFFIXES: .ml .mli .cmo .cmi
