@@ -1,4 +1,4 @@
-open Dom
+open Js_bindings
 open Html
 open Canvas.Svg
 

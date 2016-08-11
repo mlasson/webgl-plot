@@ -1,4 +1,4 @@
-open Dom
+open Js_bindings
 
 let error s =
   alert ("Error: "^s);

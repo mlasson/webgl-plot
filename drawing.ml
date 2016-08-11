@@ -1,6 +1,6 @@
 open Math
 open Computations
-open Dom
+open Js_bindings
 open Helper
 open Html
 open Canvas.WebGl

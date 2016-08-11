@@ -1,4 +1,4 @@
-open Dom
+open Js_bindings
 
 let () = Window.set_onload window (fun _ ->
   let open Drawing in
