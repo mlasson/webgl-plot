@@ -107,6 +107,29 @@ module Surface = struct
       context # pop;
       return { triangles; normals; colors}
 
+  let from_grid_fun ?(context = console_context) res x_min x_max y_min y_max f =
+    let f x y = Vector.of_three (x,f x y, y) in
+    context # push;
+    context # progress 0.0;
+    Param.grid_of_fun ~dim1:(x_min,x_max) ~dim2:(y_min,y_max) (res, res) f
+    >>= fun grid -> 
+    Param.triangles_of_grid grid >>= fun triangles ->
+    Triangles.normal_grid grid >>= fun normal_grid -> 
+    Param.triangles_of_grid normal_grid >>= fun normals ->
+    map_chunks 1000 (fun (a,b,c) ->
+        let (_, y1, _) = Vector.to_three a in
+        let (_, y2, _) = Vector.to_three b in
+        let (_, y3, _) = Vector.to_three c in
+        let c y = Math.Color.hsv (359.9 *. (y -. y_min) /. (y_max -. y_min)) 1.0 1.0 in
+        (c y1, c y2,c y3)) triangles 
+
+    >>= fun colors ->
+    context # progress 1.0;
+    context # pop;
+    return { triangles; normals; colors}
+
+
+
   let world_matrix {Triangles.x_max; x_min; y_max; y_min; z_min; z_max} (angle_x, angle_y, angle_z) =
     let open Vector in
     let open Const in

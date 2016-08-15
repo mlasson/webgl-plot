@@ -246,6 +246,42 @@ type mat4 = (four, four) Vector.matrix
 
 module Param = struct
 
+  let grid_of_fun      
+      ?(dim1 = (0.0, 1.0))
+      ?(dim2 = (0.0, 1.0)) (res1, res2) f =
+    print_endline "grid_of_fun";
+    let open Asynchronous_computations in
+    let min1 = fst dim1 in
+    let max1 = snd dim1 in
+    let scale1 = (max1 -. min1) /. (float (res1 - 1)) in
+    let min2 = fst dim2 in
+    let max2 = snd dim2 in
+    let scale2 = (max2 -. min2) /. (float (res2 - 1)) in
+
+    let result = Array.make res1 [||] in
+    range (fun i ->
+        let x = min1 +. scale1 *. (float i) in
+        result.(i) <- Array.init res2 (fun j ->
+            let y = min2 +. scale2 *. (float j) in
+            f x y
+          ); return ()) 0 (res1 - 1) >>= fun () -> return result
+
+  let triangles_of_grid grid = 
+    print_endline "triangles_of_grid";
+    let open Asynchronous_computations in
+    let result = ref [] in
+    range (fun i ->
+        for j = 0 to (Array.length grid.(i)) - 2 do
+          let a = grid.(i).(j) in
+          let b = grid.(i+1).(j) in
+          let c = grid.(i+1).(j+1) in
+          let d = grid.(i).(j+1) in
+          result := (b,a,c) :: (c,a,d) :: !result;
+        done;
+        return ()
+      ) 0 ((Array.length grid) - 2) >>= fun () ->
+        return !result
+
   let iter_range min max steps f =
     let step = (max -. min) /. (float steps) in
     let cur = ref min in
@@ -548,6 +584,44 @@ module Triangles = struct
     with
     | (_, p) :: _ -> Some p
     | _ -> None
+
+
+  let normal_grid grid =
+    let open Asynchronous_computations in
+    let i_max = Array.length grid - 1 in  
+    let result = Array.make (i_max + 1) [||] in
+    print_endline "normal_grid";
+    range (fun i -> 
+      let j_max = Array.length grid.(i) - 1 in
+      result.(i) <- Array.init (j_max + 1) 
+        begin fun j -> 
+          let res = ref (Vector.of_three (0., 0., 0.)) in
+          let cpt = ref 0.0 in
+          let o = grid.(i).(j) in
+          let add_one a b = 
+            res := Vector.add !res (normal_of_triangle o a b);
+            cpt := !cpt +. 1.0;
+          in
+          (*     1
+           *    /|\
+           *   4-O-2
+           *    \|/
+           *     3
+           **)   
+          if 0 < j && i < i_max then
+            add_one grid.(i).(j-1) grid.(i+1).(j); (* 1 - 2 *)
+          if j < j_max && i < i_max then
+            add_one grid.(i+1).(j) grid.(i).(j+1); (* 2 - 3 *)
+          if 0 < i && j < j_max then              
+            add_one grid.(i).(j+1) grid.(i-1).(j); (* 3 - 4 *)
+          if 0 < i && 0 < j then
+            add_one grid.(i-1).(j) grid.(i).(j-1); (* 4 - 1 *)
+
+          Vector.scale (1.0 /. !cpt) !res
+        end;
+      return ()) 0 i_max >>= fun () ->
+    print_endline "done";
+    return result
 
 end
 
