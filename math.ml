@@ -361,6 +361,8 @@ end
 module Triangles = struct
   open Vector
 
+  type t = vec3 * vec3 * vec3
+
   let normal_of_triangle a b c =
     let x1, y1, z1 = Vector.to_three a in
     let x2, y2, z2 = Vector.to_three b in

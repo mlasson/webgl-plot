@@ -1,4 +1,5 @@
 open Js_bindings
+open Plot
 
 let () = Window.set_onload window (fun _ ->
   let open Models in
