@@ -71,7 +71,9 @@ module Vector : sig
     val x_rotation: float -> four square_matrix
     val y_rotation: float -> four square_matrix
     val z_rotation: float -> four square_matrix
-    val projection: four square_matrix
+    val identity: four square_matrix
+    val projection: fov:float -> aspect:float -> near:float -> far:float -> four square_matrix
+    val inverse_projection: fov:float -> aspect:float -> near:float -> far:float -> four square_matrix
   end
 end = struct
   type 'a vector = float array
@@ -230,12 +232,33 @@ end = struct
         0.;  0.;  0.;  1.
       |]
 
-    let projection = [|
-      1.; 0.; 0.; 0.;
-      0.; 1.; 0.; 0.;
-      0.; 0.; -1.; 0.;
-      0.; 0.; 0.; 1.;
-    |]
+    let identity =  [|
+        1.; 0.;  0.;  0.;
+        0.; 1.;  0.;  0.;
+        0.; 0.;  1.;  0.;
+        0.; 0.;  0.;  1.
+      |]
+
+    let projection ~fov ~aspect ~near ~far =
+      let f = tan ((pi -. fov) /. 2.0 ) in
+      let r = 1.0 /. (near -. far) in
+        [|
+          f /. aspect; 0.; 0.; 0.;
+          0.; f ; 0.; 0.;
+          0.; 0.; r *. (near +. far); -1.;
+          0.; 0.; near *. far *. r *. 2.0; 0.;
+        |]
+
+    let inverse_projection ~fov ~aspect ~near ~far =
+      let f = tan ((pi -. fov) /. 2.0 ) in
+      let r = 1.0 /. (near -. far) in
+        [|
+          aspect /. f; 0.; 0.; 0.;
+          0.; 1.0 /. f ; 0.; 0.;
+          0.; 0.; 0.; 0.5 /. (near *. far *. r);
+          0.; 0.; -1.; (near +. far) /. (2.0 *. near *. far) ;
+        |]
+
   end
 end
 
@@ -246,7 +269,7 @@ type mat4 = (four, four) Vector.matrix
 
 module Param = struct
 
-  let grid_of_fun      
+  let grid_of_fun
       ?(dim1 = (0.0, 1.0))
       ?(dim2 = (0.0, 1.0)) (res1, res2) f =
     print_endline "grid_of_fun";
@@ -266,7 +289,7 @@ module Param = struct
             f x y
           ); return ()) 0 (res1 - 1) >>= fun () -> return result
 
-  let triangles_of_grid grid = 
+  let triangles_of_grid grid =
     print_endline "triangles_of_grid";
     let open Asynchronous_computations in
     let result = ref [] in
@@ -590,17 +613,17 @@ module Triangles = struct
 
   let normal_grid grid =
     let open Asynchronous_computations in
-    let i_max = Array.length grid - 1 in  
+    let i_max = Array.length grid - 1 in
     let result = Array.make (i_max + 1) [||] in
     print_endline "normal_grid";
-    range (fun i -> 
+    range (fun i ->
       let j_max = Array.length grid.(i) - 1 in
-      result.(i) <- Array.init (j_max + 1) 
-        begin fun j -> 
+      result.(i) <- Array.init (j_max + 1)
+        begin fun j ->
           let res = ref (Vector.of_three (0., 0., 0.)) in
           let cpt = ref 0.0 in
           let o = grid.(i).(j) in
-          let add_one a b = 
+          let add_one a b =
             res := Vector.add !res (normal_of_triangle o a b);
             cpt := !cpt +. 1.0;
           in
@@ -609,12 +632,12 @@ module Triangles = struct
            *   4-O-2
            *    \|/
            *     3
-           **)   
+           **)
           if 0 < j && i < i_max then
             add_one grid.(i).(j-1) grid.(i+1).(j); (* 1 - 2 *)
           if j < j_max && i < i_max then
             add_one grid.(i+1).(j) grid.(i).(j+1); (* 2 - 3 *)
-          if 0 < i && j < j_max then              
+          if 0 < i && j < j_max then
             add_one grid.(i).(j+1) grid.(i-1).(j); (* 3 - 4 *)
           if 0 < i && 0 < j then
             add_one grid.(i-1).(j) grid.(i).(j-1); (* 4 - 1 *)

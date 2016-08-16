@@ -16,7 +16,9 @@ let loop f =
       Window.request_animation_frame window aux;
   in aux 0.0
 
-let initialize canvas fps gl repere_model graph_model surface cube =
+let orthographic = false
+
+let initialize canvas height width fps gl repere_model graph_model surface cube =
   let pointer = ref (0.0, 0.0) in
   let angle = ref (0., 0., 0.) in
   let move = ref (0., 0., 0.) in
@@ -25,8 +27,9 @@ let initialize canvas fps gl repere_model graph_model surface cube =
 
   let open Event in
   add_event_listener canvas mousemove (fun evt ->
-    let x = 2.0 *. (float (offsetX evt)) /. 800.0 -. 1.0 in
-    let y = 1.0 -. 2.0 *. (float (offsetY evt)) /. 800.0 in
+    prevent_default evt;
+    let x = 2.0 *. (float (offsetX evt)) /. width -. 1.0 in
+    let y = 1.0 -. 2.0 *. (float (offsetY evt)) /. height in
     let button = buttons evt in
     if button > 0 then begin
       if !moving then begin
@@ -49,6 +52,19 @@ let initialize canvas fps gl repere_model graph_model surface cube =
       moving := true;
     end else moving := false;
     pointer := (x,y));
+
+  add_event_listener canvas wheel (fun evt ->
+    prevent_default evt;
+    let y = deltaY evt /. height in
+    if orthographic then begin
+      Printf.printf "scale + %f = %f\n%!" y !scale;
+      scale := exp (log !scale +. y);
+    end else begin
+      let tx, ty, tz = !move in
+      let tz = tz +. y in
+      move := tx, ty, tz;
+    end
+    );
 
   let previous_time = ref 0.0 in
   let fps_counter = ref 0 in
@@ -142,7 +158,7 @@ let new_plot {width; height; _} data =
       delay () >>= fun () -> begin
         Surface.flat context data >>= fun ({Surface.bounds; _} as surface) ->
         let cube = RepereModel.build_cube bounds texture in
-        initialize canvas fps gl repere_model graph_model surface cube;
+        initialize canvas (float height) (float width) fps gl repere_model graph_model surface cube;
         Node.remove_child main (progress_bars # element);
         return ()
       end

@@ -112,16 +112,16 @@ module Surface = struct
     context # push;
     context # progress 0.0;
     Param.grid_of_fun ~dim1:(x_min,x_max) ~dim2:(y_min,y_max) (res, res) f
-    >>= fun grid -> 
+    >>= fun grid ->
     Param.triangles_of_grid grid >>= fun triangles ->
-    Triangles.normal_grid grid >>= fun normal_grid -> 
+    Triangles.normal_grid grid >>= fun normal_grid ->
     Param.triangles_of_grid normal_grid >>= fun normals ->
     map_chunks 1000 (fun (a,b,c) ->
         let (_, y1, _) = Vector.to_three a in
         let (_, y2, _) = Vector.to_three b in
         let (_, y3, _) = Vector.to_three c in
         let c y = Math.Color.hsv (359.9 *. (y -. y_min) /. (y_max -. y_min)) 1.0 1.0 in
-        (c y1, c y2,c y3)) triangles 
+        (c y1, c y2,c y3)) triangles
 
     >>= fun colors ->
     context # progress 1.0;
@@ -129,6 +129,8 @@ module Surface = struct
     return { triangles; normals; colors}
 
 
+  let my_projection = Vector.Const.projection ~fov:(pi /. 4.0) ~aspect:1.0 ~near:0.0001 ~far:10.0
+  let my_inverse_projection = Vector.Const.inverse_projection ~fov:(pi /. 4.0) ~aspect:1.0 ~near:0.0001 ~far:10.0
 
   let world_matrix {Triangles.x_max; x_min; y_max; y_min; z_min; z_max} (angle_x, angle_y, angle_z) (trans_x, trans_y, trans_z) scale_xyz =
     let open Vector in
@@ -152,12 +154,12 @@ module Surface = struct
       |> multiply (y_rotation angle_y)
       |> multiply (x_rotation angle_x)
       |> multiply (translation (of_three (trans_x, trans_y, trans_z)))
-      |> multiply projection
+      |> multiply my_projection
     in
 
-    let proportions = of_three (range_x, range_y, range_z) in
+    let proportions = of_three (1.0 /. scale_x, 1.0 /. scale_y, 1.0 /. scale_z) in
     let matrix' =
-      projection
+      my_inverse_projection
       |> multiply (translation (of_three (-. trans_x, -. trans_y, -. trans_z)))
       |> multiply (x_rotation (-. angle_x))
       |> multiply (y_rotation (-. angle_y))

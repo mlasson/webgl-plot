@@ -275,13 +275,14 @@ module Html = struct
     val event_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a event
     val event_to_js: ('a -> Ojs.t) -> 'a event -> Ojs.t
 
+    val change : unit event_name
+
     type mouse
     val mouse_of_js: Ojs.t -> mouse
     val mouse_to_js: mouse -> Ojs.t
 
     val mousemove : mouse event_name
     val contextmenu : mouse event_name
-    val change : unit event_name
 
     val screenX: mouse event -> int
     val screenY: mouse event -> int
@@ -291,11 +292,20 @@ module Html = struct
     val offsetY: mouse event -> int
     val buttons: mouse event -> int
 
+    type wheel
+    val wheel_of_js: Ojs.t -> wheel
+    val wheel_to_js: wheel -> Ojs.t
+
+    val wheel: wheel event_name
+
+    val deltaY: wheel event -> float
+
     val prevent_default: 'a event -> unit
 
     val add_event_listener: Kinds.Node.element Node.t -> 'a event_name -> ('a event -> unit) -> unit
   end = struct
     type mouse[@@js]
+    type wheel[@@js]
 
     type 'a event_name = string
     let event_name_of_js _ x = [%js.to: string] x
@@ -309,6 +319,8 @@ module Html = struct
     let change = "change"
     let contextmenu = "contextmenu"
 
+    let wheel = "wheel"
+
     include
       ([%js] : sig
          val screenX: mouse event -> int
@@ -318,6 +330,7 @@ module Html = struct
          val offsetX: mouse event -> int
          val offsetY: mouse event -> int
          val buttons: mouse event -> int
+         val deltaY: wheel event -> float
          val prevent_default: Ojs.t -> unit [@@js.call]
          val add_event_listener: Kinds.Node.element Node.t -> string -> (Ojs.t -> unit) -> unit
        end)
