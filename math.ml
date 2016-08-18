@@ -72,6 +72,7 @@ module Vector : sig
     val y_rotation: float -> four square_matrix
     val z_rotation: float -> four square_matrix
     val identity: four square_matrix
+    val flip: four square_matrix
     val projection: fov:float -> aspect:float -> near:float -> far:float -> four square_matrix
     val inverse_projection: fov:float -> aspect:float -> near:float -> far:float -> four square_matrix
   end
@@ -238,6 +239,15 @@ end = struct
         0.; 0.;  1.;  0.;
         0.; 0.;  0.;  1.
       |]
+
+    let flip =  [|
+        1.; 0.;  0.;  0.;
+        0.; 1.;  0.;  0.;
+        0.; 0.;  -1.;  0.;
+        0.; 0.;  0.;  1.
+      |]
+
+
 
     let projection ~fov ~aspect ~near ~far =
       let f = tan ((pi -. fov) /. 2.0 ) in

@@ -361,7 +361,7 @@ module Html = struct
       end)
     end
 
-    include struct type webgl [@@js] type svg[@@js] end
+    include struct type webgl [@@js] type flat[@@js] end
     include (struct
       include ([%js] : sig
                    type untyped = private Ojs.t
@@ -377,14 +377,17 @@ module Html = struct
                val context_to_js: ('a -> Ojs.t) -> 'a context -> Ojs.t
           end)
 
-    module Svg = struct
-     type t = svg context [@@js]
+    module Flat = struct
+     type t = flat context [@@js]
      type gradient = private Ojs.t [@@js]
+
      include ([%js] : sig
        val get_context: Canvas.t -> string ->  t option
      end)
+
      let get_context canvas =
        get_context canvas "2d"
+
      include ([%js] : sig
        val set_fill_style: t -> ([`Color of CssColor.t | `Gradient of gradient][@js.union]) -> unit
        val set_line_width: t -> float -> unit
@@ -398,8 +401,18 @@ module Html = struct
        val stroke: t -> unit
        val stroke_rect: t -> float -> float -> float -> float -> unit
        val fill_rect: t -> float -> float -> float -> float -> unit
+       val set_font: t -> string -> unit
+       val fill_text: t -> string -> float -> float -> unit
+       val stroke_text: t -> string -> float -> float -> unit
+       module TextMetrics : sig
+         type t = private Ojs.t
+         val height: t -> float
+         val width: t -> float
+       end
+       val measure_text: t -> string -> TextMetrics.t
+       val rotate: t -> float -> unit
+       val translate: t -> float -> float -> unit
        val clear_rect: t -> float -> float -> float -> float -> unit
-
      end)
     end
 
@@ -550,6 +563,17 @@ module Html = struct
           val _BACK_:t -> cull_face_mode [@@js.get "BACK"]
           val _FRONT_AND_BACK_:t -> cull_face_mode [@@js.get "FRONT_AND_BACK"]
           val cull_face: t -> cull_face_mode -> unit
+
+          type factor = private Ojs.t
+          val factor_of_js: Ojs.t -> factor
+          val factor_to_js: factor -> Ojs.t
+          val _ONE_:t -> factor [@@js.get "ONE"]
+          val _ZERO_:t -> factor [@@js.get "ZERO"]
+          val _ONE_MINUS_SRC_ALPHA_:t -> factor [@@js.get "ONE_MINUS_SRC_ALPHA"]
+          val _SRC_ALPHA_:t -> factor [@@js.get "SRC_ALPHA"]
+          val blend_func: t -> factor -> factor -> unit
+
+          val depth_mask: t -> bool -> unit
 
           type texture = private Ojs.t
           val texture_of_js: Ojs.t -> texture
@@ -769,45 +793,56 @@ module Html = struct
          val _FRONT_AND_BACK_:t -> cull_face_mode
          val cull_face: t -> cull_face_mode -> unit
 
+         type factor = private Ojs.t
+         val factor_of_js: Ojs.t -> factor
+         val factor_to_js: factor -> Ojs.t
+         val _ONE_:t -> factor
+         val _ZERO_:t -> factor
+         val _ONE_MINUS_SRC_ALPHA_:t -> factor
+         val _SRC_ALPHA_:t -> factor
+         val blend_func: t -> factor -> factor -> unit
+
+         val depth_mask: t -> bool -> unit
+
          type texture = private Ojs.t
-          val texture_of_js: Ojs.t -> texture
-          val texture_to_js: texture -> Ojs.t
-          val create_texture: t -> texture
+         val texture_of_js: Ojs.t -> texture
+         val texture_to_js: texture -> Ojs.t
+         val create_texture: t -> texture
 
-          type target = private Ojs.t
-          val target_of_js: Ojs.t -> target
-          val target_to_js: target -> Ojs.t
+         type target = private Ojs.t
+         val target_of_js: Ojs.t -> target
+         val target_to_js: target -> Ojs.t
 
-          val _TEXTURE_2D_: t -> target
-          val _TEXTURE_CUBE_MAP_: t -> target
+         val _TEXTURE_2D_: t -> target
+         val _TEXTURE_CUBE_MAP_: t -> target
 
-          type format = private Ojs.t
-          val format_of_js: Ojs.t -> format
-          val format_to_js: format -> Ojs.t
-          val _RGBA_: t -> format
+         type format = private Ojs.t
+         val format_of_js: Ojs.t -> format
+         val format_to_js: format -> Ojs.t
+         val _RGBA_: t -> format
 
-          val bind_texture: t -> target -> texture -> unit
-          val tex_image_2D: t -> target -> int -> format -> format -> data_type -> [`Canvas of Canvas.t] -> unit
+         val bind_texture: t -> target -> texture -> unit
+         val tex_image_2D: t -> target -> int -> format -> format -> data_type -> [`Canvas of Canvas.t] -> unit
 
-          type texture_parameter = private Ojs.t
-          val texture_parameter_of_js: Ojs.t -> texture_parameter
-          val texture_parameter_to_js: texture_parameter -> Ojs.t
-          val _TEXTURE_MAG_FILTER_: t -> texture_parameter
-          val _TEXTURE_MIN_FILTER_: t -> texture_parameter
+         type texture_parameter = private Ojs.t
+         val texture_parameter_of_js: Ojs.t -> texture_parameter
+         val texture_parameter_to_js: texture_parameter -> Ojs.t
+         val _TEXTURE_MAG_FILTER_: t -> texture_parameter
+         val _TEXTURE_MIN_FILTER_: t -> texture_parameter
 
-          type texture_parameter_value = private int
-          val texture_parameter_value_of_js: Ojs.t -> texture_parameter_value
-          val texture_parameter_value_to_js: texture_parameter_value -> Ojs.t
-          val _LINEAR_: t -> texture_parameter_value
-          val _NEAREST_: t -> texture_parameter_value
+         type texture_parameter_value = private int
+         val texture_parameter_value_of_js: Ojs.t -> texture_parameter_value
+         val texture_parameter_value_to_js: texture_parameter_value -> Ojs.t
+         val _LINEAR_: t -> texture_parameter_value
+         val _NEAREST_: t -> texture_parameter_value
 
-          val tex_parameteri: t -> target -> texture_parameter -> texture_parameter_value -> unit
+         val tex_parameteri: t -> target -> texture_parameter -> texture_parameter_value -> unit
 
 
        end)
 
 
-       type context_type =
+      type context_type =
          | WebGl [@js "webgl"]
          | Experimental [@js "experimental-webgl"]
          [@@js] [@@js.enum]

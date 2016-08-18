@@ -20,8 +20,8 @@ let () = Window.set_onload window (fun _ ->
     Node.append_child panel (progress_bars # element);
     let thread =
       let context = (progress_bars :> context) in
-      Surface.from_grid_fun ~context res (-. pi) pi (-. pi) pi (fun x y -> sin (sqrt (x *. x +. y *. y)))
-      >>= new_plot {height = 800; width = 800}
+      Surface.from_grid_fun ~context res 0.0 pi 0.0 pi (fun x y -> x +. y )
+      >>= new_plot {height = 800; width = 1024}
       >>= fun plot ->
         Node.remove_child panel (progress_bars # element);
         Node.append_child panel plot; return ()

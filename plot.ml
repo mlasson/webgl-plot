@@ -19,9 +19,10 @@ let loop f =
 let orthographic = false
 
 let initialize canvas height width fps gl repere_model graph_model surface cube =
+  let aspect = width /. height in
   let pointer = ref (0.0, 0.0) in
   let angle = ref (0., 0., 0.) in
-  let move = ref (0., 0., 0.) in
+  let move = ref (0., 0., -2.) in
   let scale = ref 1.0 in
   let moving = ref false in
 
@@ -78,7 +79,7 @@ let initialize canvas height width fps gl repere_model graph_model surface cube 
       Node.set_text_content fps
         (Printf.sprintf "%.2f fps" (1000.0 /. t));
     end;
-    draw_scene gl repere_model graph_model clock cube surface !angle !move !scale !pointer)
+    draw_scene gl aspect repere_model graph_model clock cube surface !angle !move !scale !pointer)
 
 
 let progress_bars () =
@@ -127,7 +128,6 @@ let new_plot {width; height; _} data =
   Event.add_event_listener canvas Event.contextmenu Event.prevent_default;
   let fps = create "div" in
   configure_element ~attributes:["width", string_of_int width; "height", string_of_int height] canvas;
-  let texture_canvas = Textures.create_grid_texture document in
   let gl =
     match get_context canvas WebGl with
     | Some gl -> gl
@@ -139,24 +139,30 @@ let new_plot {width; height; _} data =
   enable gl (_DEPTH_TEST_ gl);
   depth_func gl (_LESS_ gl);
 
-  let texture = create_texture gl in
-  let repere_model = RepereModel.initialize gl in
-  RepereModel.load repere_model;
-  bind_texture gl (_TEXTURE_2D_ gl) texture;
-  tex_image_2D gl (_TEXTURE_2D_ gl) 0 (_RGBA_ gl) (_RGBA_ gl) (type_unsigned_byte gl)  (`Canvas texture_canvas);
-  tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MAG_FILTER_ gl) (_LINEAR_ gl);
-  tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MIN_FILTER_ gl) (_LINEAR_ gl);
-  let graph_model = GraphModel.initialize gl in
-
   Node.append_child main canvas;
   Node.append_child main fps;
-  Node.append_child main texture_canvas;
 
   let thread =
     begin
       context # status "Initializing ...";
       delay () >>= fun () -> begin
         Surface.flat context data >>= fun ({Surface.bounds; _} as surface) ->
+
+        let texture_canvas =
+          Textures.create_grid_texture document
+            (Textures.uniform_ticks 10 bounds.x_min bounds.x_max)
+            (Textures.uniform_ticks 10 bounds.y_min bounds.y_max)
+            (Textures.uniform_ticks 10 bounds.z_min bounds.z_max)
+        in
+        Node.append_child main texture_canvas;
+        let texture = create_texture gl in
+        let repere_model = RepereModel.initialize gl in
+        RepereModel.load repere_model;
+        bind_texture gl (_TEXTURE_2D_ gl) texture;
+        tex_image_2D gl (_TEXTURE_2D_ gl) 0 (_RGBA_ gl) (_RGBA_ gl) (type_unsigned_byte gl)  (`Canvas texture_canvas);
+        tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MAG_FILTER_ gl) (_LINEAR_ gl);
+        tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MIN_FILTER_ gl) (_LINEAR_ gl);
+        let graph_model = GraphModel.initialize gl in
         let cube = RepereModel.build_cube bounds texture in
         initialize canvas (float height) (float width) fps gl repere_model graph_model surface cube;
         Node.remove_child main (progress_bars # element);

@@ -129,10 +129,10 @@ module Surface = struct
     return { triangles; normals; colors}
 
 
-  let my_projection = Vector.Const.projection ~fov:(pi /. 4.0) ~aspect:1.0 ~near:0.0001 ~far:10.0
-  let my_inverse_projection = Vector.Const.inverse_projection ~fov:(pi /. 4.0) ~aspect:1.0 ~near:0.0001 ~far:10.0
+  let my_projection aspect = Vector.Const.projection ~fov:(pi /. 4.0) ~near:0.0001 ~far:10.0 ~aspect
+  let my_inverse_projection aspect = Vector.Const.inverse_projection ~fov:(pi /. 4.0) ~near:0.0001 ~far:10.0 ~aspect
 
-  let world_matrix {Triangles.x_max; x_min; y_max; y_min; z_min; z_max} (angle_x, angle_y, angle_z) (trans_x, trans_y, trans_z) scale_xyz =
+  let world_matrix aspect {Triangles.x_max; x_min; y_max; y_min; z_min; z_max} (angle_x, angle_y, angle_z) (trans_x, trans_y, trans_z) scale_xyz =
     let open Vector in
     let open Const in
     let range_x = x_max -. x_min in
@@ -154,12 +154,14 @@ module Surface = struct
       |> multiply (y_rotation angle_y)
       |> multiply (x_rotation angle_x)
       |> multiply (translation (of_three (trans_x, trans_y, trans_z)))
-      |> multiply my_projection
+      |> multiply flip
+      |> multiply (my_projection aspect)
     in
 
     let proportions = of_three (1.0 /. scale_x, 1.0 /. scale_y, 1.0 /. scale_z) in
     let matrix' =
-      my_inverse_projection
+      (my_inverse_projection aspect)
+      |> multiply flip
       |> multiply (translation (of_three (-. trans_x, -. trans_y, -. trans_z)))
       |> multiply (x_rotation (-. angle_x))
       |> multiply (y_rotation (-. angle_y))
@@ -457,10 +459,22 @@ module RepereModel= struct
 
   let build_cube {Triangles.x_min; x_max; y_min; y_max; z_min; z_max} texture =
     let triangles, texcoords =
+      let y_one = 1.0 -. 1.0 /. 1024.0 in
+      let x_one = y_one /. 8.0 in
       let tl, tr, bl, br =
-        [0.; 1.], [1.; 1.],
-        [0.; 0.], [1.; 0.]
+        [0.; 0.], [x_one; 0.],
+        [0.; y_one], [x_one; y_one]
       in
+      Printf.printf "x_min: %f, x_max: %f, y_min: %f, y_max: %f, z_min: %f, z_max:%f\n%!" x_min x_max y_min y_max z_min z_max;
+      let x_range = x_max -. x_min in
+      let x_min = x_min -. x_range in
+      let x_max = x_max +. x_range in
+      let y_range = y_max -. y_min in
+      let y_min = y_min -. y_range in
+      let y_max = y_max +. y_range in
+      let z_range = z_max -. z_min in
+      let z_min = z_min -. z_range in
+      let z_max = z_max +. z_range in
       let a = [x_min;y_min;z_min] in
       let b = [x_min;y_max;z_min] in
       let c = [x_max;y_max;z_min] in (*   F---G *)
@@ -469,12 +483,41 @@ module RepereModel= struct
       let f = [x_min;y_max;z_max] in (* | E-|-H  *)
       let g = [x_max;y_max;z_max] in (* |/  |/   *)
       let h = [x_max;y_min;z_max] in (* A---D    *)
-      [[b,tl;a,bl;c,tr];[c,tr;a,bl;d,br]; (* front *)
-       [a,bl;b,tl;f,tr];[a,bl;f,tr;e,br]; (* left *)
-       [d,br;a,bl;h,tr];[h,tr;a,bl;e,tl]; (* bottom *)
-       [b,bl;c,br;g,tr];[b,bl;g,tr;f,tl]; (* top *)
-       [c,tl;d,bl;h,br];[c,tl;h,br;g,tr]; (* right *)
-       [e,bl;f,tl;g,tr];[e,bl;g,tr;h,br]] (* back *)
+
+      let front =
+        [[a,bl;b,tl;c,tr];[a,bl;c,tr;d,br]]
+      in
+      let left =
+        [[b,tr;a,br;f,tl];[f,tl;a,br;e,bl]]
+      in
+      let bottom =
+        [[a,tl;d,tr;h,br];[a,tl;h,br;e,bl]]
+      in
+      let top =
+        [[c,tr;b,tl;g,br];[g,br;b,tl;f,bl]]
+      in
+      let right =
+        [[d,br;c,tr;h,bl];[h,bl;c,tr;g,tl]]
+      in
+      let back =
+        [[f,tl;e,bl;g,tr];[g,tr;e,bl;h,br]]
+      in
+      let translate (v, s) = List.map (List.map (fun (a,t) -> List.map2 (+.) a v, List.map2 (+.) s t)) in
+      let shift = 1.0 /. 8.0 in
+      let f2b = [0.0;0.0; z_range], [shift *. 0.0; 0.0] in
+      let l2r = [x_range;0.0;0.0], [shift *. 1.0; 0.0] in
+      let b2t = [0.0;y_range;0.0], [shift *. 2.0; 0.0] in
+
+      let b2f = [0.0;0.0; -. z_range], [shift *. 3.0; 0.0] in
+      let r2l = [-. x_range;0.0;0.0], [shift *. 4.0; 0.0] in
+      let t2b = [0.0;-. y_range;0.0], [shift *. 5.0; 0.0] in
+      [ translate f2b front;
+        translate l2r left;
+        translate b2t bottom;
+        translate t2b top;
+        translate r2l right;
+        translate b2f back; ]
+      |> List.flatten
       |> List.map List.split
       |> List.split
     in
@@ -488,6 +531,9 @@ module RepereModel= struct
 
   let draw_cube {gl; context; _} {texture; texcoords; triangles} matrix =
     enable gl (_CULL_FACE_ gl);
+    enable gl (_BLEND_ gl);
+    depth_mask gl false;
+    blend_func gl (_SRC_ALPHA_ gl) (_ONE_MINUS_SRC_ALPHA_ gl);
     uniform_matrix4fv gl context.matrix false
       (Float32Array.new_float32_array matrix);
     bind_texture gl (_TEXTURE_2D_ gl) texture;
@@ -496,6 +542,8 @@ module RepereModel= struct
     bind_buffer gl (array_buffer gl) context.texcoord_buffer;
     buffer_data gl (array_buffer gl) texcoords (static_draw gl);
     draw_arrays gl (_TRIANGLES_ gl) 0 36;
+    depth_mask gl true;
+    disable gl (_BLEND_ gl);
     disable gl (_CULL_FACE_ gl)
 
 end
@@ -503,8 +551,8 @@ end
 
 let last_update = ref 0.0
 
-let draw_scene gl repere_model graph_model clock cube ({Surface.bounds; ray_table; _ } as surface) angle move scale (x,y) =
-  let proportions, matrix, matrix' = Surface.world_matrix bounds angle move scale in
+let draw_scene gl aspect repere_model graph_model clock cube ({Surface.bounds; ray_table; _ } as surface) angle move scale (x,y) =
+  let proportions, matrix, matrix' = Surface.world_matrix aspect bounds angle move scale in
 
   clear gl ((_COLOR_BUFFER_BIT_ gl) lor (_DEPTH_BUFFER_BIT_ gl));
 
@@ -527,6 +575,8 @@ let draw_scene gl repere_model graph_model clock cube ({Surface.bounds; ray_tabl
     GraphModel.set_light graph_model (1.0,1.0,-2.0);
     match Triangles.ray_triangles ray_table o e with
     | Some p ->
+      let x,y,z = Vector.to_three p in
+      Printf.printf "Found %f, %f, %f\n%!" x y z;
       GraphModel.draw_point graph_model (matrix :> float array) proportions p
     | _ -> ()
   end;
