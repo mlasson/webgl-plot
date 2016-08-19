@@ -300,7 +300,6 @@ module Param = struct
           ); return ()) 0 (res1 - 1) >>= fun () -> return result
 
   let triangles_of_grid grid =
-    print_endline "triangles_of_grid";
     let open Asynchronous_computations in
     let result = ref [] in
     range (fun i ->
@@ -314,6 +313,24 @@ module Param = struct
         return ()
       ) 0 ((Array.length grid) - 2) >>= fun () ->
         return !result
+
+  let lines_of_grid grid =
+    let open Asynchronous_computations in
+    let result = ref [] in
+    range (fun i ->
+        for j = 0 to (Array.length grid.(i)) - 2 do
+          let a = grid.(i).(j) in
+          let b = grid.(i+1).(j) in
+          let c = grid.(i+1).(j+1) in
+          let d = grid.(i).(j+1) in
+          result := (a,b) :: (b,c) :: (c,d) :: (d,a):: !result;
+        done;
+        return ()
+      ) 0 ((Array.length grid) - 2) >>= fun () ->
+        return !result
+
+
+
 
   let iter_range min max steps f =
     let step = (max -. min) /. (float steps) in

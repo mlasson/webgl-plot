@@ -528,6 +528,7 @@ module Html = struct
           val _LINE_STRIP_: t -> mode [@@js.get "LINE_STRIP"]
           val _LINES_:t -> mode [@@js.get "LINES"]
 
+          val line_width: t -> float -> unit
 
           val draw_arrays: t -> mode -> int -> int -> unit
 
@@ -551,6 +552,7 @@ module Html = struct
           val func_to_js: func -> Ojs.t
 
           val _LESS_: t -> func [@@js.get "LESS"]
+          val _LEQUAL_: t -> func [@@js.get "LEQUAL"]
           val _NEVER_: t -> func [@@js.get "NEVER"]
           val _GREATER_: t -> func [@@js.get "GREATER"]
           val depth_func: t -> func -> unit
@@ -753,11 +755,14 @@ module Html = struct
          type mode = private Ojs.t
          val mode_of_js: Ojs.t -> mode
          val mode_to_js: mode -> Ojs.t
+
          val _TRIANGLES_: t -> mode
          val _POINTS_: t -> mode
          val _TRIANGLE_STRIP_: t -> mode
          val _LINE_STRIP_: t -> mode
          val _LINES_: t -> mode
+
+         val line_width: t -> float -> unit
          val draw_arrays: t -> mode -> int -> int -> unit
 
          val uniform4f: t -> uniform_location -> float -> float -> float -> float -> unit
@@ -780,6 +785,7 @@ module Html = struct
          val func_to_js: func -> Ojs.t
 
          val _LESS_: t -> func
+         val _LEQUAL_: t -> func
          val _GREATER_: t -> func
          val _NEVER_: t -> func
 

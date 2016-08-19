@@ -12,6 +12,7 @@ module Surface = struct
     triangles: (vec3 * vec3 * vec3) list;
     normals: (vec3 * vec3 * vec3) list;
     colors: (vec3 * vec3 * vec3) list;
+    lines: (vec3 * vec3) list;
   }
 
   type flat_surface = {
@@ -20,6 +21,11 @@ module Surface = struct
     triangles_array: Float32Array.t;
     normals_array: Float32Array.t;
     colors_array: Float32Array.t;
+
+    lines_size: int;
+    lines_array: Float32Array.t;
+    lines_normals_array: Float32Array.t;
+    lines_colors_array: Float32Array.t;
 
     bounds: Triangles.box;
     ray_table: Triangles.ray_table;
@@ -45,7 +51,36 @@ module Surface = struct
         k := !k + 9) l >>= (fun () ->
     return (Float32Array.new_float32_array array))
 
-  let flat context { triangles; normals; colors} =
+  let flatten_lines l =
+    let size = List.length l in
+    Printf.printf "flatten_lines(%d)\n" size;
+    let array = Array.create_float (2 * 3 * size) in
+    let k = ref 0 in
+    iter_chunks 1000 (fun (a,b) ->
+        let (x_a,y_a,z_a) = Vector.to_three a in
+        let (x_b,y_b,z_b) = Vector.to_three b in
+        array.(!k) <- x_a;
+        array.(!k + 1) <- y_a;
+        array.(!k + 2) <- z_a;
+        array.(!k + 3) <- x_b;
+        array.(!k + 4) <- y_b;
+        array.(!k + 5) <- z_b;
+        k := !k + 6) l >>= (fun () ->
+    return (Float32Array.new_float32_array array))
+
+  let constant_array size a =
+    Printf.printf "constant_array(%d)\n" size;
+    let array = Array.create_float (3 * size) in
+    let k = ref 0 in
+    let (x_a,y_a,z_a) = Vector.to_three a in
+    range_chunks 1000 (fun _ ->
+        array.(!k) <- x_a;
+        array.(!k + 1) <- y_a;
+        array.(!k + 2) <- z_a;
+        k := !k + 3) 1 size >>= (fun () -> print_endline "done";
+    return (Float32Array.new_float32_array array))
+
+  let flat context { triangles; normals; colors; lines} =
     let bounds = Triangles.bounding_box triangles in
     context # status "Preparing data ...";
     context # push;
@@ -55,13 +90,21 @@ module Surface = struct
       flatten_triangles normals >>= fun normals_array ->
         context # progress 0.5;
         flatten_triangles colors >>= fun colors_array ->
+          context # progress 0.65;
+          flatten_lines lines >>= fun lines_array ->
+            let lines_size = 2 * List.length lines in
+          constant_array lines_size (Vector.of_three (0., 1., 0.)) >>= fun lines_normals_array ->
+          constant_array lines_size (Vector.of_three (0., 0., 0.)) >>= fun lines_colors_array ->
             context # progress 0.75;
             Triangles.build_ray_table context triangles >>= fun ray_table ->
             context # progress 1.;
             context # pop;
             delay () >>= (fun () ->
             return { size = 3 * (List.length triangles);
-              bounds; triangles_array; normals_array; colors_array; ray_table })
+             bounds; triangles_array; normals_array; colors_array; ray_table; lines_size; lines_array;
+             lines_normals_array;
+             lines_colors_array;
+                   })
 
   let from_fun ?(context = console_context) res x_min x_max y_min y_max f =
     context # push;
@@ -105,7 +148,7 @@ module Surface = struct
    >>= fun colors ->
       context # progress (3.0 /. 3.0);
       context # pop;
-      return { triangles; normals; colors}
+      return { triangles; normals; colors; lines = []}
 
   let from_grid_fun ?(context = console_context) res x_min x_max y_min y_max f =
     let f x y = Vector.of_three (x,f x y, y) in
@@ -122,11 +165,11 @@ module Surface = struct
         let (_, y3, _) = Vector.to_three c in
         let c y = Math.Color.hsv (359.9 *. (y -. y_min) /. (y_max -. y_min)) 1.0 1.0 in
         (c y1, c y2,c y3)) triangles
-
     >>= fun colors ->
+    Param.lines_of_grid grid >>= fun lines ->
     context # progress 1.0;
     context # pop;
-    return { triangles; normals; colors}
+    return { triangles; normals; colors; lines}
 
 
   let my_projection aspect = Vector.Const.projection ~fov:(pi /. 4.0) ~near:0.0001 ~far:10.0 ~aspect
@@ -315,12 +358,11 @@ module GraphModel = struct
     uniform3f gl context.ambient_light 0.2 0.2 0.2;
     uniform3f gl context.light_position x y z
 
-  let draw_object {gl; context; _} world_matrix object_matrix size triangles_array normals_array colors_array =
+  let draw_object {gl; context; _} mode world_matrix object_matrix size triangles_array normals_array colors_array =
     uniform_matrix4fv gl context.world_matrix false
            (Float32Array.new_float32_array world_matrix);
     uniform_matrix4fv gl context.object_matrix false
            (Float32Array.new_float32_array object_matrix);
-
 
     disable gl (_CULL_FACE_ gl);
 
@@ -333,12 +375,14 @@ module GraphModel = struct
     bind_buffer gl (array_buffer gl) context.color_buffer;
     buffer_data gl (array_buffer gl) colors_array (static_draw gl);
 
-    draw_arrays gl (_TRIANGLES_ gl) 0 size
+    draw_arrays gl (mode gl) 0 size
 
   let identity_matrix = [|1.0; 0.0; 0.0; 0.0; 0.0; 1.0; 0.0; 0.0; 0.0; 0.0; 1.0; 0.0; 0.0; 0.0; 0.0; 1.0 |]
 
-  let draw_surface graph_model world_matrix {Surface.size; triangles_array; normals_array; colors_array;  _ } =
-    draw_object graph_model world_matrix identity_matrix size triangles_array normals_array colors_array
+  let draw_surface graph_model world_matrix {Surface.size; triangles_array; normals_array; colors_array; lines_array; lines_normals_array; lines_colors_array; lines_size; _ } =
+    draw_object graph_model _TRIANGLES_ world_matrix identity_matrix size triangles_array normals_array colors_array;
+    draw_object graph_model _LINES_ world_matrix identity_matrix lines_size lines_array lines_normals_array lines_colors_array
+
 
   let flatten_triangles l =
     Array.of_list (List.flatten (List.map (fun (a,b,c) ->
@@ -359,7 +403,7 @@ module GraphModel = struct
     let r = Vector.scale 0.01 r in
     let object_matrix = (Vector.Const.scale_translation r pos :> float array) in
     let size, triangles_array, colors_array = sphere10 in
-    draw_object graph_model world_matrix object_matrix size triangles_array triangles_array colors_array
+    draw_object graph_model _TRIANGLES_ world_matrix object_matrix size triangles_array triangles_array colors_array
 
 
 end
@@ -452,12 +496,12 @@ module RepereModel= struct
     {gl; program; context = setup_context gl program}
 
   type cube = {
-    texture: texture;
+    textures: texture array;
     triangles: Float32Array.t;
     texcoords: Float32Array.t;
   }
 
-  let build_cube {Triangles.x_min; x_max; y_min; y_max; z_min; z_max} texture =
+  let build_cube {Triangles.x_min; x_max; y_min; y_max; z_min; z_max} textures =
     let triangles, texcoords =
       let y_one = 1.0 -. 1.0 /. 1024.0 in
       let x_one = y_one /. 8.0 in
@@ -485,13 +529,13 @@ module RepereModel= struct
       let h = [x_max;y_min;z_max] in (* A---D    *)
 
       let front =
-        [[a,bl;b,tl;c,tr];[a,bl;c,tr;d,br]]
+        [[a,br;b,tr;c,tl];[a,br;c,tl;d,bl]]
       in
       let left =
-        [[b,tr;a,br;f,tl];[f,tl;a,br;e,bl]]
+        [[b,tl;a,bl;f,tr];[f,tr;a,bl;e,br]]
       in
       let bottom =
-        [[a,tl;d,tr;h,br];[a,tl;h,br;e,bl]]
+        [[a,bl;d,br;h,tr];[a,bl;h,tr;e,tl]]
       in
       let top =
         [[c,tr;b,tl;g,br];[g,br;b,tl;f,bl]]
@@ -504,13 +548,14 @@ module RepereModel= struct
       in
       let translate (v, s) = List.map (List.map (fun (a,t) -> List.map2 (+.) a v, List.map2 (+.) s t)) in
       let shift = 1.0 /. 8.0 in
-      let f2b = [0.0;0.0; z_range], [shift *. 0.0; 0.0] in
-      let l2r = [x_range;0.0;0.0], [shift *. 1.0; 0.0] in
-      let b2t = [0.0;y_range;0.0], [shift *. 2.0; 0.0] in
+      let delta = 1.0 in
+      let f2b = [0.0;0.0; delta *. z_range], [shift *. 0.0; 0.0] in
+      let l2r = [delta *. x_range;0.0;0.0], [shift *. 1.0; 0.0] in
+      let b2t = [0.0;delta *. y_range;0.0], [shift *. 2.0; 0.0] in
 
-      let b2f = [0.0;0.0; -. z_range], [shift *. 3.0; 0.0] in
-      let r2l = [-. x_range;0.0;0.0], [shift *. 4.0; 0.0] in
-      let t2b = [0.0;-. y_range;0.0], [shift *. 5.0; 0.0] in
+      let b2f = [0.0;0.0; -. z_range *. delta], [shift *. 3.0; 0.0] in
+      let r2l = [-. x_range *. delta ;0.0;0.0], [shift *. 4.0; 0.0] in
+      let t2b = [0.0;-. y_range *. delta;0.0], [shift *. 5.0; 0.0] in
       [ translate f2b front;
         translate l2r left;
         translate b2t bottom;
@@ -527,16 +572,16 @@ module RepereModel= struct
     in
     ({ triangles = flatten_array triangles;
       texcoords = flatten_array texcoords;
-      texture } : cube)
+      textures } : cube)
 
-  let draw_cube {gl; context; _} {texture; texcoords; triangles} matrix =
+  let draw_cube {gl; context; _} {textures; texcoords; triangles} texture_index matrix =
     enable gl (_CULL_FACE_ gl);
     enable gl (_BLEND_ gl);
     depth_mask gl false;
     blend_func gl (_SRC_ALPHA_ gl) (_ONE_MINUS_SRC_ALPHA_ gl);
     uniform_matrix4fv gl context.matrix false
       (Float32Array.new_float32_array matrix);
-    bind_texture gl (_TEXTURE_2D_ gl) texture;
+    bind_texture gl (_TEXTURE_2D_ gl) textures.(texture_index);
     bind_buffer gl (array_buffer gl) context.position_buffer;
     buffer_data gl (array_buffer gl) triangles (static_draw gl);
     bind_buffer gl (array_buffer gl) context.texcoord_buffer;
@@ -551,13 +596,38 @@ end
 
 let last_update = ref 0.0
 
-let draw_scene gl aspect repere_model graph_model clock cube ({Surface.bounds; ray_table; _ } as surface) angle move scale (x,y) =
+let draw_scene gl aspect repere_model graph_model clock cube ({Surface.bounds; ray_table; _ } as surface) ((angle_x, angle_y, _) as angle) move scale (x,y) =
   let proportions, matrix, matrix' = Surface.world_matrix aspect bounds angle move scale in
 
   clear gl ((_COLOR_BUFFER_BIT_ gl) lor (_DEPTH_BUFFER_BIT_ gl));
 
   RepereModel.load repere_model;
-  RepereModel.draw_cube repere_model cube (matrix :> float array);
+  let pi2 = pi /. 2.0 in
+  let pi4 = pi /. 4.0 in
+  let texture_index =
+    let pi6 = 0.75 *. pi in
+    Printf.printf "angle_x = %1.2f angle_y = %1.2f\n%!" angle_x angle_y;
+    if -. pi4 <= angle_y && angle_y <= 0.0 then
+      0
+    else if -. pi2 <= angle_y && angle_y <= -. pi4 then
+      1
+    else if -. pi6 <= angle_y && angle_y <= -. pi2 then
+      2
+    else if -. pi <= angle_y && angle_y <= -. pi6 then
+      3
+    else if pi >= angle_y && angle_y >= pi6 then
+      4
+    else if pi6 >= angle_y && angle_y >= pi2 then
+      5
+    else if pi2 >= angle_y && angle_y >= pi4 then
+      6
+    else if pi4 >= angle_y && angle_y >= 0.0 then
+      7
+    else
+      0 (* should not happen *)
+  in
+  let texture_index = if angle_x > 0.05 then texture_index + 8 else texture_index in
+  RepereModel.draw_cube repere_model cube texture_index (matrix :> float array);
 
   GraphModel.load graph_model;
 
@@ -575,8 +645,6 @@ let draw_scene gl aspect repere_model graph_model clock cube ({Surface.bounds; r
     GraphModel.set_light graph_model (1.0,1.0,-2.0);
     match Triangles.ray_triangles ray_table o e with
     | Some p ->
-      let x,y,z = Vector.to_three p in
-      Printf.printf "Found %f, %f, %f\n%!" x y z;
       GraphModel.draw_point graph_model (matrix :> float array) proportions p
     | _ -> ()
   end;

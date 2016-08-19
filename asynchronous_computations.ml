@@ -26,7 +26,7 @@ let rec range f min max =
 
 let rec range_chunks size f first last =
   if first <= last then
-    let next = max (first + size) last in
+    let next = min (first + size) last in
     return (for k = first to next do
       f k
     done) >>= (fun () -> range_chunks size f (next + 1) last)

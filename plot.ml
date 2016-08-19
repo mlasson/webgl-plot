@@ -18,11 +18,25 @@ let loop f =
 
 let orthographic = false
 
+(* return an angle between -pi and pi *)
+let normalize_angle x =
+ let open Math in
+ if x >= 0.0 then
+   let x = x -. (floor (x /. (2.0 *. pi))) *. 2.0 *. pi in
+   if x > pi then
+     x -. 2.0 *. pi
+   else x
+ else
+   let x = x -. (ceil (x /. (2.0 *. pi))) *. 2.0 *. pi in
+   if x < -. pi then
+     x +. 2.0 *. pi
+   else x
+
 let initialize canvas height width fps gl repere_model graph_model surface cube =
   let aspect = width /. height in
   let pointer = ref (0.0, 0.0) in
   let angle = ref (0., 0., 0.) in
-  let move = ref (0., 0., -2.) in
+  let move = ref (0., 0., 2.) in
   let scale = ref 1.0 in
   let moving = ref false in
 
@@ -40,8 +54,9 @@ let initialize canvas height width fps gl repere_model graph_model surface cube 
         in
         if button = 1 then begin
           let tx, ty, tz = !angle in
-          let ty = ty +. dx in
-          let tx = tx -. dy in
+          let ty = normalize_angle (ty +. dx) in
+          let tx = normalize_angle (tx -. dy) in
+          let tx = max (-0.5 *. Math.pi) (min (0.5 *. Math.pi) tx) in
           angle := tx, ty, tz;
         end else if button = 2 then begin
           let tx, ty, tz = !move in
@@ -137,7 +152,8 @@ let new_plot {width; height; _} data =
       | None -> error "webgl is not supported"
   in
   enable gl (_DEPTH_TEST_ gl);
-  depth_func gl (_LESS_ gl);
+  depth_func gl (_LEQUAL_ gl);
+  Html.Canvas.WebGl.line_width gl 4.0;
 
   Node.append_child main canvas;
   Node.append_child main fps;
@@ -147,23 +163,48 @@ let new_plot {width; height; _} data =
       context # status "Initializing ...";
       delay () >>= fun () -> begin
         Surface.flat context data >>= fun ({Surface.bounds; _} as surface) ->
-
-        let texture_canvas =
-          Textures.create_grid_texture document
-            (Textures.uniform_ticks 10 bounds.x_min bounds.x_max)
-            (Textures.uniform_ticks 10 bounds.y_min bounds.y_max)
-            (Textures.uniform_ticks 10 bounds.z_min bounds.z_max)
-        in
-        Node.append_child main texture_canvas;
-        let texture = create_texture gl in
         let repere_model = RepereModel.initialize gl in
         RepereModel.load repere_model;
-        bind_texture gl (_TEXTURE_2D_ gl) texture;
-        tex_image_2D gl (_TEXTURE_2D_ gl) 0 (_RGBA_ gl) (_RGBA_ gl) (type_unsigned_byte gl)  (`Canvas texture_canvas);
-        tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MAG_FILTER_ gl) (_LINEAR_ gl);
-        tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MIN_FILTER_ gl) (_LINEAR_ gl);
+
+        let textures = Array.map (fun descr ->
+            let texture_canvas =
+              Textures.create_grid_texture document
+                (Textures.uniform_ticks 10 bounds.x_min bounds.x_max)
+                (Textures.uniform_ticks 10 bounds.y_min bounds.y_max)
+                (Textures.uniform_ticks 10 bounds.z_min bounds.z_max) descr
+            in
+            if false then Node.append_child main texture_canvas;
+            let texture = create_texture gl in
+            bind_texture gl (_TEXTURE_2D_ gl) texture;
+            tex_image_2D gl (_TEXTURE_2D_ gl) 0 (_RGBA_ gl) (_RGBA_ gl) (type_unsigned_byte gl)  (`Canvas texture_canvas);
+            tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MAG_FILTER_ gl) (_LINEAR_ gl);
+            tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MIN_FILTER_ gl) (_LINEAR_ gl);
+            texture)
+            [|
+              [ `Bottom, false, `Left; `Bottom, false, `Bottom; `Back, false, `Left ];
+              [ `Bottom, false, `Left; `Bottom, false, `Bottom; `Right, false, `Right ];
+              [ `Bottom, true, `Left; `Bottom, false, `Top; `Right, false, `Left ];
+              [ `Bottom, true, `Left; `Bottom, false, `Top; `Front, false, `Right ];
+
+              [ `Bottom, true, `Right; `Bottom, true, `Top; `Front, false, `Left ];
+              [ `Bottom, true, `Right; `Bottom, true, `Top; `Left, false, `Right ];
+              [ `Bottom, false, `Right; `Bottom, true, `Bottom; `Left, false, `Left ];
+              [ `Bottom, false, `Right; `Bottom, true, `Bottom; `Back, false, `Right ];
+
+              [ `Top, false, `Left; `Top, true, `Top; `Back, false, `Left ];
+              [ `Top, false, `Left; `Top, true, `Top; `Right, false, `Right ];
+              [ `Top, true, `Left; `Top, true, `Bottom; `Right, false, `Left ];
+              [ `Top, true, `Left; `Top, true, `Bottom; `Front, false, `Right ];
+
+              [ `Top, true, `Right; `Top, false, `Bottom; `Front, false, `Left ];
+              [ `Top, true, `Right; `Top, false, `Bottom; `Left, false, `Right ];
+              [ `Top, false, `Right; `Top, false, `Top; `Left, false, `Left ];
+              [ `Top, false, `Right; `Top, false, `Top; `Back, false, `Right ];
+
+            |]
+        in
         let graph_model = GraphModel.initialize gl in
-        let cube = RepereModel.build_cube bounds texture in
+        let cube = RepereModel.build_cube bounds textures in
         initialize canvas (float height) (float width) fps gl repere_model graph_model surface cube;
         Node.remove_child main (progress_bars # element);
         return ()
