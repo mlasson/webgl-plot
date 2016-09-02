@@ -94,6 +94,24 @@ end = struct
     | _ -> `Deprecated (x: deprecated t)
 end
 
+module Rect = struct
+  include ([%js] :
+    sig
+      type t = private Ojs.t
+      val t_of_js: Ojs.t -> t
+      val t_to_js: t -> Ojs.t
+
+      val x: t -> float
+      val y: t -> float
+      val height: t -> float
+      val width: t -> float
+      val left: t -> float
+      val right: t -> float
+      val top: t -> float
+      val bottom: t -> float
+    end)
+end
+
 module Element : sig
   type 'a t = Kinds.Node.element Node.t
   val t_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a t
@@ -114,6 +132,8 @@ module Element : sig
   val outer_HTML: 'a t -> string
 
   val set_onclick: 'a t -> (unit -> unit) -> unit
+
+  val get_bounding_client_rect: 'a t -> Rect.t
 
   val unsafe_cast: 'a t -> 'b t
   val tag_name: 'a t -> string
@@ -139,6 +159,9 @@ end = struct
       val outer_HTML: untyped -> string
 
       val set_onclick: untyped -> (unit -> unit) -> unit
+
+      val get_bounding_client_rect: untyped -> Rect.t[@@js.call]
+
       val tag_name: untyped -> string
     end)
   type 'a t = untyped
@@ -260,9 +283,27 @@ end
 module Float32Array = struct
    type t = private Ojs.t[@@js]
    include ([%js] : sig
-     val new_float32_array: float array -> t [@@js.new]
+     val new_float32_array: ([`Data of float array | `Size of int][@js.union]) -> t [@@js.new]
+     val for_each: t -> (float -> int -> t -> unit) -> unit
+     val length: t -> int
    end)
+
+   external get : t -> int -> float = "caml_js_get"
+   external set : t -> int -> float -> unit = "caml_js_set"
 end
+
+module Uint16Array = struct
+   type t = private Ojs.t[@@js]
+   include ([%js] : sig
+     val new_uint16_array: ([`Data of int array | `Size of int][@js.union]) -> t [@@js.new]
+     val for_each: t -> (int -> int -> t -> unit) -> unit
+     val length: t -> int
+   end)
+
+   external get : t -> int -> int = "caml_js_get"
+   external set : t -> int -> int -> unit = "caml_js_set"
+end
+
 
 module Html = struct
 
@@ -356,6 +397,8 @@ module Html = struct
     module Canvas = struct (* To be included at the end of the module (to avoid shadowing). *)
       type t = Kinds.Html.canvas Element.t [@@js]
       include ([%js] : sig
+        val width: t -> int
+        val height: t -> int
         val set_width: t -> int -> unit
         val set_height: t -> int -> unit
       end)
@@ -507,6 +550,7 @@ module Html = struct
           val data_type_to_js: data_type -> Ojs.t
           val type_float: t -> data_type[@@js.get "FLOAT"]
           val type_unsigned_byte: t -> data_type[@@js.get "UNSIGNED_BYTE"]
+          val type_unsigned_short: t -> data_type[@@js.get "UNSIGNED_SHORT"]
           val enable_vertex_attrib_array: t -> int -> unit
           val vertex_attrib_pointer: t -> int -> int -> data_type -> bool -> int -> int -> unit
 
@@ -531,6 +575,7 @@ module Html = struct
           val line_width: t -> float -> unit
 
           val draw_arrays: t -> mode -> int -> int -> unit
+          val draw_elements: t -> mode -> int -> data_type -> int -> unit
 
           val uniform4f: t -> uniform_location -> float -> float -> float -> float -> unit
           val uniform3f: t -> uniform_location -> float -> float -> float -> unit
@@ -715,7 +760,7 @@ module Html = struct
          val buffer_kind_of_js: (Ojs.t -> 'a) -> Ojs.t -> 'a buffer_kind
          val buffer_kind_to_js: ('a -> Ojs.t) -> 'a buffer_kind -> Ojs.t
          val array_buffer: t -> float buffer_kind
-         val element_array_buffer: t -> Float32Array.t buffer_kind
+         val element_array_buffer: t -> int buffer_kind
 
          type usage = private Ojs.t
          val usage_of_js: Ojs.t -> usage
@@ -742,6 +787,7 @@ module Html = struct
          val data_type_to_js: data_type -> Ojs.t
          val type_float: t -> data_type
          val type_unsigned_byte: t -> data_type
+        val type_unsigned_short: t -> data_type
          val enable_vertex_attrib_array: t -> int -> unit
          val vertex_attrib_pointer: t -> int -> int -> data_type -> bool -> int -> int -> unit
 
@@ -764,6 +810,7 @@ module Html = struct
 
          val line_width: t -> float -> unit
          val draw_arrays: t -> mode -> int -> int -> unit
+         val draw_elements: t -> mode -> int -> data_type -> int -> unit
 
          val uniform4f: t -> uniform_location -> float -> float -> float -> float -> unit
          val uniform3f: t -> uniform_location -> float -> float -> float -> unit
@@ -864,7 +911,7 @@ module Html = struct
          alpha = Some true;
          depth = Some true;
          stencil = None;
-         antialias = None;
+         antialias = Some false;
        }
 
        include ([%js] : sig

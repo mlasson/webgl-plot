@@ -32,7 +32,17 @@ let normalize_angle x =
      x +. 2.0 *. pi
    else x
 
-let initialize canvas height width fps gl repere_model graph_model surface cube =
+let position canvas evt =
+  let rect = Element.get_bounding_client_rect canvas in
+  let scale_x = Rect.width rect /. float (Canvas.width canvas) in
+  let scale_y = Rect.height rect /. float (Canvas.height canvas) in
+  let left = Rect.left rect in
+  let top = Rect.top rect in
+    (float (Event.clientX evt) -. left) /. scale_x,
+    (float (Event.clientY evt) -. top) /. scale_y
+
+
+let initialize canvas height width fps gl repere_model graph_model ({Surface.bounds = { z_max; z_min; _}; _} as surface) cube face_textures =
   let aspect = width /. height in
   let pointer = ref (0.0, 0.0) in
   let angle = ref (0., 0., 0.) in
@@ -41,10 +51,12 @@ let initialize canvas height width fps gl repere_model graph_model surface cube 
   let moving = ref false in
 
   let open Event in
+  let get_position = position canvas in
   add_event_listener canvas mousemove (fun evt ->
     prevent_default evt;
-    let x = 2.0 *. (float (offsetX evt)) /. width -. 1.0 in
-    let y = 1.0 -. 2.0 *. (float (offsetY evt)) /. height in
+    let x, y = get_position evt in
+    let x = 2.0 *. x /. width -. 1.0 in
+    let y = 1.0 -. 2.0 *. y /. height in
     let button = buttons evt in
     if button > 0 then begin
       if !moving then begin
@@ -54,8 +66,8 @@ let initialize canvas height width fps gl repere_model graph_model surface cube 
         in
         if button = 1 then begin
           let tx, ty, tz = !angle in
-          let ty = normalize_angle (ty +. dx) in
-          let tx = normalize_angle (tx -. dy) in
+          let ty = normalize_angle (ty -. dx) in
+          let tx = normalize_angle (tx +. dy) in
           let tx = max (-0.5 *. Math.pi) (min (0.5 *. Math.pi) tx) in
           angle := tx, ty, tz;
         end else if button = 2 then begin
@@ -71,16 +83,15 @@ let initialize canvas height width fps gl repere_model graph_model surface cube 
 
   add_event_listener canvas wheel (fun evt ->
     prevent_default evt;
-    let y = deltaY evt /. height in
+    let speed = 0.1 *. (z_max -. z_min) in
+    let y = if deltaY evt > 0.0 then speed else -. speed in
     if orthographic then begin
-      Printf.printf "scale + %f = %f\n%!" y !scale;
       scale := exp (log !scale +. y);
     end else begin
       let tx, ty, tz = !move in
       let tz = tz +. y in
       move := tx, ty, tz;
-    end
-    );
+    end);
 
   let previous_time = ref 0.0 in
   let fps_counter = ref 0 in
@@ -94,7 +105,7 @@ let initialize canvas height width fps gl repere_model graph_model surface cube 
       Node.set_text_content fps
         (Printf.sprintf "%.2f fps" (1000.0 /. t));
     end;
-    draw_scene gl aspect repere_model graph_model clock cube surface !angle !move !scale !pointer)
+    draw_scene gl aspect repere_model graph_model clock cube face_textures surface !angle !move !scale !pointer)
 
 
 let progress_bars () =
@@ -158,54 +169,45 @@ let new_plot {width; height; _} data =
   Node.append_child main canvas;
   Node.append_child main fps;
 
+
   let thread =
     begin
       context # status "Initializing ...";
       delay () >>= fun () -> begin
-        Surface.flat context data >>= fun ({Surface.bounds; _} as surface) ->
+        Surface.from_grid context data >>= fun ({Surface.bounds; _} as surface) ->
         let repere_model = RepereModel.initialize gl in
         RepereModel.load repere_model;
 
-        let textures = Array.map (fun descr ->
-            let texture_canvas =
-              Textures.create_grid_texture document
-                (Textures.uniform_ticks 10 bounds.x_min bounds.x_max)
-                (Textures.uniform_ticks 10 bounds.y_min bounds.y_max)
-                (Textures.uniform_ticks 10 bounds.z_min bounds.z_max) descr
-            in
-            if false then Node.append_child main texture_canvas;
-            let texture = create_texture gl in
-            bind_texture gl (_TEXTURE_2D_ gl) texture;
-            tex_image_2D gl (_TEXTURE_2D_ gl) 0 (_RGBA_ gl) (_RGBA_ gl) (type_unsigned_byte gl)  (`Canvas texture_canvas);
-            tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MAG_FILTER_ gl) (_LINEAR_ gl);
-            tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MIN_FILTER_ gl) (_LINEAR_ gl);
-            texture)
-            [|
-              [ `Bottom, false, `Left; `Bottom, false, `Bottom; `Back, false, `Left ];
-              [ `Bottom, false, `Left; `Bottom, false, `Bottom; `Right, false, `Right ];
-              [ `Bottom, true, `Left; `Bottom, false, `Top; `Right, false, `Left ];
-              [ `Bottom, true, `Left; `Bottom, false, `Top; `Front, false, `Right ];
-
-              [ `Bottom, true, `Right; `Bottom, true, `Top; `Front, false, `Left ];
-              [ `Bottom, true, `Right; `Bottom, true, `Top; `Left, false, `Right ];
-              [ `Bottom, false, `Right; `Bottom, true, `Bottom; `Left, false, `Left ];
-              [ `Bottom, false, `Right; `Bottom, true, `Bottom; `Back, false, `Right ];
-
-              [ `Top, false, `Left; `Top, true, `Top; `Back, false, `Left ];
-              [ `Top, false, `Left; `Top, true, `Top; `Right, false, `Right ];
-              [ `Top, true, `Left; `Top, true, `Bottom; `Right, false, `Left ];
-              [ `Top, true, `Left; `Top, true, `Bottom; `Front, false, `Right ];
-
-              [ `Top, true, `Right; `Top, false, `Bottom; `Front, false, `Left ];
-              [ `Top, true, `Right; `Top, false, `Bottom; `Left, false, `Right ];
-              [ `Top, false, `Right; `Top, false, `Top; `Left, false, `Left ];
-              [ `Top, false, `Right; `Top, false, `Top; `Back, false, `Right ];
-
-            |]
+        let new_texture canvas =
+          let texture = create_texture gl in
+          bind_texture gl (_TEXTURE_2D_ gl) texture;
+          tex_image_2D gl (_TEXTURE_2D_ gl) 0 (_RGBA_ gl) (_RGBA_ gl) (type_unsigned_byte gl)  (`Canvas canvas);
+          tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MAG_FILTER_ gl) (_LINEAR_ gl);
+          tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MIN_FILTER_ gl) (_LINEAR_ gl);
+          texture
+        in
+        let cube_texture =
+          let canvas = Textures.create_face_texture document in
+          new_texture canvas
+        in
+        let x_texture =
+          let canvas = Textures.create_ticks_texture document
+              (Textures.uniform_ticks 20 bounds.x_min bounds.x_max) in
+          new_texture canvas
+        in
+        let y_texture =
+          let canvas = Textures.create_ticks_texture document
+              (Textures.uniform_ticks 20 bounds.y_min bounds.y_max) in
+          new_texture canvas
+        in
+        let z_texture =
+          let canvas = Textures.create_ticks_texture document
+              (Textures.uniform_ticks 20 bounds.z_min bounds.z_max) in
+          new_texture canvas
         in
         let graph_model = GraphModel.initialize gl in
-        let cube = RepereModel.build_cube bounds textures in
-        initialize canvas (float height) (float width) fps gl repere_model graph_model surface cube;
+        let cube = RepereModel.build_cube bounds cube_texture in
+        initialize canvas (float height) (float width) fps gl repere_model graph_model surface cube [| x_texture; y_texture; z_texture |];
         Node.remove_child main (progress_bars # element);
         return ()
       end

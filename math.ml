@@ -1,3 +1,5 @@
+open Js_bindings
+
 module List = struct
   include List
 
@@ -38,10 +40,14 @@ module Vector : sig
   val of_two: float * float -> two vector
   val of_three: float * float * float -> three vector
   val of_four: float * float * float * float -> four vector
+  val of_array: float array -> [ `Three of three vector |
+                                 `Two of two vector |
+                                 `Four of four vector ]
 
   val to_two: two vector -> float * float
   val to_three: three vector -> float * float * float
   val to_four: four vector -> float * float * float * float
+  val to_array: 'a vector -> float array
 
   val add: 'a vector -> 'a vector -> 'a vector
   val sub: 'a vector -> 'a vector -> 'a vector
@@ -85,10 +91,17 @@ end = struct
   let of_two (x,y) = [| x; y |]
   let of_three (x,y,z) = [| x; y; z |]
   let of_four (x,y,z,t) = [| x; y; z; t |]
+  let of_array a =
+    match Array.length a with
+    | 2 -> `Two a
+    | 3 -> `Three a
+    | 4 -> `Four a
+    | _ -> failwith "Vector.of_array: unsupported length"
 
   let to_two = function [| x; y; |] -> (x,y) | _ -> assert false
   let to_three = function [| x; y; z |] -> (x,y,z) | _ -> assert false
   let to_four = function [| x; y; z; t|] -> (x,y,z,t) | _ -> assert false
+  let to_array = fun x -> x
 
   let add = Array.map2 (+.)
   let sub = Array.map2 (-.)
@@ -277,6 +290,51 @@ type vec3 = three Vector.vector
 type vec4 = four Vector.vector
 type mat4 = (four, four) Vector.matrix
 
+module Buffer = struct
+  open Js_bindings
+
+
+  let iter_generic dim float_array f =
+    let tmp = Array.create_float dim in
+    Float32Array.for_each float_array (fun x k _ ->
+        let i = k mod dim in
+        tmp.(i) <- x;
+        if i = dim - 1 then
+          f tmp
+      )
+
+  let vec3_of_array a =
+    match Vector.of_array a with
+    | `Three v -> v
+    | _ -> failwith "vec3_of_array"
+
+  let iter3 buffer f =
+    iter_generic 3 buffer (fun a ->
+        f (vec3_of_array (Array.copy a)))
+
+  let number_of_triangles indexes = (Uint16Array.length indexes) / 3
+
+  let iter_triangles ?(chunk_size = 1000) indexes f =
+    let size = number_of_triangles indexes in
+    Asynchronous_computations.range_chunks chunk_size (fun k ->
+        f (Uint16Array.get indexes (3 * k),
+           Uint16Array.get indexes (3 * k + 1),
+           Uint16Array.get indexes (3 * k + 2))
+      ) 0 (size - 1)
+
+
+  let get_generic tmp float_array k =
+    let dim = Array.length tmp in
+    for i = 0 to dim - 1 do
+      tmp.(i) <- Float32Array.get float_array (k * dim + i)
+    done
+
+  let get3 buffer k =
+    let tmp = Array.create_float 3 in
+    get_generic tmp buffer k;
+    vec3_of_array tmp
+end
+
 module Param = struct
 
   let grid_of_fun
@@ -328,9 +386,6 @@ module Param = struct
         return ()
       ) 0 ((Array.length grid) - 2) >>= fun () ->
         return !result
-
-
-
 
   let iter_range min max steps f =
     let step = (max -. min) /. (float steps) in
@@ -461,35 +516,33 @@ module Triangles = struct
     z_max : float;
   }
 
-  let bounding_box l =
-    let iter f (x,y,z) =
-      f x; f y; f z
+  let bounding_box points =
+    if Float32Array.length points < 3 then failwith "bounding_box: not enough points" else
+    let x_min, x_max =
+      let x = Float32Array.get points 0 in
+      ref x, ref x
     in
-    match l with
-    | ((first, _, _) as hd )::tl ->
-      let x,y,z = Vector.to_three first in
-      let x_min, x_max = ref x, ref x in
-      let y_min, y_max = ref y, ref y in
-      let z_min, z_max = ref z, ref z in
-      List.iter (fun p ->
-          iter (function next ->
-              let x, y, z = Vector.to_three next in
-              if x < !x_min then x_min := x;
-              if x > !x_max then x_max := x;
-              if y < !y_min then y_min := y;
-              if y > !y_max then y_max := y;
-              if z < !z_min then z_min := z;
-              if z > !z_max then z_max := z) p)
-        (hd::tl);
-      {
-        x_min = !x_min;
-        x_max = !x_max;
-        y_min = !y_min;
-        y_max = !y_max;
-        z_min = !z_min;
-        z_max = !z_max
-      }
-    | _ -> failwith "bounding_box: empty list"
+    let y_min, y_max =
+      let y = Float32Array.get points 1 in
+      ref y, ref y
+    in
+    let z_min, z_max =
+      let z = Float32Array.get points 2 in
+      ref z, ref z
+    in
+    Float32Array.for_each points (fun v k _ ->
+      let r_min, r_max = match k mod 3 with 0 -> x_min, x_max | 1 -> y_min, y_max | 2 -> z_min, z_max | _ -> assert false in
+      if !r_min > v then r_min := v;
+      if !r_max < v then r_max := v;
+    );
+    {
+      x_min = !x_min;
+      x_max = !x_max;
+      y_min = !y_min;
+      y_max = !y_max;
+      z_min = !z_min;
+      z_max = !z_max
+    }
 
   type rect = {
     x_min : float;
@@ -546,12 +599,12 @@ module Triangles = struct
     else
       forward f i (2 * j)
 
-  type ray_table = (rect * (vec3 * vec3 * vec3) list) list
+  type ray_table = (rect * (int * int * int) list) list
 
-  let build_ray_table context triangles =
-    let nb_triangles = List.length triangles in
+  let build_ray_table context points triangles =
+    let nb_triangles = Buffer.number_of_triangles triangles in
     let size = max (int_of_float (sqrt (float nb_triangles) /. 10.0)) 1 in
-    let {x_min; x_max; z_min; z_max; _} : box = bounding_box triangles in
+    let {x_min; x_max; z_min; z_max; _} : box = bounding_box points in
     let boxes =
       let results = ref [] in
       Param.iter_range x_min x_max size
@@ -577,11 +630,16 @@ module Triangles = struct
     let cpt = ref 0 in
     context # status "Computing ray casting table ...";
     context # push;
-    Asynchronous_computations.(iter_chunks
-~delay:(fun () -> cpt := !cpt + chunks; context # progress ((float !cpt) /. (float nb_triangles)); delay ()) 1000 (fun ((a,b,c) as triangle) ->
-        let x_a, _, z_a = Vector.to_three a in
-        let x_b, _, z_b = Vector.to_three b in
-        let x_c, _, z_c = Vector.to_three c in
+    let open Asynchronous_computations in
+    let delay () =
+      cpt := !cpt + chunks;
+      context # progress ((float !cpt) /. (float nb_triangles));
+      delay ()
+    in
+    Buffer.iter_triangles triangles (fun ((a,b,c) as triangle) ->
+        let x_a, _, z_a = Vector.to_three (Buffer.get3 points a) in
+        let x_b, _, z_b = Vector.to_three (Buffer.get3 points b) in
+        let x_c, _, z_c = Vector.to_three (Buffer.get3 points c) in
         let box_of x z =
           let i =
             match dicho (fun i -> boxes.(i).x_max >= x) 0 (nb_boxes - 1) with
@@ -608,11 +666,11 @@ module Triangles = struct
         box_of x_a z_a;
         box_of x_b z_b;
         box_of x_c z_c
-      ) triangles >>= fun () -> context # pop; delay () >>= fun () ->
+      ) >>= fun () -> context # pop; delay () >>= fun () ->
          context # status "Almost done ...";
-         Asynchronous_computations.hashtbl_to_list context table)
+         Asynchronous_computations.hashtbl_to_list context table
 
-  let ray_triangles table o e =
+  let ray_triangles points table o e =
     let d = Vector.sub e o in
     let l =
       let x_d, _, z_d = Vector.to_three d in
@@ -627,7 +685,11 @@ module Triangles = struct
         ) table
     in
     let hits =
-      List.map (List.choose (fun (a,b,c) -> triangle_intersection o d a b c)) l
+      List.map (List.choose (fun (a,b,c) ->
+        let a = Buffer.get3 points a in
+        let b = Buffer.get3 points b in
+        let c = Buffer.get3 points c in
+        triangle_intersection o d a b c)) l
       |> List.flatten
     in
     match
@@ -637,6 +699,20 @@ module Triangles = struct
     | (_, p) :: _ -> Some p
     | _ -> None
 
+  let triangles_indexes_from_grid dim1 dim2 =
+    let result = Uint16Array.new_uint16_array (`Size (dim1 * dim2 * 2 * 3)) in
+    let k = ref 0 in
+    for i = 0 to dim1 - 2 do
+      for j = 0 to dim2 - 2 do
+        Uint16Array.set result !k (i * dim2 + j); incr k;
+        Uint16Array.set result !k ((i + 1) * dim2 + j); incr k;
+        Uint16Array.set result !k (i * dim2 + j + 1); incr k;
+        Uint16Array.set result !k ((i + 1) * dim2 + j); incr k;
+        Uint16Array.set result !k ((i + 1) * dim2 + j + 1); incr k;
+        Uint16Array.set result !k (i * dim2 + j + 1); incr k;
+      done
+    done;
+    result
 
   let normal_grid grid =
     let open Asynchronous_computations in
