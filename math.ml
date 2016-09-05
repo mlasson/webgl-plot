@@ -296,12 +296,12 @@ module Buffer = struct
 
   let iter_generic dim float_array f =
     let tmp = Array.create_float dim in
-    Float32Array.for_each float_array (fun x k _ ->
+    Float32Array.iteri (fun k x ->
         let i = k mod dim in
         tmp.(i) <- x;
         if i = dim - 1 then
           f tmp
-      )
+      ) float_array
 
   let vec3_of_array a =
     match Vector.of_array a with
@@ -530,11 +530,11 @@ module Triangles = struct
       let z = Float32Array.get points 2 in
       ref z, ref z
     in
-    Float32Array.for_each points (fun v k _ ->
+    Float32Array.iteri (fun k v ->
       let r_min, r_max = match k mod 3 with 0 -> x_min, x_max | 1 -> y_min, y_max | 2 -> z_min, z_max | _ -> assert false in
       if !r_min > v then r_min := v;
       if !r_max < v then r_max := v;
-    );
+    ) points;
     {
       x_min = !x_min;
       x_max = !x_max;
