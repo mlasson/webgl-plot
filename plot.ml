@@ -83,7 +83,7 @@ let initialize canvas height width fps gl repere_model graph_model ({Surface.bou
 
   add_event_listener canvas wheel (fun evt ->
     prevent_default evt;
-    let speed = 0.1 *. (z_max -. z_min) in
+    let speed = 0.1 *. (1.0 +. 0.0 *. (z_max -. z_min)) in
     let y = if deltaY evt > 0.0 then speed else -. speed in
     if orthographic then begin
       scale := exp (log !scale +. y);
