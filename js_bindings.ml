@@ -285,12 +285,15 @@ module Float32Array = struct
    include ([%js] : sig
      val new_float32_array: ([`Data of float array | `Size of int | `Copy of t][@js.union]) -> t [@@js.new]
      val length: t -> int
-     val fill: t -> float -> ?first:int -> ?last:int -> unit -> unit
    end)
 
    external get : t -> int -> float = "caml_js_get"
    external set : t -> int -> float -> unit = "caml_js_set"
 
+   let update a ?(first = 0) ?(last = (length a) - 1) f =
+      for k = first to last do
+        set a k (f k (get a k))
+      done
 
    let iteri f a =
       for k = 0 to length a - 1 do

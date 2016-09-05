@@ -77,7 +77,7 @@ module Surface = struct
          done
        done;
        let colors = Float32Array.new_float32_array (`Copy colors) in
-       Float32Array.fill colors 0.0 ();
+       Float32Array.update colors (fun _ _ -> 0.0);
       {
         size;
 
