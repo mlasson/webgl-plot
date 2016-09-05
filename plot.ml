@@ -148,6 +148,11 @@ type layout = {
   height: int
 }
 
+let list_init n f =
+  let rec aux acc k =
+    if k >= n then List.rev acc else aux ((f k) :: acc) (k + 1)
+  in aux [] 0
+
 let compute_first_projection points x =
   if Array.length points = 0 || Array.length points.(0) = 0 then
     None
@@ -167,12 +172,12 @@ let compute_first_projection points x =
       let t = (x -. prev) /. (next -. prev) in
       let dim = Array.length points.(0) in
       let result =
-        Array.init dim
+        list_init dim
           (fun k ->
-             let x1, y1, z1 = points.(before).(k) in
-             let x2, y2, z2 = points.(after).(k) in
+             let _, y1, z1 = points.(before).(k) in
+             let _, y2, z2 = points.(after).(k) in
              let interp x1 x2 = x1 *. t +. x2 *. (1.0 -. t) in
-             interp x1 x2, interp y1 y2, interp z1 z2)
+             interp z1 z2, interp y1 y2)
       in
       Some result
 
@@ -194,12 +199,12 @@ let compute_second_projection points z =
       let t = (z -. prev) /. (next -. prev) in
       let dim = Array.length points in
       let result =
-        Array.init dim
+        list_init dim
           (fun k ->
-             let x1, y1, z1 = points.(k).(before) in
-             let x2, y2, z2 = points.(k).(after) in
+             let x1, y1, _ = points.(k).(before) in
+             let x2, y2, _ = points.(k).(after) in
              let interp x1 x2 = x1 *. t +. x2 *. (1.0 -. t) in
-             interp x1 x2, interp y1 y2, interp z1 z2)
+             interp x1 x2, interp y1 y2)
       in
       Some result
 
