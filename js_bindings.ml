@@ -283,12 +283,14 @@ end
 module Float32Array = struct
    type t = private Ojs.t[@@js]
    include ([%js] : sig
-     val new_float32_array: ([`Data of float array | `Size of int][@js.union]) -> t [@@js.new]
+     val new_float32_array: ([`Data of float array | `Size of int | `Copy of t][@js.union]) -> t [@@js.new]
      val length: t -> int
+     val fill: t -> float -> ?first:int -> ?last:int -> unit -> unit
    end)
 
    external get : t -> int -> float = "caml_js_get"
    external set : t -> int -> float -> unit = "caml_js_set"
+
 
    let iteri f a =
       for k = 0 to length a - 1 do
@@ -300,7 +302,7 @@ end
 module Uint16Array = struct
    type t = private Ojs.t[@@js]
    include ([%js] : sig
-     val new_uint16_array: ([`Data of int array | `Size of int][@js.union]) -> t [@@js.new]
+     val new_uint16_array: ([`Data of int array | `Size of int | `Copy of t][@js.union]) -> t [@@js.new]
      val length: t -> int
    end)
 

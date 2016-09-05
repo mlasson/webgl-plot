@@ -60,16 +60,32 @@ module Surface = struct
       }
     in
     let lines =
-      let empty = flatten_matrix [||] in
-      let indexes = Triangles.triangles_indexes_from_grid 0 0 in
+       let size = 2 * (dim1 * (dim2 - 1) + dim2 * (dim1 - 1)) in
+       let segments = Array.make size 0 in
+       let k = ref 0 in
+       let idx i j = i * dim2 + j in
+       for i = 0 to dim1 - 1 do
+         for j = 0 to dim2 - 2 do
+           segments.(!k) <- idx i j; incr k;
+           segments.(!k) <- idx i (j + 1); incr k;
+         done
+       done;
+       for j = 0 to dim2 - 1 do
+         for i = 0 to dim1 - 2 do
+           segments.(!k) <- idx i j; incr k;
+           segments.(!k) <- idx (i + 1) j; incr k;
+         done
+       done;
+       let colors = Float32Array.new_float32_array (`Copy colors) in
+       Float32Array.fill colors 0.0 ();
       {
-        size = 0;
+        size;
 
-        points = empty;
-        colors = empty;
-        normals = empty;
+        points;
+        colors;
+        normals;
 
-        indexes;
+        indexes = Uint16Array.new_uint16_array (`Data segments);
       }
     in
     let bounds = Triangles.bounding_box points in
