@@ -235,9 +235,12 @@ module Console : sig
   val log: Ojs.t -> unit
 end[@js.scope "console"] = [%js]
 
+
+type timeout_id = private Ojs.t[@@js]
 include ([%js] : sig
-  val set_interval: (unit -> unit) -> float -> unit
-  val set_timeout: (unit -> unit) -> float -> unit
+  val set_interval: (unit -> unit) -> float -> timeout_id
+  val set_timeout: (unit -> unit) -> float -> timeout_id
+  val clear_timeout: timeout_id -> unit
 end)
 
 module JSON : sig
@@ -337,6 +340,8 @@ module Html = struct
     val mouse_of_js: Ojs.t -> mouse
     val mouse_to_js: mouse -> Ojs.t
 
+    val click : mouse event_name
+    val dblclick : mouse event_name
     val mousemove : mouse event_name
     val contextmenu : mouse event_name
 
@@ -371,6 +376,8 @@ module Html = struct
     let event_of_js _ x = x
     let event_to_js _ x = x
 
+    let click = "click"
+    let dblclick = "dblclick"
     let mousemove = "mousemove"
     let change = "change"
     let contextmenu = "contextmenu"

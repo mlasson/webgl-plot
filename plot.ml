@@ -42,7 +42,7 @@ let position canvas evt =
     (float (Event.clientY evt) -. top) /. scale_y
 
 
-let initialize canvas height width fps gl repere_model graph_model ({Surface.bounds = { z_max; z_min; _}; _} as surface) cube face_textures callback =
+let initialize canvas height width fps gl repere_model graph_model ({Surface.bounds = { z_max; z_min; _}; _} as surface) cube face_textures callback on_click =
   let aspect = width /. height in
   let pointer = ref (0.0, 0.0) in
   let angle = ref (0., 0., 0.) in
@@ -80,6 +80,10 @@ let initialize canvas height width fps gl repere_model graph_model ({Surface.bou
       moving := true;
     end else moving := false;
     pointer := (x,y));
+
+  add_event_listener canvas dblclick (fun _ ->
+    on_click ()
+  );
 
   add_event_listener canvas wheel (fun evt ->
     prevent_default evt;
@@ -144,7 +148,62 @@ type layout = {
   height: int
 }
 
-let new_plot {width; height; _} data =
+let compute_first_projection points x =
+  if Array.length points = 0 || Array.length points.(0) = 0 then
+    None
+  else
+    let before =
+      let result = ref 0 in
+      Array.iteri (fun i row ->
+          let (x', _, _) = row.(0) in
+          if x' < x then
+            result := i) points;
+      !result
+    in
+    if before = Array.length points - 1 then None else
+      let after = before + 1 in
+      let prev = let x, _, _ =  points.(before).(0) in x in
+      let next = let x, _, _ = points.(after).(0) in x in
+      let t = (x -. prev) /. (next -. prev) in
+      let dim = Array.length points.(0) in
+      let result =
+        Array.init dim
+          (fun k ->
+             let x1, y1, z1 = points.(before).(k) in
+             let x2, y2, z2 = points.(after).(k) in
+             let interp x1 x2 = x1 *. t +. x2 *. (1.0 -. t) in
+             interp x1 x2, interp y1 y2, interp z1 z2)
+      in
+      Some result
+
+let compute_second_projection points z =
+  if Array.length points = 0 || Array.length points.(0) = 0 then
+    None
+  else
+    let before =
+      let result = ref 0 in
+      Array.iteri (fun j (_, _, z') ->
+          if z' < z then
+            result := j) points.(0);
+      !result
+    in
+    if before = Array.length points - 1 then None else
+      let after = before + 1 in
+      let prev = let _, _, z =  points.(0).(before) in z in
+      let next = let _, _, z = points.(0).(after) in z in
+      let t = (z -. prev) /. (next -. prev) in
+      let dim = Array.length points in
+      let result =
+        Array.init dim
+          (fun k ->
+             let x1, y1, z1 = points.(k).(before) in
+             let x2, y2, z2 = points.(k).(after) in
+             let interp x1 x2 = x1 *. t +. x2 *. (1.0 -. t) in
+             interp x1 x2, interp y1 y2, interp z1 z2)
+      in
+      Some result
+
+let new_plot {width; height; _} ?(on_click=ignore) data =
   let main = create "div" in
   let progress_bars = progress_bars () in
   Node.append_child main (progress_bars # element);
@@ -175,7 +234,9 @@ let new_plot {width; height; _} data =
 
   let floating_div = create ~class_name:"floatingDiv" "div" in
   Node.append_child container floating_div;
+  let last_intersection = ref None in
   let callback (x,y) intersection =
+    last_intersection := intersection;
     Element.set_attribute floating_div "style" (Printf.sprintf "position:absolute; left: %.2f%%; top: %.2f%%;" (50.0 *. (1.0 +. x)) (50.0 *. (1.0 -. y)));
     match intersection with
     | None ->
@@ -185,7 +246,11 @@ let new_plot {width; height; _} data =
        Element.set_attribute canvas "style" "cursor: none;";
        Node.set_text_content floating_div (Printf.sprintf "%f, %f, %f" x z y)
   in
-
+  let on_click () =
+    match !last_intersection with
+    | Some p -> on_click (Math.Vector.to_three p)
+    | None -> ()
+  in
   let thread =
     begin
       context # status "Initializing ...";
@@ -223,7 +288,7 @@ let new_plot {width; height; _} data =
         in
         let graph_model = GraphModel.initialize gl in
         let cube = RepereModel.build_cube bounds cube_texture in
-        initialize canvas (float height) (float width) fps gl repere_model graph_model surface cube [| x_texture; y_texture; z_texture |] callback;
+        initialize canvas (float height) (float width) fps gl repere_model graph_model surface cube [| x_texture; y_texture; z_texture |] callback on_click;
         Node.remove_child main (progress_bars # element);
         return ()
       end
