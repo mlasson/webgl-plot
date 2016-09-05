@@ -42,7 +42,7 @@ let position canvas evt =
     (float (Event.clientY evt) -. top) /. scale_y
 
 
-let initialize canvas height width fps gl repere_model graph_model ({Surface.bounds = { z_max; z_min; _}; _} as surface) cube face_textures =
+let initialize canvas height width fps gl repere_model graph_model ({Surface.bounds = { z_max; z_min; _}; _} as surface) cube face_textures callback =
   let aspect = width /. height in
   let pointer = ref (0.0, 0.0) in
   let angle = ref (0., 0., 0.) in
@@ -105,7 +105,7 @@ let initialize canvas height width fps gl repere_model graph_model ({Surface.bou
       Node.set_text_content fps
         (Printf.sprintf "%.2f fps" (1000.0 /. t));
     end;
-    draw_scene gl aspect repere_model graph_model clock cube face_textures surface !angle !move !scale !pointer)
+    draw_scene gl aspect repere_model graph_model clock cube face_textures surface !angle !move !scale !pointer callback )
 
 
 let progress_bars () =
@@ -139,7 +139,6 @@ let progress_bars () =
         with _ -> ()
     end
 
-
 type layout = {
   width: int;
   height: int
@@ -151,6 +150,7 @@ let new_plot {width; height; _} data =
   Node.append_child main (progress_bars # element);
   let context = (progress_bars :> context) in
   let canvas = Document.create_html_canvas document in
+  Element.set_class_name canvas "webgl_plot";
   Event.add_event_listener canvas Event.contextmenu Event.prevent_default;
   let fps = create "div" in
   configure_element ~attributes:["width", string_of_int width; "height", string_of_int height] canvas;
@@ -166,9 +166,25 @@ let new_plot {width; height; _} data =
   depth_func gl (_LEQUAL_ gl);
   Html.Canvas.WebGl.line_width gl 4.0;
 
-  Node.append_child main canvas;
+  let overlap = create ~class_name:"overlap" "div" in
+  let container = create ~class_name:"container" "div" in
+  Node.append_child main overlap;
+  Node.append_child overlap canvas;
+  Node.append_child overlap container;
   Node.append_child main fps;
 
+  let floating_div = create ~class_name:"floatingDiv" "div" in
+  Node.append_child container floating_div;
+  let callback (x,y) intersection =
+    Element.set_attribute floating_div "style" (Printf.sprintf "position:absolute; left: %.2f%%; top: %.2f%%;" (50.0 *. (1.0 +. x)) (50.0 *. (1.0 -. y)));
+    match intersection with
+    | None ->
+       Element.set_attribute canvas "style" "";
+       Node.set_text_content floating_div ""
+    | Some p -> let (x,y,z) = Math.Vector.to_three p in
+       Element.set_attribute canvas "style" "cursor: none;";
+       Node.set_text_content floating_div (Printf.sprintf "%f, %f, %f" x z y)
+  in
 
   let thread =
     begin
@@ -207,7 +223,7 @@ let new_plot {width; height; _} data =
         in
         let graph_model = GraphModel.initialize gl in
         let cube = RepereModel.build_cube bounds cube_texture in
-        initialize canvas (float height) (float width) fps gl repere_model graph_model surface cube [| x_texture; y_texture; z_texture |];
+        initialize canvas (float height) (float width) fps gl repere_model graph_model surface cube [| x_texture; y_texture; z_texture |] callback;
         Node.remove_child main (progress_bars # element);
         return ()
       end

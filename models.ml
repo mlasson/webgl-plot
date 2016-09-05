@@ -788,7 +788,7 @@ let draw_faces repere_model {Triangles.x_min; x_max; y_min; y_max; z_max; z_min}
   end else
     assert false
 
-let draw_scene gl aspect repere_model graph_model clock cube face_textures ({Surface.bounds; ray_table; _ } as surface) ((angle_x, angle_y, _) as angle) move scale (x,y) =
+let draw_scene gl aspect repere_model graph_model clock cube face_textures ({Surface.bounds; ray_table; _ } as surface) ((angle_x, angle_y, _) as angle) move scale (x,y) callback =
   let proportions, matrix, matrix' = Surface.world_matrix aspect bounds angle move scale in
 
   clear gl ((_COLOR_BUFFER_BIT_ gl) lor (_DEPTH_BUFFER_BIT_ gl));
@@ -811,9 +811,11 @@ let draw_scene gl aspect repere_model graph_model clock cube face_textures ({Sur
     in
     last_update := clock;
     GraphModel.set_light graph_model (1.0,1.0,-2.0);
-    match Triangles.ray_triangles surface.mesh.points ray_table o e with
+    let intersection = Triangles.ray_triangles surface.mesh.points ray_table o e  in
+    (match intersection with
     | Some p ->
       GraphModel.draw_point graph_model (matrix :> float array) proportions p
-    | _ -> ()
+    | _ -> ());
+    callback (x,y) intersection
   end;
   GraphModel.draw_surface graph_model (matrix :> float array) surface
