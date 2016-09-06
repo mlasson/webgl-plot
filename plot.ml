@@ -153,62 +153,77 @@ let list_init n f =
     if k >= n then List.rev acc else aux ((f k) :: acc) (k + 1)
   in aux [] 0
 
-let compute_first_projection points x =
-  if Array.length points = 0 || Array.length points.(0) = 0 then
-    None
-  else
-    let dim1 = Array.length points in
-    let dim2 = Array.length points.(0) in
-    let before =
-      let result = ref 0 in
-      Array.iteri (fun i row ->
-          let (x', _, _) = row.(0) in
-          if x' < x then
-            result := i) points;
-      !result
-    in
-    if before = dim1 - 1 then None else
-      let after = before + 1 in
-      let prev = let x, _, _ = points.(before).(0) in x in
-      let next = let x, _, _ = points.(after).(0) in x in
-      let t = (x -. prev) /. (next -. prev) in
-      let result =
-        list_init dim2
-          (fun k ->
-             let _, y1, z1 = points.(before).(k) in
-             let _, y2, z2 = points.(after).(k) in
-             let interp x1 x2 = x1 *. t +. x2 *. (1.0 -. t) in
-             interp z1 z2, interp y1 y2)
-      in
-      Some result
 
-let compute_second_projection points z =
-  if Array.length points = 0 || Array.length points.(0) = 0 then
+let compute_projections points (x,z) =
+  if Array.length points < 2 || Array.length points.(0) < 2 then
     None
   else
     let dim1 = Array.length points in
     let dim2 = Array.length points.(0) in
-    let before =
-      let result = ref 0 in
-      Array.iteri (fun j (_, _, z') ->
-          if z' < z then
-            result := j) points.(0);
-      !result
+    let proj1, proj2, x, z =
+       let x1,_,_ = points.(0).(0) in
+       let x2,_,_ = points.(1).(0) in
+       let x3,_,_ = points.(0).(1) in
+       if x2 -. x1 > x3 -. x1 then
+         (fun (x,y,z) -> x, (z, y)),
+         (fun (x,y,z) -> z, (x, y)),
+         x, z
+       else
+         (fun (x,y,z) -> z, (x, y)),
+         (fun (x,y,z) -> x, (z, y)),
+         z, x
     in
-    if before = dim2 - 1 then None else
-      let after = before + 1 in
-      let prev = let _, _, z = points.(0).(before) in z in
-      let next = let _, _, z = points.(0).(after) in z in
-      let t = (z -. prev) /. (next -. prev) in
-      let result =
-        list_init dim1
-          (fun k ->
-             let x1, y1, _ = points.(k).(before) in
-             let x2, y2, _ = points.(k).(after) in
-             let interp x1 x2 = x1 *. t +. x2 *. (1.0 -. t) in
-             interp x1 x2, interp y1 y2)
+    let first_proj =
+      let before =
+        let result = ref 0 in
+        Array.iteri (fun i row ->
+            let x', _ = proj1 row.(0) in
+            if x' < x then
+              result := i) points;
+        !result
       in
-      Some result
+      if before = dim1 - 1 then None else
+        let after = before + 1 in
+        let prev, _ = proj1 points.(before).(0) in
+        let next, _ = proj1 points.(after).(0) in
+        let t = (x -. prev) /. (next -. prev) in
+        let result =
+          list_init dim2
+            (fun k ->
+               let _, (z1, y1) = proj1 points.(before).(k) in
+               let _, (z2, y2) = proj1 points.(after).(k) in
+               let interp x1 x2 = x1 *. t +. x2 *. (1.0 -. t) in
+               interp z1 z2, interp y1 y2)
+        in
+        Some result
+    in
+    let second_proj =
+      let before =
+        let result = ref 0 in
+        Array.iteri (fun j p ->
+            let z', _ = proj2 p in
+            if z' < z then
+              result := j) points.(0);
+        !result
+      in
+      if before = dim2 - 1 then None else
+        let after = before + 1 in
+        let prev, _ = proj2 points.(0).(before) in
+        let next, _ = proj2 points.(0).(after) in
+        let t = (z -. prev) /. (next -. prev) in
+        let result =
+          list_init dim1
+            (fun k ->
+               let _, (x1, y1) = proj2 points.(k).(before) in
+               let _, (x2, y2) = proj2 points.(k).(after) in
+               let interp x1 x2 = x1 *. t +. x2 *. (1.0 -. t) in
+               interp x1 x2, interp y1 y2)
+        in
+        Some result
+    in
+    match first_proj, second_proj with
+    | Some r1, Some r2 -> Some (r1, r2)
+    | _ -> None
 
 let new_plot {width; height; _} ?(on_click=ignore) data =
   let main = create "div" in
