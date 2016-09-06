@@ -771,35 +771,35 @@ let draw_faces repere_model {Triangles.x_min; x_max; y_min; y_max; z_max; z_min}
 
   if -. pi4 <= angle_y && angle_y <= 0.0 then begin
     draw_x_axis (not do_flip) (above_or_below, `Bottom);
-    draw_y_axis (not do_flip) (`Back, `Left);
+    draw_y_axis false (`Back, `Left);
     draw_z_axis (not do_flip) (above_or_below, `Left)
   end else if -. pi2 <= angle_y && angle_y <= -. pi4 then begin
     draw_x_axis (not do_flip) (above_or_below, `Bottom);
-    draw_y_axis do_flip (`Right, `Right);
+    draw_y_axis true (`Right, `Right);
     draw_z_axis (not do_flip) (above_or_below, `Left)
   end else if -. pi6 <= angle_y && angle_y <= -. pi2 then begin
     draw_x_axis (not do_flip) (above_or_below, `Top);
-    draw_y_axis (not do_flip) (`Right, `Left);
+    draw_y_axis false (`Right, `Left);
     draw_z_axis do_flip (above_or_below, `Left)
   end else if -. pi <= angle_y && angle_y <= -. pi6 then begin
     draw_x_axis (not do_flip) (above_or_below, `Top);
-    draw_y_axis do_flip (`Front, `Right);
+    draw_y_axis true (`Front, `Right);
     draw_z_axis do_flip (above_or_below, `Left) (* OK *)
   end else if pi >= angle_y && angle_y >= pi6 then begin
     draw_x_axis do_flip (above_or_below, `Top);  (* OK *)
-    draw_y_axis (not do_flip) (`Front, `Left);
+    draw_y_axis false (`Front, `Left);
     draw_z_axis do_flip (above_or_below, `Right)
   end else if pi6 >= angle_y && angle_y >= pi2 then begin
     draw_x_axis do_flip (above_or_below, `Top);  (* OK *)
-    draw_y_axis do_flip (`Left, `Right);
+    draw_y_axis true (`Left, `Right);
     draw_z_axis do_flip (above_or_below, `Right)
   end else if pi2 >= angle_y && angle_y >= pi4 then begin
     draw_x_axis do_flip (above_or_below, `Bottom);
-    draw_y_axis (not do_flip) (`Left, `Left);
+    draw_y_axis false (`Left, `Left);
     draw_z_axis (not do_flip) (above_or_below, `Right)
   end else if pi4 >= angle_y && angle_y >= 0.0 then begin
     draw_x_axis do_flip (above_or_below, `Bottom); (* OK *)
-    draw_y_axis do_flip (`Back, `Right);
+    draw_y_axis true (`Back, `Right);
     draw_z_axis (not do_flip) (above_or_below, `Right)
   end else
     assert false
