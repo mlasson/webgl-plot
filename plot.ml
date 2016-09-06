@@ -157,6 +157,8 @@ let compute_first_projection points x =
   if Array.length points = 0 || Array.length points.(0) = 0 then
     None
   else
+    let dim1 = Array.length points in
+    let dim2 = Array.length points.(0) in
     let before =
       let result = ref 0 in
       Array.iteri (fun i row ->
@@ -165,14 +167,13 @@ let compute_first_projection points x =
             result := i) points;
       !result
     in
-    if before = Array.length points - 1 then None else
+    if before = dim1 - 1 then None else
       let after = before + 1 in
-      let prev = let x, _, _ =  points.(before).(0) in x in
+      let prev = let x, _, _ = points.(before).(0) in x in
       let next = let x, _, _ = points.(after).(0) in x in
       let t = (x -. prev) /. (next -. prev) in
-      let dim = Array.length points.(0) in
       let result =
-        list_init dim
+        list_init dim2
           (fun k ->
              let _, y1, z1 = points.(before).(k) in
              let _, y2, z2 = points.(after).(k) in
@@ -185,6 +186,8 @@ let compute_second_projection points z =
   if Array.length points = 0 || Array.length points.(0) = 0 then
     None
   else
+    let dim1 = Array.length points in
+    let dim2 = Array.length points.(0) in
     let before =
       let result = ref 0 in
       Array.iteri (fun j (_, _, z') ->
@@ -192,14 +195,13 @@ let compute_second_projection points z =
             result := j) points.(0);
       !result
     in
-    if before = Array.length points - 1 then None else
+    if before = dim2 - 1 then None else
       let after = before + 1 in
-      let prev = let _, _, z =  points.(0).(before) in z in
+      let prev = let _, _, z = points.(0).(before) in z in
       let next = let _, _, z = points.(0).(after) in z in
       let t = (z -. prev) /. (next -. prev) in
-      let dim = Array.length points in
       let result =
-        list_init dim
+        list_init dim1
           (fun k ->
              let x1, y1, _ = points.(k).(before) in
              let x2, y2, _ = points.(k).(after) in
