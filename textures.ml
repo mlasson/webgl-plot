@@ -14,10 +14,17 @@ type ticks = {
   text: int -> string
 }
 
+let format_from_range r =
+  if r < 1e-4 then
+    Printf.sprintf "%g"
+  else
+    let d = int_of_float (log10 r) + 2 in
+    Printf.sprintf "%.*f" d
+
 let uniform_ticks number x_min x_max = {
   number;
   text = (fun k ->
-     Printf.sprintf "%2f" (x_min +. (float k) *. (x_max -. x_min) /. (float number)));
+     format_from_range (x_max -. x_min) (x_min +. (float k) *. (x_max -. x_min) /. (float number)));
 }
 
 (*
