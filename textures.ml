@@ -50,7 +50,7 @@ let tick_height = 0.03
 let real_size = 2048
 let inner_size = 0.9 *. (float real_size)
 let line_width = 8.0
-let font_size = 6.0 *. line_width
+let font_size = 10.0 *. line_width
 let font = Printf.sprintf "%.0fpx Arial" font_size
 
 
@@ -77,7 +77,7 @@ let draw_tick context text =
   fill_text context text (-. tick_size -. line_width -. text_width) (0.5 *. (font_size -. line_width));
   fill_text context text (tick_size +. line_width) (0.5 *. (font_size -. line_width))
 
-let create_ticks_texture document {number; text} =
+let create_ticks_texture document label {number; text} =
   let canvas = Document.create_html_canvas document in
   Canvas.set_width canvas real_size;
   Canvas.set_height canvas real_size;
@@ -103,13 +103,42 @@ let create_ticks_texture document {number; text} =
     for _ = 1 to number-1 do
       pop context;
     done;
-  in
+    in
+  let text_width = TextMetrics.width (measure_text context label) in
   push context (`Translate (0.25 *. size, padding));
   draw_ticks text;
+  begin
+    push context (`Translate (-. 0.25 *. size, 0.5 *. (size -. text_width)));
+    push context (`Rotate (0.5 *. Math.pi));
+      fill_text context label 0.0 0.0;
+    pop context;
+    pop context;
+
+    push context (`Translate (0.25 *. size, 0.5 *. (size +. text_width)));
+    push context (`Rotate (-0.5 *. Math.pi));
+      fill_text context label 0.0 0.0;
+    pop context;
+    pop context;
+  end;
+
+
   pop context;
 
   push context (`Translate (0.75 *. size, padding));
   draw_ticks (fun k-> text (number - k));
+  begin
+    push context (`Translate (-. 0.25 *. size, 0.5 *. (size -. text_width)));
+    push context (`Rotate (0.5 *. Math.pi));
+    fill_text context label 0.0 0.0;
+    pop context;
+    pop context;
+    push context (`Translate (0.25 *. size, 0.5 *. (size +. text_width)));
+    push context (`Rotate (-0.5 *. Math.pi));
+    fill_text context label 0.0 0.0;
+    pop context;
+    pop context;
+  end;
+
   pop context;
   assert (Stack.is_empty stack);
   canvas

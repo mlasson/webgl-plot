@@ -145,7 +145,10 @@ let progress_bars () =
 
 type layout = {
   width: int;
-  height: int
+  height: int;
+  x_axis_label: string;
+  y_axis_label: string;
+  z_axis_label: string;
 }
 
 let list_init n f =
@@ -225,7 +228,7 @@ let compute_projections points (x,z) =
     | Some r1, Some r2 -> Some (r1, r2)
     | _ -> None
 
-let new_plot {width; height; _} ?(on_click=ignore) data =
+let new_plot {width; height; x_axis_label; y_axis_label; z_axis_label; _} ?(on_click=ignore) data =
   let main = create "div" in
   let progress_bars = progress_bars () in
   Node.append_child main (progress_bars # element);
@@ -294,18 +297,18 @@ let new_plot {width; height; _} ?(on_click=ignore) data =
           new_texture canvas
         in
         let x_texture =
-          let canvas = Textures.create_ticks_texture document
-              (Textures.uniform_ticks 20 bounds.x_min bounds.x_max) in
+          let canvas = Textures.create_ticks_texture document x_axis_label
+              (Textures.uniform_ticks 10 bounds.x_min bounds.x_max) in
           new_texture canvas
         in
         let y_texture =
-          let canvas = Textures.create_ticks_texture document
-              (Textures.uniform_ticks 20 bounds.y_min bounds.y_max) in
+          let canvas = Textures.create_ticks_texture document y_axis_label
+              (Textures.uniform_ticks 10 bounds.y_min bounds.y_max) in
           new_texture canvas
         in
         let z_texture =
-          let canvas = Textures.create_ticks_texture document
-              (Textures.uniform_ticks 20 bounds.z_min bounds.z_max) in
+          let canvas = Textures.create_ticks_texture document z_axis_label
+              (Textures.uniform_ticks 10 bounds.z_min bounds.z_max) in
           new_texture canvas
         in
         let graph_model = GraphModel.initialize gl in
