@@ -335,6 +335,7 @@ module Html = struct
     val event_to_js: ('a -> Ojs.t) -> 'a event -> Ojs.t
 
     val change : unit event_name
+    val resize : unit event_name
 
     type mouse
     val mouse_of_js: Ojs.t -> mouse
@@ -380,6 +381,7 @@ module Html = struct
     let dblclick = "dblclick"
     let mousemove = "mousemove"
     let change = "change"
+    let resize = "resize"
     let contextmenu = "contextmenu"
 
     let wheel = "wheel"

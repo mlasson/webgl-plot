@@ -805,10 +805,11 @@ let draw_faces repere_model {Triangles.x_min; x_max; y_min; y_max; z_max; z_min}
 let draw_scene gl aspect repere_model graph_model clock cube face_textures ({Surface.bounds; ray_table; _ } as surface) ((angle_x, angle_y, _) as angle) move scale (x,y) callback =
   let proportions, matrix, matrix' = Surface.world_matrix aspect bounds angle move scale in
 
-  if Math.debug then
+  if Math.debug then begin
     let x1, y1, z1 = angle in
     let x2, y2, z2 = move in
     Printf.printf "angle = (%f, %f, %f), move = (%f, %f, %f)\n%!" x1 y1 z1 x2 y2 z2;
+  end;
 
   clear gl ((_COLOR_BUFFER_BIT_ gl) lor (_DEPTH_BUFFER_BIT_ gl));
 

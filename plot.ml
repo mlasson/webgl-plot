@@ -44,9 +44,13 @@ let position canvas evt =
     (float (Event.clientX evt) -. left) /. scale_x,
     (float (Event.clientY evt) -. top) /. scale_y
 
+let compute_aspect_ratio canvas =
+  let rect = Element.get_bounding_client_rect canvas in
+  Rect.width rect /. Rect.height rect
+
 
 let initialize canvas height width fps gl repere_model graph_model ({Surface.bounds = { z_max; z_min; _}; _} as surface) cube face_textures callback on_click =
-  let aspect = width /. height in
+  let aspect = ref (compute_aspect_ratio canvas) in
   let pointer = ref (0.0, 0.0) in
   let angle = ref initial_angle in
   let move = ref initial_move in
@@ -107,8 +111,9 @@ let initialize canvas height width fps gl repere_model graph_model ({Surface.bou
   let previous_time = ref 0.0 in
   let fps_counter = ref 0 in
   let update_freq = 30 in
-  let state = ref (!angle, !move, !scale, !pointer) in
+  let state = ref (false, !aspect, !angle, !move, !scale, !pointer) in
   loop (fun clock ->
+    aspect := compute_aspect_ratio canvas;
     incr fps_counter;
     if !fps_counter = update_freq then begin
       let t = (clock -. !previous_time) /. (float update_freq) in
@@ -117,10 +122,10 @@ let initialize canvas height width fps gl repere_model graph_model ({Surface.bou
       Node.set_text_content fps
         (Printf.sprintf "%.2f fps" (1000.0 /. t));
     end;
-    let new_state = !angle, !move, !scale, !pointer in
+    let new_state = true, !aspect, !angle, !move, !scale, !pointer in
     if new_state <> !state then begin
       state := new_state;
-      draw_scene gl aspect repere_model graph_model clock cube face_textures surface !angle !move !scale !pointer callback
+      draw_scene gl !aspect repere_model graph_model clock cube face_textures surface !angle !move !scale !pointer callback
     end)
 
 
@@ -139,7 +144,6 @@ let progress_bars () =
       method element = progress_bars
 
       method status text =
-        print_endline text;
         if Stack.is_empty stack then add_bar ();
         configure_element ~text (snd (Stack.top stack))
 
