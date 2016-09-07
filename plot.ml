@@ -5,6 +5,9 @@ open Canvas.WebGl
 open Helper
 open Asynchronous_computations
 
+let initial_angle = (-0.5, 0.8, 0.0)
+let initial_move = (0.0, 0.15, 2.0)
+
 let generation = ref 0
 
 let loop f =
@@ -45,8 +48,8 @@ let position canvas evt =
 let initialize canvas height width fps gl repere_model graph_model ({Surface.bounds = { z_max; z_min; _}; _} as surface) cube face_textures callback on_click =
   let aspect = width /. height in
   let pointer = ref (0.0, 0.0) in
-  let angle = ref (0., 0., 0.) in
-  let move = ref (0., 0., 2.) in
+  let angle = ref initial_angle in
+  let move = ref initial_move in
   let scale = ref 1.0 in
   let moving = ref false in
 
@@ -93,7 +96,11 @@ let initialize canvas height width fps gl repere_model graph_model ({Surface.bou
       scale := exp (log !scale +. y);
     end else begin
       let tx, ty, tz = !move in
-      let tz = tz +. y in
+      let tz =
+        let tz' = tz +. y in
+        if 0.5 < tz' && tz' < 3.0 then
+          tz' else tz
+      in
       move := tx, ty, tz;
     end);
 

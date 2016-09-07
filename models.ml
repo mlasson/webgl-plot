@@ -115,7 +115,6 @@ module Surface = struct
 
   let flatten_lines l =
     let size = List.length l in
-    Printf.printf "flatten_lines(%d)\n" size;
     let array = Array.create_float (2 * 3 * size) in
     let k = ref 0 in
     iter_chunks 1000 (fun (a,b) ->
@@ -131,7 +130,6 @@ module Surface = struct
     return (Float32Array.new_float32_array (`Data array)))
 
   let constant_array size a =
-    Printf.printf "constant_array(%d)\n" size;
     let array = Array.create_float (3 * size) in
     let k = ref 0 in
     let (x_a,y_a,z_a) = Vector.to_three a in
@@ -171,8 +169,8 @@ module Surface = struct
     context # pop;
     return (points, colors)
 
-  let my_projection aspect = Vector.Const.projection ~fov:(pi /. 4.0) ~near:0.0001 ~far:10.0 ~aspect
-  let my_inverse_projection aspect = Vector.Const.inverse_projection ~fov:(pi /. 4.0) ~near:0.0001 ~far:10.0 ~aspect
+  let my_projection aspect = Vector.Const.projection ~fov:(pi /. 4.0) ~near:0.001 ~far:4.0 ~aspect
+  let my_inverse_projection aspect = Vector.Const.inverse_projection ~fov:(pi /. 4.0) ~near:0.001 ~far:4.0 ~aspect
 
   let world_matrix aspect {Triangles.x_max; x_min; y_max; y_min; z_min; z_max} (angle_x, angle_y, angle_z) (trans_x, trans_y, trans_z) scale_xyz =
     let open Vector in
@@ -806,6 +804,11 @@ let draw_faces repere_model {Triangles.x_min; x_max; y_min; y_max; z_max; z_min}
 
 let draw_scene gl aspect repere_model graph_model clock cube face_textures ({Surface.bounds; ray_table; _ } as surface) ((angle_x, angle_y, _) as angle) move scale (x,y) callback =
   let proportions, matrix, matrix' = Surface.world_matrix aspect bounds angle move scale in
+
+  if Math.debug then
+    let x1, y1, z1 = angle in
+    let x2, y2, z2 = move in
+    Printf.printf "angle = (%f, %f, %f), move = (%f, %f, %f)\n%!" x1 y1 z1 x2 y2 z2;
 
   clear gl ((_COLOR_BUFFER_BIT_ gl) lor (_DEPTH_BUFFER_BIT_ gl));
 

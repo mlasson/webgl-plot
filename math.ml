@@ -1,5 +1,7 @@
 open Js_bindings
 
+let debug = false
+
 module List = struct
   include List
 
@@ -48,6 +50,7 @@ module Vector : sig
   val to_three: three vector -> float * float * float
   val to_four: four vector -> float * float * float * float
   val to_array: 'a vector -> float array
+  val to_string: 'a vector -> string
 
   val add: 'a vector -> 'a vector -> 'a vector
   val sub: 'a vector -> 'a vector -> 'a vector
@@ -102,6 +105,7 @@ end = struct
   let to_three = function [| x; y; z |] -> (x,y,z) | _ -> assert false
   let to_four = function [| x; y; z; t|] -> (x,y,z,t) | _ -> assert false
   let to_array = fun x -> x
+  let to_string = fun x -> String.concat "," (List.map string_of_float (Array.to_list x))
 
   let add = Array.map2 (+.)
   let sub = Array.map2 (-.)
@@ -684,6 +688,8 @@ module Triangles = struct
             None
         ) table
     in
+    if debug then
+       Printf.printf "nb_boxes : %d / %d\n%!" (List.length l) (List.length table);
     let hits =
       List.map (List.choose (fun (a,b,c) ->
         let a = Buffer.get3 points a in

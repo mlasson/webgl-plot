@@ -17,7 +17,7 @@ js_bindings.cmo: js_bindings.ml
 helper.cmo: helper.ml js_bindings.cmo
 models.cmo: models.ml math.cmo helper.cmo js_bindings.cmo textures.cmo
 plot.cmo: plot.ml models.cmo
-textures.cmo: textures.ml js_bindings.cmo
+textures.cmo: textures.ml js_bindings.cmo math.cmo
 main.cmo: main.ml js_bindings.cmo models.cmo plot.cmo
 asynchronous_computations.cmo: asynchronous_computations.ml js_bindings.cmo
 math.cmo: math.ml js_bindings.cmo 
