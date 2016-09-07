@@ -605,29 +605,50 @@ module Triangles = struct
 
   type ray_table = (rect * (int * int * int) list) list
 
+  let partition points size =
+    let len = (Float32Array.length points) / 3 in
+    let xs = Array.create_float len in
+    let zs = Array.create_float len in
+    for k = 0 to len - 1 do
+      let x = Float32Array.get points (3 * k) in
+      let z = Float32Array.get points (3 * k + 2) in
+       xs.(k) <- x;
+       zs.(k) <- z;
+    done;
+    Array.sort compare xs;
+    Array.sort compare zs;
+    let bag = len / size in
+    let results = ref [] in
+    for i = 0 to size - 1 do
+      for j = 0 to size - 1 do
+        let get_bounds k a =
+          if k = 0 then xs.(0)
+          else if k = size then xs.(len - 1)
+          else let pos = k * bag in
+          0.5 *. (a.(pos + 1) +. a.(pos))
+        in
+        let x_min = get_bounds i xs in
+        let x_max = get_bounds (i + 1) xs in
+        let z_min = get_bounds j zs in
+        let z_max = get_bounds (j + 1) zs in
+        let rect : rect =
+          {
+            x_min;
+            x_max;
+            z_min;
+            z_max
+          }
+        in
+        results := rect :: !results
+      done
+    done;
+    Array.of_list (List.rev !results)
+
+
   let build_ray_table context points triangles =
     let nb_triangles = Buffer.number_of_triangles triangles in
     let size = max (int_of_float (sqrt (float nb_triangles) /. 10.0)) 1 in
-    let {x_min; x_max; z_min; z_max; _} : box = bounding_box points in
-    let boxes =
-      let results = ref [] in
-      Param.iter_range x_min x_max size
-        begin fun x x' ->
-          Param.iter_range z_min z_max size
-            begin fun z z' ->
-              let rect : rect =
-                {
-                  x_min = x;
-                  x_max = x';
-                  z_min = z;
-                  z_max = z'
-                }
-              in
-              results := rect :: !results
-            end
-        end;
-      Array.of_list (List.rev !results)
-    in
+    let boxes = partition points size in
     let nb_boxes = Array.length boxes in
     let table = Hashtbl.create nb_boxes in
     let chunks = 1000 in
@@ -644,6 +665,10 @@ module Triangles = struct
         let x_a, _, z_a = Vector.to_three (Buffer.get3 points a) in
         let x_b, _, z_b = Vector.to_three (Buffer.get3 points b) in
         let x_c, _, z_c = Vector.to_three (Buffer.get3 points c) in
+        let x_min = min x_a (min x_b x_c) in
+        let x_max = max x_a (max x_b x_c) in
+        let z_min = min z_a (min z_b z_c) in
+        let z_max = max z_a (max z_b z_c) in
         let box_of x z =
           let i =
             match dicho (fun i -> boxes.(i).x_max >= x) 0 (nb_boxes - 1) with
@@ -664,12 +689,20 @@ module Triangles = struct
               j
             | Some k -> k
           in
-          let box = boxes.(k) in
-          Hashtbl.add table box triangle
+          k
         in
-        box_of x_a z_a;
-        box_of x_b z_b;
-        box_of x_c z_c
+        let bl = box_of x_min z_min in
+        let br = box_of x_min z_max in
+        let tl = box_of x_max z_min in
+        let n = (br - bl) in
+        let m = (tl - bl) / size in
+        for i = 0 to n do
+          for j = 0 to m do
+            Hashtbl.add table boxes.(bl + j * size + i) triangle;
+          done;
+        done
+
+
       ) >>= fun () -> context # pop; delay () >>= fun () ->
          context # status "Almost done ...";
          Asynchronous_computations.hashtbl_to_list context table
@@ -682,9 +715,13 @@ module Triangles = struct
       let d = Vector.of_two (x_d, z_d) in
       let e = Vector.of_two (x_e, z_e) in
       List.choose (fun (box, triangles) ->
-          if ray_box box d e then
+          if ray_box box d e then begin
+            if debug then begin
+               let {x_min; z_min; x_max; z_max} = (box : rect) in
+               Printf.printf "box(%.2f,%.2f,%.2f,%.2f)\n%!" x_min x_max z_min z_max
+            end;
             Some triangles
-          else
+          end else
             None
         ) table
     in

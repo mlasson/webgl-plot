@@ -107,6 +107,7 @@ let initialize canvas height width fps gl repere_model graph_model ({Surface.bou
   let previous_time = ref 0.0 in
   let fps_counter = ref 0 in
   let update_freq = 30 in
+  let state = ref (!angle, !move, !scale, !pointer) in
   loop (fun clock ->
     incr fps_counter;
     if !fps_counter = update_freq then begin
@@ -116,7 +117,11 @@ let initialize canvas height width fps gl repere_model graph_model ({Surface.bou
       Node.set_text_content fps
         (Printf.sprintf "%.2f fps" (1000.0 /. t));
     end;
-    draw_scene gl aspect repere_model graph_model clock cube face_textures surface !angle !move !scale !pointer callback )
+    let new_state = !angle, !move, !scale, !pointer in
+    if new_state <> !state then begin
+      state := new_state;
+      draw_scene gl aspect repere_model graph_model clock cube face_textures surface !angle !move !scale !pointer callback
+    end)
 
 
 let progress_bars () =
