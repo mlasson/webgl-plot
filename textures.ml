@@ -15,11 +15,15 @@ type ticks = {
 }
 
 let format_from_range r =
-  if r < 1e-4 then
-    Printf.sprintf "%g"
-  else
+  if r < 1e-4 || r > 1e7 then
+    Printf.sprintf "%.3g"
+  else if r < 10.0 then
     let d = int_of_float (log10 r) + 2 in
     Printf.sprintf "%.*f" d
+  else if r < 1000.0 then
+    Printf.sprintf "%.2f"
+  else
+    Printf.sprintf "%6.0f"
 
 let uniform_ticks number x_min x_max = {
   number;
@@ -59,8 +63,6 @@ let inner_size = 0.9 *. (float real_size)
 let line_width = 8.0
 let font_size = 10.0 *. line_width
 let font = Printf.sprintf "%.0fpx Arial" font_size
-
-
 
 let create_face_texture document =
   let canvas = Document.create_html_canvas document in
@@ -115,13 +117,13 @@ let create_ticks_texture document label {number; text} =
   push context (`Translate (0.25 *. size, padding));
   draw_ticks text;
   begin
-    push context (`Translate (-. 0.25 *. size, 0.5 *. (size -. text_width)));
+    push context (`Translate (-. 0.25 *. size +. 0.5 *. font_size, 0.5 *. (size -. text_width)));
     push context (`Rotate (0.5 *. Math.pi));
       fill_text context label 0.0 0.0;
     pop context;
     pop context;
 
-    push context (`Translate (0.25 *. size, 0.5 *. (size +. text_width)));
+    push context (`Translate (0.25 *. size -. 0.5 *. font_size, 0.5 *. (size +. text_width)));
     push context (`Rotate (-0.5 *. Math.pi));
       fill_text context label 0.0 0.0;
     pop context;
@@ -134,12 +136,12 @@ let create_ticks_texture document label {number; text} =
   push context (`Translate (0.75 *. size, padding));
   draw_ticks (fun k-> text (number - k));
   begin
-    push context (`Translate (-. 0.25 *. size, 0.5 *. (size -. text_width)));
+    push context (`Translate (-. 0.25 *. size +. 0.5 *. font_size, 0.5 *. (size -. text_width)));
     push context (`Rotate (0.5 *. Math.pi));
     fill_text context label 0.0 0.0;
     pop context;
     pop context;
-    push context (`Translate (0.25 *. size, 0.5 *. (size +. text_width)));
+    push context (`Translate (0.25 *. size -. 0.5 *. font_size, 0.5 *. (size +. text_width)));
     push context (`Rotate (-0.5 *. Math.pi));
     fill_text context label 0.0 0.0;
     pop context;

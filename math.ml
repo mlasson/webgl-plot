@@ -673,7 +673,6 @@ module Triangles = struct
           let i =
             match dicho (fun i -> boxes.(i).x_max >= x) 0 (nb_boxes - 1) with
             | None ->
-              assert (x -. boxes.(nb_boxes - 1).x_max <= 1e-8);
               nb_boxes - 1
             | Some i -> i
           in
@@ -685,7 +684,6 @@ module Triangles = struct
           let k =
             match dicho (fun i -> boxes.(i).z_max >= z) i j with
             | None ->
-              assert (z -. boxes.(j).z_max <= 1e-8);
               j
             | Some k -> k
           in
