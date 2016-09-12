@@ -631,8 +631,8 @@ module Triangles = struct
     for i = 0 to size - 1 do
       for j = 0 to size - 1 do
         let get_bounds k a =
-          if k = 0 then xs.(0)
-          else if k = size then xs.(len - 1)
+          if k = 0 then a.(0)
+          else if k = size then a.(len - 1)
           else let pos = k * bag in
           0.5 *. (a.(pos + 1) +. a.(pos))
         in
