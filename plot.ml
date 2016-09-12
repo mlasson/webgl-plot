@@ -297,6 +297,7 @@ let new_plot {width; height; x_axis_label; y_axis_label; z_axis_label; _} ?(on_c
       context # status "Initializing ...";
       delay () >>= fun () -> begin
         Surface.from_grid context data >>= fun ({Surface.bounds; _} as surface) ->
+
         let repere_model = RepereModel.initialize gl in
         RepereModel.load repere_model;
 

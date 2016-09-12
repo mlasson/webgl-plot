@@ -539,6 +539,15 @@ module Triangles = struct
       if !r_min > v then r_min := v;
       if !r_max < v then r_max := v;
     ) points;
+    let correct r_min r_max =
+      if !r_max -. !r_min < 1e-13 then begin
+        r_max := !r_max -. 1.0;
+        r_min := !r_min +. 1.0;
+      end
+    in
+    correct x_min x_max;
+    correct y_min y_max;
+    correct z_min z_max;
     {
       x_min = !x_min;
       x_max = !x_max;

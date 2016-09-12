@@ -24,7 +24,7 @@ let () = Window.set_onload window (fun _ ->
     Node.append_child panel (progress_bars # element);
     let thread =
       let context = (progress_bars :> context) in
-      Surface.from_grid_fun ~context res (-2.0 *. pi) (2.0 *. pi) (-2.0 *. pi) (2000000000.0 *. pi) (fun x y -> cos x +. sin y )
+      Surface.from_grid_fun ~context res (-2.0 *. pi) (2.0 *. pi) (-2.0 *. pi) (2.0 *. pi) (fun x y -> x*.y )
       >>= new_plot {height = 1080; width = 1920; x_axis_label; y_axis_label; z_axis_label} ~on_click:(fun (x,y,z) -> alert (Printf.sprintf "%f, %f, %f" x y z))
       >>= fun plot ->
         Node.remove_child panel (progress_bars # element);
