@@ -1,11 +1,12 @@
+OCAMLDEP=ocamlfind ocamldep
 OCAMLC=ocamlfind ocamlc
-OCAMLFLAGS=-I bindings -w +a-4-29-30-40-41-42-44-45-48 -strict-sequence -strict-formats
+OCAMLFLAGS=-I bindings -w +a-4-29-30-40-41-42-44-45-48 -strict-sequence -strict-formats -bin-annot
 PPXFLAGS=-package lwt -package gen_js_api.ppx
 
-MODULES=js_bindings asynchronous_computations math helper textures models plot main
+MODULES=js_bindings webgl asynchronous_computations math helper geometry intersection shaders textures repere scene component main # models plot main
 
 CMOS=$(patsubst %,%.cmo,$(MODULES))
-
+GENERATED=webgl.ml js_bindings.ml
 
 main.js: main.byte
 	js_of_ocaml --pretty -o main.js +gen_js_api/ojs_runtime.js main.byte
@@ -13,16 +14,13 @@ main.js: main.byte
 main.byte: $(CMOS)
 	$(OCAMLC) $(OCAMLFLAGS) -no-check-prims -package lwt -package gen_js_api $(CMOS) -linkpkg -o $@
 
-js_bindings.cmo: js_bindings.ml
-helper.cmo: helper.ml js_bindings.cmo
-models.cmo: models.ml math.cmo helper.cmo js_bindings.cmo textures.cmo
-plot.cmo: plot.ml models.cmo
-textures.cmo: textures.ml js_bindings.cmo math.cmo
-main.cmo: main.ml js_bindings.cmo models.cmo plot.cmo
-asynchronous_computations.cmo: asynchronous_computations.ml js_bindings.cmo
-math.cmo: math.ml js_bindings.cmo 
-
 .SUFFIXES: .ml .mli .cmo .cmi
+
+webgl.ml: webgl.mli
+js_bindings.ml: js_bindings.mli
+
+.mli.ml:
+	ocamlfind gen_js_api/gen_js_api $<
 
 .ml.cmo:
 	$(OCAMLC) $(OCAMLFLAGS) $(PPXFLAGS) -c $< -o $@
@@ -30,7 +28,14 @@ math.cmo: math.ml js_bindings.cmo
 .mli.cmi:
 	$(OCAMLC) $(OCAMLFLAGS) $(PPXFLAGS) -c $<
 
+
+.depend: $(GENERATED) $(wildcard *.ml) $(wildcard *.mli)
+	$(OCAMLDEP) $(INCLUDES) *.mli *.ml > .depend
+
 .PHONY: clean
 
 clean:
-	rm -f main.js main.byte *.cm* 
+	rm -f main.js main.byte *.cm* $(GENERATED)
+
+
+-include .depend

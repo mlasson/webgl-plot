@@ -1,13 +1,5 @@
 open Js_bindings
-open Html
-open Canvas.Flat
-
-let rainbow context width =
-  let gradient = create_linear_gradient context 0.0 0.0 width 0.0 in
-  add_color_stop gradient 0.0 CssColor.red;
-  add_color_stop gradient 0.5 CssColor.green;
-  add_color_stop gradient 1.0 CssColor.blue;
-  set_fill_style context (`Gradient gradient)
+open Canvas
 
 type ticks = {
   number : int;
@@ -64,16 +56,19 @@ let line_width = 8.0
 let font_size = 10.0 *. line_width
 let font = Printf.sprintf "%.0fpx Arial" font_size
 
-let create_face_texture document =
-  let canvas = Document.create_html_canvas document in
-  Canvas.set_width canvas real_size;
-  Canvas.set_height canvas real_size;
+let create_face_texture () =
+  let canvas = Document.create_element document "canvas" in
+  Element.set_attribute canvas "width" (string_of_int real_size);
+  Element.set_attribute canvas "height" (string_of_int real_size);
   let context =
     match get_context canvas with
     | None -> failwith "get_context"
     | Some x -> x
   in
   let size = float real_size in
+  set_fill_style context (`Color "white");
+  fill_rect context 0.0 0.0 size size;
+  set_stroke_style context (`Color "black");
   set_line_width context (4.0 *. line_width);
   stroke_rect context 0.0 0.0 size size;
   canvas
@@ -86,10 +81,10 @@ let draw_tick context text =
   fill_text context text (-. tick_size -. line_width -. text_width) (0.5 *. (font_size -. line_width));
   fill_text context text (tick_size +. line_width) (0.5 *. (font_size -. line_width))
 
-let create_ticks_texture document label {number; text} =
-  let canvas = Document.create_html_canvas document in
-  Canvas.set_width canvas real_size;
-  Canvas.set_height canvas real_size;
+let create_ticks_texture label {number; text} =
+  let canvas = Document.create_element document "canvas" in
+  Element.set_attribute canvas "width" (string_of_int real_size);
+  Element.set_attribute canvas "height" (string_of_int real_size);
   let context =
     match get_context canvas with
     | None -> failwith "get_context"
@@ -151,7 +146,3 @@ let create_ticks_texture document label {number; text} =
   pop context;
   assert (Stack.is_empty stack);
   canvas
-
-
-
-

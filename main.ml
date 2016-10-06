@@ -1,34 +1,46 @@
 open Js_bindings
-open Plot
 
 let () = Window.set_onload window (fun _ ->
-  let open Models in
-  let open Helper in
-  let progress_bars = progress_bars () in
-  let main = element_of_id "main" in
-  let input = Document.create_html_input document in
-  let panel = create "div" in
-  let resolution = integer_input input in
-
-  Node.append_child main input;
-  Node.append_child main panel;
-
-  let x_axis_label = "X axis label yyyy" in
-  let y_axis_label = "Y axis label yyyy" in
-  let z_axis_label = "Z axis label yyyy" in
-
-  let open Math in
-  let open Asynchronous_computations in
-  resolution # on_change (function None -> () | Some res ->
-    removeAll panel;
-    Node.append_child panel (progress_bars # element);
-    let thread =
-      let context = (progress_bars :> context) in
-      Surface.from_grid_fun ~context res (-2.0 *. pi) (2.0 *. pi) (-2.0 *. pi) (2.0 *. pi) (fun x y -> x*.y )
-      >>= new_plot {height = 1080; width = 1920; x_axis_label; y_axis_label; z_axis_label} ~on_click:(fun (x,y,z) -> alert (Printf.sprintf "%f, %f, %f" x y z))
-      >>= fun plot ->
-        Node.remove_child panel (progress_bars # element);
-        Node.append_child panel plot; return ()
-    in
-    ignore thread))
-
+  let main = Helper.element_of_id "main" in
+  let renderer gl =
+    let open Scene in
+    let scene = prepare_scene gl in
+    let repere = scene # repere in
+    repere # set_x_axis_label "XXX axis label";
+    repere # set_y_axis_label "YYY axis label";
+    repere # set_z_axis_label "ZZZ axis label";
+    repere # set_frame {x_max = 1.;x_min=0.;y_max=1.;y_min=0.;z_max=1.;z_min=0.};
+    let n = 100 in
+    let m = 100 in
+    let xs = Geometry.uniform_array n 0.0 1.0 in
+    let zs = Geometry.uniform_array m 0.0 1.0 in
+    let ys = Array.create_float (n * m) in
+    let alpha = 5.0 in
+    let beta = 10.0 in
+    begin
+      for i = 0 to n - 1 do
+        for j = 0 to m - 1 do
+          ys.(i * m + j) <- (Math.sq (cos (alpha *. xs.(i))) +. Math.sq (sin (beta *. zs.(j)))) *. 0.0 +. xs.(j)
+        done
+      done
+    end;
+    scene # add_surface xs zs ys;
+    let last_add = ref 0.0 in
+    fun clock {Component.aspect; angle; move; _} ->
+      if clock -. !last_add  > 1000.0 then begin
+        last_add := clock;
+        let position = Random.float 1.0, Random.float 1.0, 0.5 in
+        let color = Random.float 1.0, Random.float 1.0, Random.float 1.0 in
+        let scale =
+          let s = Random.float 0.01 in
+          s, s, s
+        in
+        scene # add_sphere position scale color;
+      end;
+      scene # set_aspect aspect;
+      scene # set_angle angle;
+      scene # set_move move;
+      scene # render
+  in
+  let canvas = Component.create_webgl_canvas renderer in
+  Element.append_child main canvas)

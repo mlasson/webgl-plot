@@ -16,7 +16,7 @@ end
 
 let delay () =
   let res, t = wait () in
-  Js_bindings.set_timeout (wakeup t) 0.0 |> ignore;
+  Js_bindings.(Window.set_timeout window (wakeup t) 0) |> ignore;
   res
 
 let rec range f min max =
