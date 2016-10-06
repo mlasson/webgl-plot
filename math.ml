@@ -24,6 +24,19 @@ module List = struct
   let map f l = List.rev_map f l |> List.rev
 end
 
+module Array = struct
+  include Array
+  let min_max a =
+    if Array.length a = 0 then None
+    else
+      let min = ref a.(0) in
+      let max = ref !min in
+      Array.iter (fun x ->
+          if x < !min then min := x;
+          if x > !max then max := x) a;
+      Some (!min, !max)
+end
+
 type four
 type three
 type two

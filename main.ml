@@ -20,7 +20,7 @@ let () = Window.set_onload window (fun _ ->
     begin
       for i = 0 to n - 1 do
         for j = 0 to m - 1 do
-          ys.(i * m + j) <- (Math.sq (cos (alpha *. xs.(i))) +. Math.sq (sin (beta *. zs.(j)))) *. 0.0 +. xs.(j)
+          ys.(i * m + j) <- (Math.sq (cos (alpha *. xs.(i))) +. Math.sq (sin (beta *. zs.(j)))) *. 0. +. 0.51
         done
       done
     end;

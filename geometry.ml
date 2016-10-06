@@ -168,6 +168,7 @@ class virtual geometry =
 let uniform_array res min max =
   Array.init res (fun i -> min +. (float i) *. (max -. min) /. (float (res - 1)))
 
+
 class sphere res =
   let dim1 = uniform_array res 0.0 (2.0 *. pi) in
   let dim2 = uniform_array res 0.0 pi in
@@ -239,8 +240,6 @@ class virtual colored color =
             let normals = this # normals in
             Float32Array.get normals pos, Float32Array.get normals (pos + 1), Float32Array.get normals (pos + 2)
           in
-          let _, y, _ = p in
-          Printf.printf "%2.2f\n%!" y;
           color p n))
   end
 
