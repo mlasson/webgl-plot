@@ -168,6 +168,27 @@ class virtual geometry =
 let uniform_array res min max =
   Array.init res (fun i -> min +. (float i) *. (max -. min) /. (float (res - 1)))
 
+let lines_indexes_from_grid dim1 dim2 =
+  let size = 2 * (dim1 * (dim2 - 1) + dim2 * (dim1 - 1)) in
+  let segments = Array.make size 0 in
+  let k = ref 0 in
+  let idx i j = i * dim2 + j in
+  for i = 0 to dim1 - 1 do
+    for j = 0 to dim2 - 2 do
+      segments.(!k) <- idx i j; incr k;
+      segments.(!k) <- idx i (j + 1); incr k;
+    done
+  done;
+  for j = 0 to dim2 - 1 do
+    for i = 0 to dim1 - 2 do
+      segments.(!k) <- idx i j; incr k;
+      segments.(!k) <- idx (i + 1) j; incr k;
+    done
+  done;
+  indexes_of_array segments
+
+
+
 
 class sphere res =
   let dim1 = uniform_array res 0.0 (2.0 *. pi) in
@@ -177,12 +198,21 @@ class sphere res =
          (cos theta *. sin phi, sin theta *. sin phi, cos phi))
   in
   let indexes = triangles_indexes_from_grid res res in
+  let lines = lines_indexes_from_grid res res in
   object
     inherit geometry
 
     method points = points
     method normals = points
     method indexes = indexes
+
+    method lines =
+      object
+        inherit geometry
+        method points = points
+        method normals = points
+        method indexes = lines
+      end
   end
 
 class surface xs zs ys =
@@ -196,26 +226,37 @@ class surface xs zs ys =
     compute_normals n m points
   in
   let indexes = triangles_indexes_from_grid n m in
+  let lines = lines_indexes_from_grid n m in
   object
     inherit geometry
 
     method points = points
     method normals = normals
     method indexes = indexes
+    method lines =
+      object
+        inherit geometry
+        method points = points
+        method normals = normals
+        method indexes = lines
+      end
   end
 
-  let init_triple_array size f =
-    let result = Float32Array.new_float32_array (`Size (3 * size)) in
-    let k = ref 0 in
-    while !k < size do
-      let x,y,z = f !k in
-      let pos = 3 * !k in
-      incr k;
-      Float32Array.set result pos x;
-      Float32Array.set result (pos + 1) y;
-      Float32Array.set result (pos + 2) z;
-    done;
-    result
+
+
+
+let init_triple_array size f =
+  let result = Float32Array.new_float32_array (`Size (3 * size)) in
+  let k = ref 0 in
+  while !k < size do
+    let x,y,z = f !k in
+    let pos = 3 * !k in
+    incr k;
+    Float32Array.set result pos x;
+    Float32Array.set result (pos + 1) y;
+    Float32Array.set result (pos + 2) z;
+  done;
+  result
 
 class virtual colored color =
   object(this)
