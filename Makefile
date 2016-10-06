@@ -1,6 +1,6 @@
 OCAMLDEP=ocamlfind ocamldep
 OCAMLC=ocamlfind ocamlc
-OCAMLFLAGS=-I bindings -w +a-4-29-30-40-41-42-44-45-48 -strict-sequence -strict-formats -bin-annot
+OCAMLFLAGS=-w +a-4-29-30-40-41-42-44-45-48 -strict-sequence -strict-formats -bin-annot
 PPXFLAGS=-package lwt -package gen_js_api.ppx
 
 MODULES=js_bindings webgl asynchronous_computations math helper geometry intersection shaders textures repere scene component main # models plot main
