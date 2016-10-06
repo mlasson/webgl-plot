@@ -86,8 +86,8 @@ class colored_sphere gl shader color =
 class rainbow_surface gl shader xs zs ys =
   let n = Array.length ys in
   let rainbow (_, y, _) _ =
-    if false then
-      Vector.to_three (Math.Color.hsv (359.9 *. (y -. ys.(0)) /. (ys.(n-1) -. ys.(0))) 1.0 1.0)
+    if true then
+      Vector.to_three (Math.Color.hsv (359.9 *. (1.0 -. (y -. ys.(0)) /. (ys.(n-1) -. ys.(0)))) 1.0 1.0)
     else
       (0.0, (y -. ys.(0)) /. (ys.(n-1) -. ys.(0)), 0.0)
   in

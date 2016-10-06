@@ -66,7 +66,6 @@ let setup_webgl_context canvas =
   depth_func gl _LEQUAL_;
   gl
 
-
 let create_webgl_canvas renderer =
   let canvas =
     let style = {css|
@@ -107,7 +106,13 @@ let create_webgl_canvas renderer =
     |css} in
     Helper.create ~style "div" [canvas; container]
   in
-  let main = Helper.create "div" [overlap; fps_counter] in
+  let main =
+    let style = {css|
+      width: 100%;
+      height: 100%;
+    |css} in
+    Helper.create "div" ~style [overlap; fps_counter]
+  in
   let state =
     {
       aspect = 1.0;
@@ -189,7 +194,7 @@ let create_webgl_canvas renderer =
       let h, w = int_of_float height, int_of_float width in
       Element.set_attribute canvas "height" (string_of_int h);
       Element.set_attribute canvas "width" (string_of_int w);
-      Webgl.viewport gl 0 0 h w;
+      Webgl.viewport gl 0 0 w h;
     end;
     state.aspect <- width /. height;
 

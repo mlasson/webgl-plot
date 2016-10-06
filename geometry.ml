@@ -220,8 +220,14 @@ class virtual colored color =
   object(this)
     method virtual points : Float32Array.t
     method virtual normals : Float32Array.t
+
     val mutable colors = None
-    method colors = match colors with Some x -> x | _ -> assert false
+
+    method colors =
+      match colors with
+      | Some x -> x
+      | _ -> assert false
+
     initializer
       colors <- Some (init_triple_array ((Float32Array.length (this # points)) / 3) (fun k ->
           let pos = 3 * k in
