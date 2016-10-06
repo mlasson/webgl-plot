@@ -35,6 +35,14 @@ let new_shader gl shader shader_type =
   in
   compile_shader gl shader shader_type
 
+let get_and_enable_vertex_attrib_array_location gl program location =
+  let attrib_location = get_attrib_location gl program location in
+  if attrib_location < 0 then
+    error (Printf.sprintf "unable to get '%s'" location);
+  enable_vertex_attrib_array gl attrib_location;
+  attrib_location
+
+
 module Basic = struct
   let vertex_shader = {gsl|
   attribute vec3 a_position;
@@ -96,16 +104,9 @@ module Basic = struct
     let vertex_shader = new_shader gl vertex_shader `Vertex in
     let fragment_shader = new_shader gl fragment_shader `Fragment in
     let program = compile_program gl vertex_shader fragment_shader in
-    let get_and_enable_vertex_attrib_array_location location =
-      let attrib_location = get_attrib_location gl program location in
-      if attrib_location < 0 then
-        error (Printf.sprintf "unable to get '%s'" location);
-      enable_vertex_attrib_array gl attrib_location;
-      attrib_location
-    in
-    let position_location = get_and_enable_vertex_attrib_array_location "a_position" in
-    let normal_location = get_and_enable_vertex_attrib_array_location "a_normal" in
-    let color_location = get_and_enable_vertex_attrib_array_location "a_color" in
+    let position_location = get_and_enable_vertex_attrib_array_location gl program "a_position" in
+    let normal_location = get_and_enable_vertex_attrib_array_location gl program "a_normal" in
+    let color_location = get_and_enable_vertex_attrib_array_location gl program "a_color" in
     let world_matrix =
       match get_uniform_location gl program "u_world_matrix" with
       | Some thing -> thing
@@ -255,11 +256,7 @@ module Texture = struct
     let fragment_shader = new_shader gl fragment_shader `Fragment in
     let program = compile_program gl vertex_shader fragment_shader in
     let position_location =
-      let attrib_location = get_attrib_location gl program "a_position" in
-      if attrib_location < 0 then
-        error "unable to get 'a_position'"
-      else
-        attrib_location
+      get_and_enable_vertex_attrib_array_location gl program "a_position"
     in
     let world_matrix =
       match get_uniform_location gl program "u_matrix" with
@@ -267,14 +264,9 @@ module Texture = struct
       | None -> error "unable to get 'u_matrix'"
     in
     let texcoord_location =
-      let attrib_location = get_attrib_location gl program "a_texcoord" in
-      if attrib_location < 0 then
-        error "unable to get 'a_texcoord'"
-      else
-        attrib_location
+      get_and_enable_vertex_attrib_array_location gl program "a_texcoord"
     in
     let binds dim location buffer =
-      enable_vertex_attrib_array gl location;
       bind_buffer gl _ARRAY_BUFFER_ buffer;
       vertex_attrib_pointer gl location dim _FLOAT_ false 0 0;
     in
