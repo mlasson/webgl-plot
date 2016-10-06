@@ -84,12 +84,13 @@ class colored_sphere gl shader color =
   end
 
 class rainbow_surface gl shader xs zs ys =
-  let n = Array.length ys in
+  let min, max = match Array.min_max ys with Some c -> c | None -> 0.0, 1.0 in
+  let range = (max -. min) in
   let rainbow (_, y, _) _ =
-    if true then
-      Vector.to_three (Math.Color.hsv (359.9 *. (1.0 -. (y -. ys.(0)) /. (ys.(n-1) -. ys.(0)))) 1.0 1.0)
+    if range < 1e-10 then
+      Vector.to_three (Math.Color.hsv (0.5 *. 359.9) 1.0 1.0)
     else
-      (0.0, (y -. ys.(0)) /. (ys.(n-1) -. ys.(0)), 0.0)
+      Vector.to_three (Math.Color.hsv (359.9 *. (1.0 -. (y -. min) /. range)) 1.0 1.0)
   in
   object(this)
     inherit position gl shader

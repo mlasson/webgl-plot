@@ -10,17 +10,17 @@ let () = Window.set_onload window (fun _ ->
     repere # set_y_axis_label "YYY axis label";
     repere # set_z_axis_label "ZZZ axis label";
     repere # set_frame {x_max = 1.;x_min=0.;y_max=1.;y_min=0.;z_max=1.;z_min=0.};
-    let n = 100 in
-    let m = 100 in
+    let n = 10 in
+    let m = 10 in
     let xs = Geometry.uniform_array n 0.0 1.0 in
     let zs = Geometry.uniform_array m 0.0 1.0 in
     let ys = Array.create_float (n * m) in
-    let alpha = 5.0 in
-    let beta = 10.0 in
+    let alpha = 3.0 in
+    let beta = 6.0 in
     begin
       for i = 0 to n - 1 do
         for j = 0 to m - 1 do
-          ys.(i * m + j) <- (Math.sq (cos (alpha *. xs.(i))) +. Math.sq (sin (beta *. zs.(j)))) *. 0. +. 0.51
+          ys.(i * m + j) <- (Math.sq (cos (alpha *. xs.(i))) +. Math.sq (sin (beta *. zs.(j)))) *. 0.5
         done
       done
     end;
