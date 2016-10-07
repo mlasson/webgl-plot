@@ -17,9 +17,9 @@ main.byte: $(CMOS)
 .SUFFIXES: .ml .mli .cmo .cmi
 
 webgl.ml: webgl.mli
-js_bindings.ml: js_bindings.mli
+	ocamlfind gen_js_api/gen_js_api $<
 
-.mli.ml:
+js_bindings.ml: js_bindings.mli
 	ocamlfind gen_js_api/gen_js_api $<
 
 .ml.cmo:
