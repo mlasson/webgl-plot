@@ -61,6 +61,11 @@ class attrib_array gl dim =
       vertex_attrib_pointer gl location dim _FLOAT_ false 0 0
   end
 
+let create_attrib_array gl dim data =
+  let o = new attrib_array gl dim in
+  o # fill data;
+  o
+
 class element_array gl =
   let buffer = create_buffer gl in
   object(this)
@@ -90,6 +95,11 @@ class element_array gl =
     method bind =
       bind_buffer gl _ELEMENT_ARRAY_BUFFER_ buffer
   end
+
+let create_element_array gl data =
+  let o = new element_array gl in
+  o # fill data;
+  o
 
 type mode =
   | Triangles
@@ -138,7 +148,7 @@ module Basic = struct
   void main() {
     vec3 lightDirection = normalize(u_lightPos - v_position);
     float lighting = abs(dot(normalize(v_normal), lightDirection));
-    gl_FragColor = vec4( v_color * (0.0 * lighting + u_ambientLight), 1);
+    gl_FragColor = vec4( v_color * (1.0 * lighting + 0.0 * u_ambientLight), 1);
   }
 |gsl}
 

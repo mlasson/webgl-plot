@@ -26,7 +26,7 @@ let flatten n m f =
   done;
   points
 
-let compute_points dim1 dim2 desc =
+let compute_vertices dim1 dim2 desc =
   let n, m = Array.length dim1, Array.length dim2 in
   flatten n m (fun i j -> desc dim1.(i) dim2.(j))
 
@@ -156,16 +156,6 @@ let indexes_of_array a : indexes =
   else
     `Int (Uint32Array.new_uint32_array (`Data a))
 
-class virtual geometry =
-  object(this)
-    method virtual points : Float32Array.t
-    method virtual normals : Float32Array.t
-    method virtual indexes : indexes
-    method virtual wireframe : indexes
-
-    method bounding_box = bounding_box (this # points)
-  end
-
 let uniform_array res min max =
   Array.init res (fun i -> min +. (float i) *. (max -. min) /. (float (res - 1)))
 
@@ -188,53 +178,58 @@ let lines_indexes_from_grid dim1 dim2 =
   done;
   indexes_of_array segments
 
-class sphere res =
-  let dim1 = uniform_array res 0.0 (2.0 *. pi) in
-  let dim2 = uniform_array res 0.0 pi in
-  let points = compute_points dim1 dim2
-      (fun theta phi ->
-         (cos theta *. sin phi, sin theta *. sin phi, cos phi))
-  in
-  let indexes = triangles_indexes_from_grid res res in
-  let lines = lines_indexes_from_grid res res in
-  object
-    inherit geometry
 
-    method points = points
-    method normals = points
-    method indexes = indexes
-    method wireframe = lines
-  end
+module Sphere = struct
+  type t = {
+    vertices: Float32Array.t;
+    wireframe : indexes;
+    triangles: indexes;
+  }
 
-class copy (geometry : geometry) =
-  object
-    inherit geometry
-    method points = geometry # points
-    method normals = geometry # points
-    method indexes = geometry # indexes
-    method wireframe = geometry # wireframe
-  end
+  let create res =
+    let dim1 = uniform_array res 0.0 (2.0 *. pi) in
+    let dim2 = uniform_array res 0.0 pi in
+    let vertices = compute_vertices dim1 dim2
+        (fun theta phi ->
+           (cos theta *. sin phi, sin theta *. sin phi, cos phi))
+    in
+    let triangles = triangles_indexes_from_grid res res in
+    let wireframe = lines_indexes_from_grid res res in
+    {
+      triangles;
+      wireframe;
+      vertices;
+    }
+end
 
-class surface xs zs ys =
+module Surface = struct
+
+  type t = {
+    vertices: Float32Array.t;
+    normals: Float32Array.t;
+    wireframe : indexes;
+    triangles: indexes;
+  }
+
+  let create xs zs ys =
   let n, m = Array.length xs, Array.length zs in
-  let points =
+  let vertices =
     flatten n m
       (fun i j ->
          (xs.(i), ys.(i*m + j), zs.(j)))
   in
   let normals =
-    compute_normals n m points
+    compute_normals n m vertices
   in
-  let indexes = triangles_indexes_from_grid n m in
-  let lines = lines_indexes_from_grid n m in
-  object
-    inherit geometry
-
-    method points = points
-    method normals = normals
-    method indexes = indexes
-    method wireframe = lines
-  end
+  let triangles = triangles_indexes_from_grid n m in
+  let wireframe = lines_indexes_from_grid n m in
+  {
+    triangles;
+    wireframe;
+    normals;
+    vertices
+  }
+end
 
 let init_triple_array size f =
   let result = Float32Array.new_float32_array (`Size (3 * size)) in
@@ -248,30 +243,3 @@ let init_triple_array size f =
     Float32Array.set result (pos + 2) z;
   done;
   result
-
-class virtual colored color =
-  object(this)
-    method virtual points : Float32Array.t
-    method virtual normals : Float32Array.t
-
-    val mutable colors = None
-
-    method colors =
-      match colors with
-      | Some x -> x
-      | _ -> assert false
-
-    initializer
-      colors <- Some (init_triple_array ((Float32Array.length (this # points)) / 3) (fun k ->
-          let pos = 3 * k in
-          let p =
-            let points = this # points in
-            Float32Array.get points pos, Float32Array.get points (pos + 1), Float32Array.get points (pos + 2)
-          in
-          let n =
-            let normals = this # normals in
-            Float32Array.get normals pos, Float32Array.get normals (pos + 1), Float32Array.get normals (pos + 2)
-          in
-          color p n))
-  end
-
