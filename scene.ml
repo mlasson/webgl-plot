@@ -86,7 +86,7 @@ class virtual basic_object _gl (shader : Shaders.Basic.shader)  =
 let colored_sphere gl shader =
   let open Geometry in
   let open Shaders in
-  let mesh = Sphere.create 20 in
+  let mesh = Sphere.create 8 in
   let a_positions = create_attrib_array gl 3 mesh.vertices in
   let a_colors_wireframe = create_attrib_array gl 3
     (Geometry.init_triple_array (Float32Array.length mesh.vertices) (fun _ -> 0.0, 0.0, 0.0))

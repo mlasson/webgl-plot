@@ -53,11 +53,11 @@ let compute_normals n m points =
        *    \|/
        *     3
        **)
-      if 0 < j && i < n then
+      if 0 < j && i < n-1 then
         add_one i (j-1) (i+1) j; (* 1 - 2 *)
-      if j < m && i < n then
+      if j < m && i < n-1 then
         add_one (i+1) j i (j+1); (* 2 - 3 *)
-      if 0 < i && j < m then
+      if 0 < i && j < m-1 then
         add_one i (j+1) (i-1) j; (* 3 - 4 *)
       if 0 < i && 0 < j then
         add_one (i-1) j i (j-1); (* 4 - 1 *)
