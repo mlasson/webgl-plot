@@ -75,7 +75,9 @@ class virtual free_basic_object _gl (shader : Shaders.Basic.shader)  =
       shader # set_colors (this # a_colors);
       shader # set_normals (this # a_normals);
       shader # set_positions (this # a_positions);
-      shader # draw_elements (this # e_indexes)
+      if false then
+        shader # draw_elements Shaders.Triangles (this # e_indexes);
+      shader # draw_elements Shaders.Lines (this # e_wireframe)
   end
 
 class fresh_buffers gl geometry =

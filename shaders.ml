@@ -91,7 +91,13 @@ class element_array gl =
       bind_buffer gl _ELEMENT_ARRAY_BUFFER_ buffer
   end
 
+type mode =
+  | Triangles
+  | Lines
 
+let constant_of_mode = function
+  | Triangles -> _TRIANGLES_
+  | Lines -> _LINES_
 
 module Basic = struct
   let vertex_shader = {gsl|
@@ -148,7 +154,7 @@ module Basic = struct
     method set_colors: attrib_array -> unit
     method set_normals: attrib_array -> unit
 
-    method draw_elements: element_array -> unit
+    method draw_elements: mode -> element_array -> unit
   end
 
   let init gl =
@@ -197,9 +203,9 @@ module Basic = struct
       method set_normals a =
         a # plug normal_location
 
-      method draw_elements elements =
+      method draw_elements mode elements =
         elements # bind;
-        Webgl.draw_elements gl _TRIANGLES_ (elements # size) (elements # index_type) 0
+        Webgl.draw_elements gl (constant_of_mode mode) (elements # size) (elements # index_type) 0
     end : shader)
 
 end
