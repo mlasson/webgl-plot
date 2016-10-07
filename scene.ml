@@ -54,6 +54,41 @@ let flatten_matrix m =
 
 class virtual basic_object _gl (shader : Shaders.Basic.shader)  =
   object(this)
+    method virtual a_triangles : Shaders.attrib_array
+    method virtual a_colors : Shaders.attrib_array
+    method virtual a_normals : Shaders.attrib_array
+
+    method virtual a_wireframe : Shaders.attrib_array
+    method virtual a_colors_wireframe : Shaders.attrib_array
+    method virtual a_normals_wireframe : Shaders.attrib_array
+
+    val mutable scale = (1., 1., 1.)
+    val mutable position = (0., 0., 0.)
+
+    method set_scale x =
+      scale <- x
+
+    method set_position x =
+      position <- x
+
+    method draw =
+      shader # set_object_matrix
+        (flatten_matrix
+           (Vector.Const.scale_translation
+              (Vector.of_three scale) (Vector.of_three position)));
+      shader # set_colors (this # a_colors);
+      shader # set_normals (this # a_normals);
+      shader # set_positions (this # a_triangles);
+      shader # draw_arrays Shaders.Triangles (this # a_triangles # count);
+      shader # set_positions (this # a_wireframe);
+      shader # set_colors (this # a_colors_wireframe);
+      shader # set_normals (this # a_normals_wireframe);
+      shader # draw_arrays Shaders.Lines (this # a_wireframe # count)
+  end
+
+
+class virtual basic_indexed_object _gl (shader : Shaders.Basic.shader)  =
+  object(this)
     method virtual a_positions : Shaders.attrib_array
     method virtual a_colors : Shaders.attrib_array
     method virtual a_normals : Shaders.attrib_array
@@ -98,7 +133,7 @@ let colored_sphere gl shader =
       (Geometry.init_triple_array (Float32Array.length mesh.vertices) (fun _ -> color));
     in
     object
-      inherit basic_object gl shader
+      inherit basic_indexed_object gl shader
       method a_colors = a_colors
       method a_normals = a_positions
       method a_colors_wireframe = a_colors_wireframe
@@ -112,11 +147,6 @@ let rainbow_surface gl shader xs zs ys =
   let min, max = match Array.min_max ys with Some c -> c | None -> 0.0, 1.0 in
   let range = (max -. min) in
   let rainbow y =
-    if range < 1e-10 then
-      (Math.Color.hsv (0.5 *. 359.9) 1.0 1.0)
-    else if false then
-      (Math.Color.hsv (359.9 *. (1.0 -. (y -. min) /. range)) 1.0 1.0)
-    else
       Math.Color.cold_to_hot ((y -. min) /. range)
   in
   let {Geometry.Surface.vertices; triangles; wireframe; normals} = Geometry.Surface.create xs zs ys in
@@ -133,7 +163,7 @@ let rainbow_surface gl shader xs zs ys =
   let e_triangles = create_element_array gl triangles in
   let e_wireframe = create_element_array gl wireframe in
   object
-    inherit basic_object gl shader
+    inherit basic_indexed_object gl shader
     method a_colors = a_colors
     method a_normals = a_normals
     method a_colors_wireframe = a_colors_wireframe
@@ -142,7 +172,45 @@ let rainbow_surface gl shader xs zs ys =
     method e_triangles = e_triangles
   end
 
+let histogram gl shader xs zs ys =
+  let open Shaders in
+  let open Geometry in
+  let min, max = match Array.min_max ys with Some c -> c | None -> 0.0, 1.0 in
+  let range = max -. min in
+  let rainbow y =
+      Math.Color.cold_to_hot ((y -. min) /. range)
+  in
+  let {Histogram.triangles; normals; wireframe; wireframe_normals} = Histogram.create xs zs ys in
+  let a_triangles = create_attrib_array gl 3 triangles in
+  let a_normals = create_attrib_array gl 3 normals in
+  let a_colors = create_attrib_array gl 3 (* rainbow *)
+    (Geometry.init_triple_array (Float32Array.length triangles) (fun k ->
+        rainbow (Float32Array.get triangles (3 * k + 1))))
+  in
+  let a_wireframe = create_attrib_array gl 3 wireframe in
+  let a_wireframe_normals = create_attrib_array gl 3 wireframe_normals in
+  let a_colors_wireframe =
+    create_attrib_array gl 3 (* black *)
+      (Geometry.init_triple_array (Float32Array.length triangles) (fun _ -> 0.0, 0.0, 0.0))
+  in
+  object
+    inherit basic_object gl shader
 
+    method a_triangles = a_triangles
+    method a_colors = a_colors
+    method a_normals = a_normals
+
+    method a_colors_wireframe = a_colors_wireframe
+    method a_normals_wireframe = a_wireframe_normals
+    method a_wireframe = a_wireframe
+  end
+
+
+
+class type drawable =
+  object
+    method draw : unit
+  end
 
 let prepare_scene gl =
   let basic_shader = Shaders.Basic.init gl in
@@ -154,7 +222,7 @@ let prepare_scene gl =
     val mutable angle = (0., 0., 0.)
     val mutable move = (0., 0., 0.)
 
-    val mutable objects = []
+    val mutable objects : #drawable list = []
 
     method set_aspect x = aspect <- x
     method set_angle x = angle <- x
@@ -164,13 +232,17 @@ let prepare_scene gl =
 
     method add_surface xs zs ys =
       let obj = rainbow_surface gl basic_shader xs zs ys in
-      objects <- obj :: objects
+      objects <- (obj :> drawable) :: objects
+
+    method add_histogram xs zs ys =
+      let obj = histogram gl basic_shader xs zs ys in
+      objects <- (obj :> drawable) :: objects
 
     method add_sphere position scale color =
       let obj = sphere_factory color in
       obj # set_position position;
       obj # set_scale scale;
-      objects <- obj :: objects
+      objects <- (obj :> drawable) :: objects
 
     method render =
       match repere # frame with

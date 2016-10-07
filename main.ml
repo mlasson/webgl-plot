@@ -14,22 +14,26 @@ let () = Window.set_onload window (fun _ ->
     let m = n in
     let xs = Geometry.uniform_array n 0.0 1.0 in
     let zs = Geometry.uniform_array m 0.0 1.0 in
-    let ys = Array.create_float (n * m) in
+    print_endline "yoyo";
+    let ys = Array.create_float ((n- 1) * (m-1)) in
     let alpha = 3.0 in
     let beta = 6.0 in
     begin
-      for i = 0 to n - 1 do
-        for j = 0 to m - 1 do
-          ys.(i * m + j) <- (Math.sq (cos (alpha *. xs.(i))) +. Math.sq (sin (beta *. zs.(j)))) *. 0.5
+      for i = 0 to n - 2 do
+        for j = 0 to m - 2 do
+          ys.(i * (m - 1) + j) <-
+            (Math.sq (cos (alpha *. xs.(i))) +. Math.sq (sin (beta *. zs.(j)))) *. 0.5
         done
       done
     end;
-    scene # add_surface xs zs ys;
+    print_endline "yiyi";
+    scene # add_histogram xs zs ys;
+    print_endline "yaya";
     let last_add = ref 0.0 in
     fun clock {Component.aspect; angle; move; _} ->
-      if clock -. !last_add  > 10.0 then begin
+      if clock -. !last_add  > 10000000.0 then begin
         last_add := clock;
-        let position = Random.float 1.0, Random.float 1.0, 0.5 in
+        let position = Random.float 1.0, Random.float 1.0, Random.float 1.0 in
         let color = Random.float 1.0, Random.float 1.0, Random.float 1.0 in
         let scale =
           let s = Random.float 0.01 in

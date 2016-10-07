@@ -258,6 +258,7 @@ module Histogram = struct
   let create xs zs ys =
     let n, m = Array.length xs, Array.length zs in
     assert (Array.length ys = (n - 1) * (m - 1));
+    print_endline "triangles";
     let triangles =
       flatten (6 * 2 * 3 * 3) (n-1) (m-1)
         (fun i j ->
@@ -284,6 +285,7 @@ module Histogram = struct
              v1;v8;v7;v7;v2;v1;
            ])
     in
+    print_endline "normals";
     let normals =
       flatten (6 * 2 * 3 * 3) (n-1) (m-1)
         (fun _ _ ->
@@ -308,6 +310,7 @@ module Histogram = struct
              front; front; front;
            ])
     in
+    print_endline "wireframe";
     let wireframe =
       flatten (6 * 2 * 4 * 3) (n-1) (m-1)
         (fun i j ->
@@ -334,6 +337,7 @@ module Histogram = struct
              v1;v8;v8;v7;v7;v2;v2;v1;
            ])
     in
+    print_endline "wireframe_normals";
     let wireframe_normals =
       flatten (6 * 2 * 4 * 3) (n-1) (m-1)
         (fun _ _ ->
