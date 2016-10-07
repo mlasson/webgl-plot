@@ -113,11 +113,11 @@ let rainbow_surface gl shader xs zs ys =
   let range = (max -. min) in
   let rainbow y =
     if range < 1e-10 then
-      Vector.to_three (Math.Color.hsv (0.5 *. 359.9) 1.0 1.0)
+      (Math.Color.hsv (0.5 *. 359.9) 1.0 1.0)
     else if false then
-      Vector.to_three (Math.Color.hsv (359.9 *. (1.0 -. (y -. min) /. range)) 1.0 1.0)
+      (Math.Color.hsv (359.9 *. (1.0 -. (y -. min) /. range)) 1.0 1.0)
     else
-      ((y -. min) /. range, 0.0, 0.0)
+      Math.Color.cold_to_hot ((y -. min) /. range)
   in
   let {Geometry.Surface.vertices; triangles; wireframe; normals} = Geometry.Surface.create xs zs ys in
   let a_positions = create_attrib_array gl 3 vertices in

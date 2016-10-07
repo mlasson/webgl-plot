@@ -371,7 +371,31 @@ module Color = struct
       else (c,0.0,x)
     in
     let m = v -. c in
-    Vector.of_three (r +. m, g +. m, b +. m)
+    (r +. m, g +. m, b +. m)
+
+  let cold_to_hot =
+     let colors = [| 0.0, 0.0, 1.0;
+                     0.0, 1.0, 1.0;
+                     0.0, 1.0, 0.0;
+                     1.0, 1.0, 0.0;
+                     1.0, 0.0, 0.0 |] in
+     let n = Array.length colors in
+     fun t ->
+       if t <= 0.0 then
+         colors.(0)
+       else if t >= 1.0 then
+         colors.(n-1)
+       else
+         let t = t *. (float (n - 1)) in
+         let k = int_of_float t in
+         let t' = t -. (float k) in
+         let t = 1.0 -. t' in
+         let x, y, z = colors.(k) in
+         let x', y', z' = colors.(k+1) in
+         x *. t +. x' *. t',
+         y *. t +. y' *. t',
+         z *. t +. z' *. t'
+
 end
 
 

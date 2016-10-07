@@ -88,4 +88,7 @@ module Buffer :
     val get3 : Webgl.Float32Array.t -> int -> three Vector.vector
   end
 module Color :
-  sig val hsv : float -> float -> float -> three Vector.vector end
+  sig
+    val hsv : float -> float -> float -> float * float * float
+    val cold_to_hot: float -> float * float * float
+  end

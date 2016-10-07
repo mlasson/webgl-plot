@@ -11,7 +11,7 @@ let () = Window.set_onload window (fun _ ->
     repere # set_z_axis_label "ZZZ axis label";
     repere # set_frame {x_max = 1.;x_min=0.;y_max=1.;y_min=0.;z_max=1.;z_min=0.};
     let n = 10 in
-    let m = 10 in
+    let m = n in
     let xs = Geometry.uniform_array n 0.0 1.0 in
     let zs = Geometry.uniform_array m 0.0 1.0 in
     let ys = Array.create_float (n * m) in

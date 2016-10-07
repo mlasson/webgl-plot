@@ -231,6 +231,137 @@ module Surface = struct
   }
 end
 
+module Histogram = struct
+
+  type t = {
+    triangles: Float32Array.t;
+    normals: Float32Array.t;
+    wireframe: Float32Array.t;
+    wireframe_normals: Float32Array.t;
+  }
+
+  (* Invariant: forall i j, length (f i j) = dim *)
+  let flatten dim n m f =
+    let points = Float32Array.new_float32_array (`Size (n * m * dim)) in
+    let pos = ref 0 in
+    for i = 0 to n - 1 do
+      for j = 0 to m - 1 do
+        let a = f i j in
+        assert (Array.length a = dim);
+        Array.iteri (fun k x ->
+          Float32Array.set points (!pos + k) x) a;
+        pos := !pos + dim;
+      done
+    done;
+    points
+
+  let create xs zs ys =
+    let n, m = Array.length xs, Array.length zs in
+    assert (Array.length ys = (n - 1) * (m - 1));
+    let triangles =
+      flatten (6 * 2 * 3 * 3) (n-1) (m-1)
+        (fun i j ->
+           let y_max = ys.(i * (m - 1) + j) in
+           let y_min = 0.0 in
+           let x_min = xs.(i) in
+           let x_max = xs.(i+1) in
+           let z_min = zs.(j) in
+           let z_max = zs.(j+1) in
+           let v1 = [| x_min; y_max; z_min|] in
+           let v2 = [| x_max; y_max; z_min|] in
+           let v3 = [| x_max; y_max; z_max|] in
+           let v4 = [| x_min; y_max; z_max|] in
+           let v5 = [| x_min; y_min; z_max|] in
+           let v6 = [| x_max; y_min; z_max|] in
+           let v7 = [| x_max; y_min; z_min|] in
+           let v8 = [| x_min; y_min; z_min|] in
+           Array.concat [
+             v1;v2;v3;v3;v4;v1;
+             v5;v6;v7;v7;v8;v5;
+             v2;v7;v6;v6;v3;v2;
+             v1;v4;v5;v5;v8;v1;
+             v3;v6;v5;v5;v4;v3;
+             v1;v8;v7;v7;v2;v1;
+           ])
+    in
+    let normals =
+      flatten (6 * 2 * 3 * 3) (n-1) (m-1)
+        (fun _ _ ->
+           let top = [| 0.; 1.; 0.|] in
+           let bot = [| 0.; -1.; 0.|] in
+           let right = [| 1.; 0.; 0.|] in
+           let left = [| -1.; 0.; 0.|] in
+           let back = [| 0.; 0.; 1.|] in
+           let front = [| 0.; 0.; -1.|] in
+           Array.concat [
+             top; top; top;
+             top; top; top;
+             bot; bot; bot;
+             bot; bot; bot;
+             right; right; right;
+             right; right; right;
+             left; left; left;
+             left; left; left;
+             back; back; back;
+             back; back; back;
+             front; front; front;
+             front; front; front;
+           ])
+    in
+    let wireframe =
+      flatten (6 * 2 * 4 * 3) (n-1) (m-1)
+        (fun i j ->
+           let y_max = ys.(i * (m - 1) + j) in
+           let y_min = 0.0 in
+           let x_min = xs.(i) in
+           let x_max = xs.(i+1) in
+           let z_min = zs.(j) in
+           let z_max = zs.(j+1) in
+           let v1 = [| x_min; y_max; z_min|] in
+           let v2 = [| x_max; y_max; z_min|] in
+           let v3 = [| x_max; y_max; z_max|] in
+           let v4 = [| x_min; y_max; z_max|] in
+           let v5 = [| x_min; y_min; z_max|] in
+           let v6 = [| x_max; y_min; z_max|] in
+           let v7 = [| x_max; y_min; z_min|] in
+           let v8 = [| x_min; y_min; z_min|] in
+           Array.concat [
+             v1;v2;v2;v3;v3;v4;v4;v1;
+             v5;v6;v6;v7;v7;v8;v8;v5;
+             v2;v7;v7;v6;v6;v3;v3;v2;
+             v1;v4;v4;v5;v5;v8;v8;v1;
+             v3;v6;v6;v5;v5;v4;v4;v3;
+             v1;v8;v8;v7;v7;v2;v2;v1;
+           ])
+    in
+    let wireframe_normals =
+      flatten (6 * 2 * 4 * 3) (n-1) (m-1)
+        (fun _ _ ->
+           let top = [| 0.; 1.; 0.|] in
+           let bot = [| 0.; -1.; 0.|] in
+           let right = [| 1.; 0.; 0.|] in
+           let left = [| -1.; 0.; 0.|] in
+           let back = [| 0.; 0.; 1.|] in
+           let front = [| 0.; 0.; -1.|] in
+           Array.concat [
+             top;top;top;top;top;top;top;top;
+             bot;bot;bot;bot;bot;bot;bot;bot;
+             right;right;right;right;right;right;right;right;
+             left;left;left;left;left;left;left;left;
+             back;back;back;back;back;back;back;back;
+             front;front;front;front;front;front;front;front;
+           ])
+    in
+    {
+      triangles;
+      normals;
+      wireframe;
+      wireframe_normals;
+    }
+
+
+end
+
 let init_triple_array size f =
   let result = Float32Array.new_float32_array (`Size (3 * size)) in
   let k = ref 0 in
