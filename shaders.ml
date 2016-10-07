@@ -164,6 +164,7 @@ module Basic = struct
     method set_colors: attrib_array -> unit
     method set_normals: attrib_array -> unit
 
+    method draw_arrays: mode -> ?first:int -> int -> unit
     method draw_elements: mode -> element_array -> unit
   end
 
@@ -212,6 +213,9 @@ module Basic = struct
         a # plug color_location
       method set_normals a =
         a # plug normal_location
+
+      method draw_arrays mode ?(first = 0) count =
+        Webgl.draw_arrays gl (constant_of_mode mode) first count
 
       method draw_elements mode elements =
         elements # bind;
