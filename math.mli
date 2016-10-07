@@ -91,4 +91,5 @@ module Color :
   sig
     val hsv : float -> float -> float -> float * float * float
     val cold_to_hot: float -> float * float * float
+    val white_cold_to_hot: float -> float * float * float
   end

@@ -373,12 +373,8 @@ module Color = struct
     let m = v -. c in
     (r +. m, g +. m, b +. m)
 
-  let cold_to_hot =
-     let colors = [| 0.0, 0.0, 1.0;
-                     0.0, 1.0, 1.0;
-                     0.0, 1.0, 0.0;
-                     1.0, 1.0, 0.0;
-                     1.0, 0.0, 0.0 |] in
+  
+  let gradient colors =
      let n = Array.length colors in
      fun t ->
        if t <= 0.0 then
@@ -395,6 +391,25 @@ module Color = struct
          x *. t +. x' *. t',
          y *. t +. y' *. t',
          z *. t +. z' *. t'
+
+  let cold_to_hot =
+    let colors = [| 
+      0.0, 0.0, 1.0;
+      0.0, 1.0, 1.0;
+      0.0, 1.0, 0.0;
+      1.0, 1.0, 0.0;
+      1.0, 0.0, 0.0 |] in
+    gradient colors
+
+ let white_cold_to_hot =
+    let colors = [| 
+      1.0, 1.0, 1.0;
+      0.0, 0.0, 1.0;
+      0.0, 1.0, 1.0;
+      0.0, 1.0, 0.0;
+      1.0, 1.0, 0.0;
+      1.0, 0.0, 0.0 |] in
+    gradient colors
 
 end
 

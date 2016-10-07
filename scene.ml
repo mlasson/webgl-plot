@@ -178,7 +178,7 @@ let histogram gl shader xs zs ys =
   let min, max = match Array.min_max ys with Some c -> c | None -> 0.0, 1.0 in
   let range = max -. min in
   let rainbow y =
-      Math.Color.cold_to_hot ((y -. min) /. range)
+      Math.Color.white_cold_to_hot ((y -. min) /. range)
   in
   let {Histogram.triangles; normals; wireframe; wireframe_normals} = Histogram.create xs zs ys in
   let a_triangles = create_attrib_array gl 3 triangles in
