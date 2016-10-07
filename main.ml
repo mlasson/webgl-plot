@@ -27,7 +27,7 @@ let () = Window.set_onload window (fun _ ->
     scene # add_surface xs zs ys;
     let last_add = ref 0.0 in
     fun clock {Component.aspect; angle; move; _} ->
-      if clock -. !last_add  > 1000.0 then begin
+      if clock -. !last_add  > 10.0 then begin
         last_add := clock;
         let position = Random.float 1.0, Random.float 1.0, 0.5 in
         let color = Random.float 1.0, Random.float 1.0, Random.float 1.0 in

@@ -42,40 +42,53 @@ let get_and_enable_vertex_attrib_array_location gl program location =
   enable_vertex_attrib_array gl attrib_location;
   attrib_location
 
-class attrib_array gl dim data =
+class attrib_array gl dim =
   let buffer = create_buffer gl in
-  let size = Float32Array.length data in
-  let count = assert (size mod dim = 0); size / dim in
   object(this)
+    val mutable count = 0
     method count = count
     method dim = dim
-    method bind =
-      bind_buffer gl _ARRAY_BUFFER_ buffer
-    method attach location =
-      this # bind;
-      vertex_attrib_pointer gl location dim _FLOAT_ false 0 0
-    initializer
+    method fill data =
+      let size = Float32Array.length data in
+      assert (size mod dim = 0);
+      count <- size / dim;
       this # bind;
       buffer_data gl _ARRAY_BUFFER_ (Float32Array.t_to_js data) _STATIC_DRAW_
+    method private bind =
+      bind_buffer gl _ARRAY_BUFFER_ buffer
+    method plug location =
+      this # bind;
+      vertex_attrib_pointer gl location dim _FLOAT_ false 0 0
   end
 
-class element_array gl data =
+class element_array gl =
   let buffer = create_buffer gl in
-  let data, index_type, size =
-    match data with
-    | `Byte data -> Uint8Array.t_to_js data, _UNSIGNED_BYTE_, Uint8Array.length data
-    | `Short data -> Uint16Array.t_to_js data, _UNSIGNED_SHORT_, Uint16Array.length data
-    | `Int data -> Uint32Array.t_to_js data, _UNSIGNED_INT_, Uint32Array.length data
-  in
   object(this)
+    val mutable index_type = _UNSIGNED_BYTE_
+    val mutable size = 0
     method index_type = index_type
     method size = size
     method buffer = buffer
-    method bind =
-      bind_buffer gl _ELEMENT_ARRAY_BUFFER_ buffer;
-    initializer
+    method fill (data : Geometry.indexes) =
+      let data =
+        match data with
+        | `Byte data ->
+          index_type <- _UNSIGNED_BYTE_;
+          size <- Uint8Array.length data;
+          Uint8Array.t_to_js data
+        | `Short data ->
+          index_type <- _UNSIGNED_SHORT_;
+          size <- Uint16Array.length data;
+          Uint16Array.t_to_js data
+        | `Int data ->
+          index_type <- _UNSIGNED_INT_;
+          size <- Uint32Array.length data;
+          Uint32Array.t_to_js data
+      in
       this # bind;
       buffer_data gl _ELEMENT_ARRAY_BUFFER_ data _STATIC_DRAW_
+    method bind =
+      bind_buffer gl _ELEMENT_ARRAY_BUFFER_ buffer
   end
 
 
@@ -131,10 +144,11 @@ module Basic = struct
     method set_object_matrix: Float32Array.t -> unit
     method set_world_matrix: Float32Array.t -> unit
 
-    method binds_positions: buffer -> unit
-    method binds_colors: buffer -> unit
-    method binds_normals: buffer -> unit
-    method binds_indexes: buffer -> unit
+    method set_positions: attrib_array -> unit
+    method set_colors: attrib_array -> unit
+    method set_normals: attrib_array -> unit
+
+    method draw_elements: element_array -> unit
   end
 
   let init gl =
@@ -164,95 +178,30 @@ module Basic = struct
       | Some thing -> thing
       | None -> error "unable to get 'u_lightPos'"
     in
-    let binds location buffer =
-      bind_buffer gl _ARRAY_BUFFER_ buffer;
-      vertex_attrib_pointer gl location 3 _FLOAT_ false 0 0
-    in
     (object
       method use = use_program gl program
 
       method set_ambient_light r g b =
         uniform3f gl ambient_light r g b
-
       method set_light_position x y z =
         uniform3f gl light_position x y z
-
       method set_object_matrix data =
         uniform_matrix4fv gl object_matrix false data
-
       method set_world_matrix data =
         uniform_matrix4fv gl world_matrix false data
 
-      method binds_positions buffer =
-        binds position_location buffer
+      method set_positions a =
+        a # plug position_location
+      method set_colors a =
+        a # plug color_location
+      method set_normals a =
+        a # plug normal_location
 
-      method binds_colors buffer =
-        binds color_location buffer
-
-      method binds_normals buffer =
-        binds normal_location buffer
-
-      method binds_indexes buffer =
-        bind_buffer gl _ELEMENT_ARRAY_BUFFER_ buffer
+      method draw_elements elements =
+        elements # bind;
+        Webgl.draw_elements gl _TRIANGLES_ (elements # size) (elements # index_type) 0
     end : shader)
 
-  class drawable gl shader =
-
-    let positions = Webgl.create_buffer gl in
-    let colors = Webgl.create_buffer gl in
-    let normals = Webgl.create_buffer gl in
-    let indexes = Webgl.create_buffer gl in
-
-    let fill_float_buffer buffer data =
-        bind_buffer gl _ARRAY_BUFFER_ buffer;
-        buffer_data gl _ARRAY_BUFFER_ (Float32Array.t_to_js data) _STATIC_DRAW_;
-    in
-
-    object(this)
-      val mutable size = 0
-      val mutable index_type = _UNSIGNED_SHORT_
-      val mutable cull_face = false
-      val mutable mode = _TRIANGLES_
-
-      method set_cull_face b = cull_face <- b
-      method set_mode m = mode <- m
-
-      method set_positions data = fill_float_buffer positions data
-      method set_normals data = fill_float_buffer normals data
-      method set_colors data = fill_float_buffer colors data
-
-      method set_indexes8 data =
-        size <- Uint8Array.length data;
-        index_type <- _UNSIGNED_BYTE_;
-        bind_buffer gl _ELEMENT_ARRAY_BUFFER_ indexes;
-        buffer_data gl _ELEMENT_ARRAY_BUFFER_ (Uint8Array.t_to_js data) _STATIC_DRAW_
-
-      method set_indexes16 data =
-        size <- Uint16Array.length data;
-        index_type <- _UNSIGNED_SHORT_;
-        bind_buffer gl _ELEMENT_ARRAY_BUFFER_ indexes;
-        buffer_data gl _ELEMENT_ARRAY_BUFFER_ (Uint16Array.t_to_js data) _STATIC_DRAW_
-
-      method set_indexes32 data =
-        index_type <- _UNSIGNED_INT_;
-        size <- Uint32Array.length data;
-        bind_buffer gl _ELEMENT_ARRAY_BUFFER_ indexes;
-        buffer_data gl _ELEMENT_ARRAY_BUFFER_ (Uint32Array.t_to_js data) _STATIC_DRAW_
-
-      method set_indexes (data : Geometry.indexes) =
-        match data with
-        | `Byte data -> this # set_indexes8 data
-        | `Short data -> this # set_indexes16 data
-        | `Int data -> this # set_indexes32 data
-
-      method draw =
-        (if cull_face then enable gl _CULL_FACE_ else disable gl _CULL_FACE_);
-        shader # binds_positions positions;
-        shader # binds_normals normals;
-        shader # binds_colors colors;
-        shader # binds_indexes indexes;
-        draw_elements gl mode size index_type 0
-    end
 end
 
 module Texture = struct

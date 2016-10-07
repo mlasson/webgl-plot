@@ -147,7 +147,7 @@ type indexes =
   | `Short of Uint16Array.t
   | `Int of Uint32Array.t]
 
-let indexes_of_array a =
+let indexes_of_array a : indexes =
   let len = Array.length a in
   if len < 256 then
     `Byte (Uint8Array.new_uint8_array (`Data a))
@@ -161,6 +161,7 @@ class virtual geometry =
     method virtual points : Float32Array.t
     method virtual normals : Float32Array.t
     method virtual indexes : indexes
+    method virtual wireframe : indexes
 
     method bounding_box = bounding_box (this # points)
   end
@@ -187,9 +188,6 @@ let lines_indexes_from_grid dim1 dim2 =
   done;
   indexes_of_array segments
 
-
-
-
 class sphere res =
   let dim1 = uniform_array res 0.0 (2.0 *. pi) in
   let dim2 = uniform_array res 0.0 pi in
@@ -205,14 +203,16 @@ class sphere res =
     method points = points
     method normals = points
     method indexes = indexes
+    method wireframe = lines
+  end
 
-    method lines =
-      object
-        inherit geometry
-        method points = points
-        method normals = points
-        method indexes = lines
-      end
+class copy (geometry : geometry) =
+  object
+    inherit geometry
+    method points = geometry # points
+    method normals = geometry # points
+    method indexes = geometry # indexes
+    method wireframe = geometry # wireframe
   end
 
 class surface xs zs ys =
@@ -233,17 +233,8 @@ class surface xs zs ys =
     method points = points
     method normals = normals
     method indexes = indexes
-    method lines =
-      object
-        inherit geometry
-        method points = points
-        method normals = normals
-        method indexes = lines
-      end
+    method wireframe = lines
   end
-
-
-
 
 let init_triple_array size f =
   let result = Float32Array.new_float32_array (`Size (3 * size)) in

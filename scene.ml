@@ -50,9 +50,14 @@ let world_matrix aspect {Geometry.x_max; x_min; y_max; y_min; z_min; z_max} (ang
 let flatten_matrix m =
   Webgl.Float32Array.new_float32_array (`Data (Vector.to_array m))
 
-class virtual position gl shader =
-  object
-    inherit Shaders.Basic.drawable gl shader as super
+class virtual free_basic_object _gl (shader : Shaders.Basic.shader)  =
+  object(this)
+    method virtual a_positions : Shaders.attrib_array
+    method virtual a_colors : Shaders.attrib_array
+    method virtual a_normals : Shaders.attrib_array
+    method virtual e_indexes : Shaders.element_array
+    method virtual e_wireframe : Shaders.element_array
+
     val mutable scale = (1., 1., 1.)
     val mutable position = (0., 0., 0.)
 
@@ -62,52 +67,84 @@ class virtual position gl shader =
     method set_position x =
       position <- x
 
-    method! draw =
+    method draw =
       shader # set_object_matrix
         (flatten_matrix
            (Vector.Const.scale_translation
               (Vector.of_three scale) (Vector.of_three position)));
-      super # draw
+      shader # set_colors (this # a_colors);
+      shader # set_normals (this # a_normals);
+      shader # set_positions (this # a_positions);
+      shader # draw_elements (this # e_indexes)
   end
 
-class colored_sphere gl shader color =
-  object(this)
-    inherit position gl shader
-    inherit Geometry.sphere 10
-    inherit Geometry.colored color
+class fresh_buffers gl geometry =
+  object
+    val a_colors =
+      new Shaders.attrib_array gl 3
+    val a_normals =
+      new Shaders.attrib_array gl 3
+    val a_positions =
+      new Shaders.attrib_array gl 3
+    val e_indexes =
+      new Shaders.element_array gl
+    val e_wireframe =
+      new Shaders.element_array gl
+
+    method a_colors = a_colors
+    method a_normals = a_normals
+    method a_positions = a_positions
+    method e_indexes = e_indexes
+    method e_wireframe = e_wireframe
 
     initializer
-      this # set_colors (this # colors);
-      this # set_indexes (this # indexes);
-      this # set_positions (this # points);
-      this # set_normals (this # normals)
+      a_colors # fill (geometry # colors);
+      a_positions # fill (geometry # points);
+      a_normals # fill (geometry # normals);
+      e_indexes # fill (geometry # indexes);
+      e_wireframe # fill (geometry # wireframe)
   end
 
-class rainbow_surface gl shader xs zs ys =
+class basic_object gl shader geometry =
+  object
+    inherit fresh_buffers gl geometry
+    inherit free_basic_object gl shader
+  end
+
+let colored_sphere gl shader =
+  let open Geometry in
+  let mesh = new sphere 20 in
+  fun color ->
+    (new basic_object gl shader
+      (object
+        inherit colored (fun _ _ -> color)
+        inherit copy mesh
+      end))
+
+let rainbow_surface gl shader xs zs ys =
   let min, max = match Array.min_max ys with Some c -> c | None -> 0.0, 1.0 in
   let range = (max -. min) in
   let rainbow (_, y, _) _ =
     if range < 1e-10 then
       Vector.to_three (Math.Color.hsv (0.5 *. 359.9) 1.0 1.0)
-    else
+    else if false then
       Vector.to_three (Math.Color.hsv (359.9 *. (1.0 -. (y -. min) /. range)) 1.0 1.0)
+    else
+      ((y -. min) /. range, 0.0, 0.0)
   in
-  object(this)
-    inherit position gl shader
-    inherit Geometry.surface xs zs ys
-    inherit Geometry.colored rainbow
-
-    initializer
-      this # set_colors (this # colors);
-      this # set_indexes (this # indexes);
-      this # set_positions (this # points);
-      this # set_normals (this # normals)
-  end
+  let geometry =
+    object
+      inherit Geometry.surface xs zs ys
+      inherit Geometry.colored rainbow
+    end
+  in
+  new basic_object gl shader geometry
 
 let prepare_scene gl =
   let basic_shader = Shaders.Basic.init gl in
   let texture_shader = Shaders.Texture.init gl in
   let repere = Repere.initialize gl texture_shader in
+  let sphere_factory = colored_sphere gl basic_shader in
   object
     val mutable aspect = 1.0
     val mutable angle = (0., 0., 0.)
@@ -122,11 +159,11 @@ let prepare_scene gl =
     method repere = repere
 
     method add_surface xs zs ys =
-      let obj = new rainbow_surface gl basic_shader xs zs ys in
+      let obj = rainbow_surface gl basic_shader xs zs ys in
       objects <- obj :: objects
 
     method add_sphere position scale color =
-      let obj = new colored_sphere gl basic_shader (fun _ _ -> color) in
+      let obj = sphere_factory color in
       obj # set_position position;
       obj # set_scale scale;
       objects <- obj :: objects
