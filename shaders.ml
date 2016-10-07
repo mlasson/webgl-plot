@@ -42,6 +42,43 @@ let get_and_enable_vertex_attrib_array_location gl program location =
   enable_vertex_attrib_array gl attrib_location;
   attrib_location
 
+class attrib_array gl dim data =
+  let buffer = create_buffer gl in
+  let size = Float32Array.length data in
+  let count = assert (size mod dim = 0); size / dim in
+  object(this)
+    method count = count
+    method dim = dim
+    method bind =
+      bind_buffer gl _ARRAY_BUFFER_ buffer
+    method attach location =
+      this # bind;
+      vertex_attrib_pointer gl location dim _FLOAT_ false 0 0
+    initializer
+      this # bind;
+      buffer_data gl _ARRAY_BUFFER_ (Float32Array.t_to_js data) _STATIC_DRAW_
+  end
+
+class element_array gl data =
+  let buffer = create_buffer gl in
+  let data, index_type, size =
+    match data with
+    | `Byte data -> Uint8Array.t_to_js data, _UNSIGNED_BYTE_, Uint8Array.length data
+    | `Short data -> Uint16Array.t_to_js data, _UNSIGNED_SHORT_, Uint16Array.length data
+    | `Int data -> Uint32Array.t_to_js data, _UNSIGNED_INT_, Uint32Array.length data
+  in
+  object(this)
+    method index_type = index_type
+    method size = size
+    method buffer = buffer
+    method bind =
+      bind_buffer gl _ELEMENT_ARRAY_BUFFER_ buffer;
+    initializer
+      this # bind;
+      buffer_data gl _ELEMENT_ARRAY_BUFFER_ data _STATIC_DRAW_
+  end
+
+
 
 module Basic = struct
   let vertex_shader = {gsl|
@@ -129,7 +166,7 @@ module Basic = struct
     in
     let binds location buffer =
       bind_buffer gl _ARRAY_BUFFER_ buffer;
-      vertex_attrib_pointer gl location 3 _FLOAT_ false 0 0;
+      vertex_attrib_pointer gl location 3 _FLOAT_ false 0 0
     in
     (object
       method use = use_program gl program

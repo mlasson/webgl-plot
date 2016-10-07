@@ -1,13 +1,4 @@
-*.annot
-*.cmt
-*.cmo
-*.cma
-*.cmi
-*.a
-*.o
-*.cmx
-*.cmxs
-*.cmxa
+*.cm*
 *.byte
 *.js
 .depend
