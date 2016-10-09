@@ -118,6 +118,10 @@ class virtual basic_indexed_object _gl (shader : Shaders.Basic.shader)  =
       shader # draw_elements Shaders.Lines (this # e_wireframe)
   end
 
+class dummy_ray = object 
+  method ray (_ : three Vector.vector) (_ : three Vector.vector) = (None : three Vector.vector option) 
+end
+
 let colored_sphere gl shader =
   let open Geometry in
   let open Shaders in
@@ -134,6 +138,7 @@ let colored_sphere gl shader =
     in
     object
       inherit basic_indexed_object gl shader
+      inherit dummy_ray
       method a_colors = a_colors
       method a_normals = a_positions
       method a_colors_wireframe = a_colors_wireframe
@@ -150,6 +155,7 @@ let rainbow_surface gl shader xs zs ys =
       Math.Color.cold_to_hot ((y -. min) /. range)
   in
   let {Geometry.Surface.vertices; triangles; wireframe; normals} = Geometry.Surface.create xs zs ys in
+  let table = Intersection.build_ray_table vertices triangles in
   let a_positions = create_attrib_array gl 3 vertices in
   let a_normals = create_attrib_array gl 3 normals in
   let a_colors_wireframe =
@@ -170,6 +176,7 @@ let rainbow_surface gl shader xs zs ys =
     method a_positions = a_positions
     method e_wireframe = e_wireframe
     method e_triangles = e_triangles
+    method ray o e = Intersection.ray_triangles vertices table o e
   end
 
 let histogram gl shader xs zs ys =
@@ -195,6 +202,7 @@ let histogram gl shader xs zs ys =
   in
   object
     inherit basic_object gl shader
+    inherit dummy_ray
 
     method a_triangles = a_triangles
     method a_colors = a_colors
@@ -205,11 +213,10 @@ let histogram gl shader xs zs ys =
     method a_wireframe = a_wireframe
   end
 
-
-
 class type drawable =
   object
     method draw : unit
+    method ray: three Vector.vector -> three Vector.vector -> three Vector.vector option  
   end
 
 let prepare_scene gl =
@@ -217,17 +224,23 @@ let prepare_scene gl =
   let texture_shader = Shaders.Texture.init gl in
   let repere = Repere.initialize gl texture_shader in
   let sphere_factory = colored_sphere gl basic_shader in
+ 
+  let sphere_pointer = sphere_factory (0.0, 0.0, 0.0) in
+  let () = sphere_pointer # set_scale (0.005, 0.005, 0.005) in
   object
     val mutable aspect = 1.0
     val mutable angle = (0., 0., 0.)
     val mutable move = (0., 0., 0.)
+    val mutable pointer = (0., 0.)
 
     val mutable objects : #drawable list = []
 
     method set_aspect x = aspect <- x
     method set_angle x = angle <- x
     method set_move x = move <- x
+    method set_pointer p = pointer <- p
 
+      
     method repere = repere
 
     method add_surface xs zs ys =
@@ -248,7 +261,8 @@ let prepare_scene gl =
       match repere # frame with
       | None -> ()
       | Some frame -> begin
-          let _proportion, matrix, _matrix' = world_matrix aspect frame angle move in
+          let _proportion, matrix, matrix' = world_matrix aspect frame angle move in
+          
           texture_shader # use;
           texture_shader # set_world_matrix (flatten_matrix matrix);
           begin
@@ -262,6 +276,25 @@ let prepare_scene gl =
           basic_shader # set_light_position 1.0 1.0 (-2.0);
 
           List.iter (fun o -> o # draw) objects;
+
+          let x,y = pointer in
+          begin
+            let open Math.Vector in
+            let o =
+              four_to_three
+                  (multiply_vector matrix' (Vector.of_four (x,y,1.0,1.0)))
+              in
+              let e =
+                four_to_three
+                  (multiply_vector matrix' (Vector.of_four (x,y,-1.0,1.0)))
+              in
+              match List.choose (fun x -> x # ray o e) objects with
+              | [] -> ()
+              | p :: _ -> begin
+                  sphere_pointer # set_position (Vector.to_three p);
+                  sphere_pointer # draw
+                end
+            end
         end
   end
 
