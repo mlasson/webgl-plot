@@ -3,7 +3,7 @@ open Js_bindings
 module Examples = struct
 
   let surface scene =
-    let n = 125 in
+    let n = 1024 in
     let m = n in
     let xs = Geometry.uniform_array n 0.0 1.0 in
     let zs = Geometry.uniform_array m 0.0 1.0 in
