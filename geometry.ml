@@ -159,11 +159,12 @@ module Buffer = struct
   let iter_triangles ?(chunk_size = 1000) indexes f =
     let size = number_of_triangles indexes in
     let get = Index.get indexes in
-    Asynchronous_computations.range_chunks chunk_size (fun k ->
+    for k = 0 to size - 1 do
         f (get (3 * k),
            get (3 * k + 1),
            get (3 * k + 2))
-      ) 0 (size - 1)
+    done
+
 
   let get_generic tmp float_array k =
     let dim = Array.length tmp in

@@ -127,8 +127,14 @@ let partition points size =
   done;
   Array.of_list (List.rev !results)
 
+let hashtbl_to_list table = 
+  let keys = 
+    List.sort_uniq compare
+      (Hashtbl.fold (fun k _ acc -> k :: acc) table [])
+  in
+  List.map (fun key -> key, Hashtbl.find_all table key) keys
 
-let build_ray_table context points triangles =
+let build_ray_table points triangles =
   let nb_triangles = Buffer.number_of_triangles triangles in
   let size = max (int_of_float (sqrt (float nb_triangles) /. 10.0)) 1 in
   let boxes = partition points size in
@@ -136,14 +142,6 @@ let build_ray_table context points triangles =
   let table = Hashtbl.create nb_boxes in
   let chunks = 1000 in
   let cpt = ref 0 in
-  context # status "Computing ray casting table ...";
-  context # push;
-  let open Asynchronous_computations in
-  let delay () =
-    cpt := !cpt + chunks;
-    context # progress ((float !cpt) /. (float nb_triangles));
-    delay ()
-  in
   Buffer.iter_triangles triangles (fun ((a,b,c) as triangle) ->
       let x_a, _, z_a = Vector.to_three (Buffer.get3 points a) in
       let x_b, _, z_b = Vector.to_three (Buffer.get3 points b) in
@@ -182,9 +180,8 @@ let build_ray_table context points triangles =
           Hashtbl.add table boxes.(bl + j * size + i) triangle;
         done;
       done
-    ) >>= fun () -> context # pop; delay () >>= fun () ->
-  context # status "Almost done ...";
-  Asynchronous_computations.hashtbl_to_list context table
+    );
+  hashtbl_to_list table
 
 let ray_triangles points table o e =
   let d = Vector.sub e o in
