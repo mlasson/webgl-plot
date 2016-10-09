@@ -6,7 +6,7 @@ val build_ray_table :
   < pop : unit; progress : float -> unit; push : unit; status : string -> unit;
     .. > ->
   Float32Array.t ->
-  Uint16Array.t ->
+  Geometry.Index.t ->
   ray_table Asynchronous_computations.t
 
 val ray_triangles :

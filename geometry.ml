@@ -92,10 +92,39 @@ let triangles_indexes_from_grid dim1 dim2 =
     aux result Uint32Array.set;
     `Int result
 
-type indexes =
-  [ `Byte of Uint8Array.t
-  | `Short of Uint16Array.t
-  | `Int of Uint32Array.t]
+module Index = struct
+
+  type t =
+    [ `Byte of Uint8Array.t
+    | `Short of Uint16Array.t
+    | `Int of Uint32Array.t]
+
+  let length = function 
+     | `Int data -> Uint32Array.length data
+     | `Short data -> Uint16Array.length data
+     | `Byte data -> Uint8Array.length data
+
+  let get = function 
+     | `Int data -> Uint32Array.get data
+     | `Short data -> Uint16Array.get data
+     | `Byte data -> Uint8Array.get data
+
+  let set = function 
+     | `Int data -> Uint32Array.set data
+     | `Short data -> Uint16Array.set data
+     | `Byte data -> Uint8Array.set data
+
+  let of_array a : t = 
+    let len = Array.length a in
+    if len < 256 then
+      `Byte (Uint8Array.new_uint8_array (`Data a))
+    else if len < 65536 then
+      `Short (Uint16Array.new_uint16_array (`Data a))
+    else
+      `Int (Uint32Array.new_uint32_array (`Data a))
+
+
+end
 
 module Buffer = struct
   open Webgl
@@ -124,15 +153,16 @@ module Buffer = struct
     iter_generic 3 buffer (fun a ->
         f (vec3_of_array (Array.copy a)))
 
-  let number_of_triangles indexes = 
-    (Uint16Array.length indexes) / 3
+  let number_of_triangles indexes =
+    Index.length indexes / 3
 
   let iter_triangles ?(chunk_size = 1000) indexes f =
     let size = number_of_triangles indexes in
+    let get = Index.get indexes in
     Asynchronous_computations.range_chunks chunk_size (fun k ->
-        f (Uint16Array.get indexes (3 * k),
-           Uint16Array.get indexes (3 * k + 1),
-           Uint16Array.get indexes (3 * k + 2))
+        f (get (3 * k),
+           get (3 * k + 1),
+           get (3 * k + 2))
       ) 0 (size - 1)
 
   let get_generic tmp float_array k =
@@ -197,17 +227,6 @@ let bounding_box points =
       z_max = !z_max
     }
 
-
-
-let indexes_of_array a : indexes =
-  let len = Array.length a in
-  if len < 256 then
-    `Byte (Uint8Array.new_uint8_array (`Data a))
-  else if len < 65536 then
-    `Short (Uint16Array.new_uint16_array (`Data a))
-  else
-    `Int (Uint32Array.new_uint32_array (`Data a))
-
 let uniform_array res min max =
   Array.init res (fun i -> min +. (float i) *. (max -. min) /. (float (res - 1)))
 
@@ -228,14 +247,14 @@ let lines_indexes_from_grid dim1 dim2 =
       segments.(!k) <- idx (i + 1) j; incr k;
     done
   done;
-  indexes_of_array segments
+  Index.of_array segments
 
 
 module Sphere = struct
   type t = {
     vertices: Float32Array.t;
-    wireframe : indexes;
-    triangles: indexes;
+    wireframe : Index.t;
+    triangles: Index.t;
   }
 
   let create res =
@@ -259,8 +278,8 @@ module Surface = struct
   type t = {
     vertices: Float32Array.t;
     normals: Float32Array.t;
-    wireframe : indexes;
-    triangles: indexes;
+    wireframe : Index.t;
+    triangles: Index.t;
   }
 
   let create xs zs ys =

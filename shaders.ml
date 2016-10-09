@@ -74,7 +74,7 @@ class element_array gl =
     method index_type = index_type
     method size = size
     method buffer = buffer
-    method fill (data : Geometry.indexes) =
+    method fill (data : Geometry.Index.t) =
       let data =
         match data with
         | `Byte data ->
