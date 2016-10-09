@@ -72,21 +72,7 @@ type vec2 = two Vector.vector
 type vec3 = three Vector.vector
 type vec4 = four Vector.vector
 type mat4 = (four, four) Vector.matrix
-module Buffer :
-  sig
-    val iteri : (int -> float -> unit) -> Webgl.Float32Array.t -> unit
-    val iter_generic :
-      int -> Webgl.Float32Array.t -> (float array -> unit) -> unit
-    val vec3_of_array : float array -> three Vector.vector
-    val iter3 : Webgl.Float32Array.t -> (three Vector.vector -> unit) -> unit
-    val number_of_triangles : Webgl.Uint16Array.t -> int
-    val iter_triangles :
-      ?chunk_size:int ->
-      Webgl.Uint16Array.t ->
-      (int * int * int -> unit) -> unit Asynchronous_computations.t
-    val get_generic : float array -> Webgl.Float32Array.t -> int -> unit
-    val get3 : Webgl.Float32Array.t -> int -> three Vector.vector
-  end
+
 module Color :
   sig
     val hsv : float -> float -> float -> float * float * float

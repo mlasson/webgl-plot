@@ -1,5 +1,6 @@
 open Math
 open Webgl
+open Geometry
 
 let epsilon = 1e-9
 

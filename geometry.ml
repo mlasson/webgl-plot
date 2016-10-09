@@ -92,6 +92,61 @@ let triangles_indexes_from_grid dim1 dim2 =
     aux result Uint32Array.set;
     `Int result
 
+type indexes =
+  [ `Byte of Uint8Array.t
+  | `Short of Uint16Array.t
+  | `Int of Uint32Array.t]
+
+module Buffer = struct
+  open Webgl
+
+  let iteri f a =
+    let open Float32Array in
+    for k = 0 to length a - 1 do
+       f k (get a k)
+    done
+
+  let iter_generic dim float_array f =
+    let tmp = Array.create_float dim in
+    iteri (fun k x ->
+        let i = k mod dim in
+        tmp.(i) <- x;
+        if i = dim - 1 then
+          f tmp
+      ) float_array
+
+  let vec3_of_array a =
+    match Vector.of_array a with
+    | `Three v -> v
+    | _ -> failwith "vec3_of_array"
+
+  let iter3 buffer f =
+    iter_generic 3 buffer (fun a ->
+        f (vec3_of_array (Array.copy a)))
+
+  let number_of_triangles indexes = 
+    (Uint16Array.length indexes) / 3
+
+  let iter_triangles ?(chunk_size = 1000) indexes f =
+    let size = number_of_triangles indexes in
+    Asynchronous_computations.range_chunks chunk_size (fun k ->
+        f (Uint16Array.get indexes (3 * k),
+           Uint16Array.get indexes (3 * k + 1),
+           Uint16Array.get indexes (3 * k + 2))
+      ) 0 (size - 1)
+
+  let get_generic tmp float_array k =
+    let dim = Array.length tmp in
+    for i = 0 to dim - 1 do
+      tmp.(i) <- Float32Array.get float_array (k * dim + i)
+    done
+
+  let get3 buffer k =
+    let tmp = Array.create_float 3 in
+    get_generic tmp buffer k;
+    vec3_of_array tmp
+end
+
 type box = {
   x_min : float;
   x_max : float;
@@ -142,10 +197,7 @@ let bounding_box points =
       z_max = !z_max
     }
 
-type indexes =
-  [ `Byte of Uint8Array.t
-  | `Short of Uint16Array.t
-  | `Int of Uint32Array.t]
+
 
 let indexes_of_array a : indexes =
   let len = Array.length a in
