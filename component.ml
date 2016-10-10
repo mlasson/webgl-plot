@@ -169,7 +169,7 @@ let create_webgl_canvas renderer =
         let tx, ty, tz = state.move in
         let tz =
           let tz' = tz +. y in
-          if 0.5 < tz' && tz' < 3.0 then
+          if 0.8 < tz' && tz' < 3.0 then
             tz' else tz
         in
         state.move <- tx, ty, tz;

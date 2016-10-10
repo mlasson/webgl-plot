@@ -2,11 +2,11 @@ open Math
 
 module Float32Array = Webgl.Float32Array
 
-let my_projection aspect =
-  Vector.Const.projection ~fov:(pi /. 4.0) ~near:0.001 ~far:4.0 ~aspect
+let my_projection near far aspect =
+  Vector.Const.projection ~fov:(pi /. 4.0) ~near ~far ~aspect
 
-let my_inverse_projection aspect =
-  Vector.Const.inverse_projection ~fov:(pi /. 4.0) ~near:0.001 ~far:4.0 ~aspect
+let my_inverse_projection near far aspect =
+  Vector.Const.inverse_projection ~fov:(pi /. 4.0) ~near ~far ~aspect
 
 let world_matrix aspect {Geometry.x_max; x_min; y_max; y_min; z_min; z_max} (angle_x, angle_y, angle_z) (trans_x, trans_y, trans_z) =
   let open Vector in
@@ -23,6 +23,10 @@ let world_matrix aspect {Geometry.x_max; x_min; y_max; y_min; z_min; z_max} (ang
   let scale_y = 1.0 /. range_y in
   let scale_z = 1.0 /. range_z in
 
+  let near, far =
+     max 0.1 (-1. +. trans_z), 2.0 +. trans_z
+  in
+
   let matrix =
     translation (of_three (move_x, move_y, move_z))
     |> multiply (scale (of_three (scale_x, scale_y, scale_z)))
@@ -31,13 +35,13 @@ let world_matrix aspect {Geometry.x_max; x_min; y_max; y_min; z_min; z_max} (ang
     |> multiply (x_rotation angle_x)
     |> multiply (translation (of_three (trans_x, trans_y, trans_z)))
     |> multiply flip
-    |> multiply (my_projection aspect)
+    |> multiply (my_projection near far aspect)
   in
 
   let proportions = of_three (1.0 /. scale_x, 1.0 /. scale_y, 1.0 /. scale_z) in
 
   let matrix' =
-    (my_inverse_projection aspect)
+    (my_inverse_projection near far aspect)
     |> multiply flip
     |> multiply (translation (of_three (-. trans_x, -. trans_y, -. trans_z)))
     |> multiply (x_rotation (-. angle_x))
@@ -118,8 +122,8 @@ class virtual basic_indexed_object _gl (shader : Shaders.Basic.shader)  =
       shader # draw_elements Shaders.Lines (this # e_wireframe)
   end
 
-class dummy_ray = object 
-  method ray (_ : three Vector.vector) (_ : three Vector.vector) = (None : three Vector.vector option) 
+class dummy_ray = object
+  method ray (_ : three Vector.vector) (_ : three Vector.vector) = (None : three Vector.vector option)
 end
 
 let colored_sphere gl shader =
@@ -216,7 +220,7 @@ let histogram gl shader xs zs ys =
 class type drawable =
   object
     method draw : unit
-    method ray: three Vector.vector -> three Vector.vector -> three Vector.vector option  
+    method ray: three Vector.vector -> three Vector.vector -> three Vector.vector option
   end
 
 let prepare_scene gl =
@@ -224,7 +228,7 @@ let prepare_scene gl =
   let texture_shader = Shaders.Texture.init gl in
   let repere = Repere.initialize gl texture_shader in
   let sphere_factory = colored_sphere gl basic_shader in
- 
+
   let sphere_pointer = sphere_factory (0.0, 0.0, 0.0) in
   let () = sphere_pointer # set_scale (0.005, 0.005, 0.005) in
   object
@@ -240,7 +244,7 @@ let prepare_scene gl =
     method set_move x = move <- x
     method set_pointer p = pointer <- p
 
-      
+
     method repere = repere
 
     method add_surface xs zs ys =
@@ -262,7 +266,7 @@ let prepare_scene gl =
       | None -> ()
       | Some frame -> begin
           let _proportion, matrix, matrix' = world_matrix aspect frame angle move in
-          
+
           texture_shader # use;
           texture_shader # set_world_matrix (flatten_matrix matrix);
           begin

@@ -3,7 +3,7 @@ open Js_bindings
 module Examples = struct
 
   let surface scene =
-    let n = 1024 in
+    let n = 100 in
     let m = n in
     let xs = Geometry.uniform_array n 0.0 1.0 in
     let zs = Geometry.uniform_array m 0.0 1.0 in
@@ -20,7 +20,7 @@ module Examples = struct
     end;
     scene # add_surface xs zs ys
 
-  let histogram scene = 
+  let histogram scene =
     let n = 10 in
     let m = n in
     let xs = Geometry.uniform_array n 0.0 1.0 in
@@ -52,6 +52,7 @@ let () = Window.set_onload window (fun _ ->
     repere # set_z_axis_label "ZZZ axis label";
     repere # set_frame {x_max = 1.;x_min=0.;y_max=1.;y_min=0.;z_max=1.;z_min=0.};
     Examples.surface scene;
+    Examples.histogram scene;
     fun _clock {Component.aspect; angle; move; pointer; _} ->
       scene # set_aspect aspect;
       scene # set_angle angle;
