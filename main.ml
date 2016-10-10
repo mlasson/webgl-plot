@@ -40,12 +40,11 @@ module Examples = struct
 
 end
 
-
 let () = Window.set_onload window (fun _ ->
   let main = Helper.element_of_id "main" in
-  let renderer gl =
+  let renderer gl textbox_factory =
     let open Scene in
-    let scene = prepare_scene gl in
+    let scene = prepare_scene gl textbox_factory in
     let repere = scene # repere in
     repere # set_x_axis_label "XXX axis label";
     repere # set_y_axis_label "YYY axis label";

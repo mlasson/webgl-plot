@@ -66,8 +66,7 @@ let create_face_texture () =
     | Some x -> x
   in
   let size = float real_size in
-  set_fill_style context (`Color "white");
-  fill_rect context 0.0 0.0 size size;
+  clear_rect context 0.0 0.0 size size;
   set_stroke_style context (`Color "black");
   set_line_width context (4.0 *. line_width);
   stroke_rect context 0.0 0.0 size size;
@@ -92,8 +91,6 @@ let create_ticks_texture label {number; text} =
   in
   let size = float real_size in
   clear_rect context 0.0 0.0 size size;
-  set_fill_style context (`Color "white");
-  fill_rect context 0.0 0.0 size size;
   set_fill_style context (`Color "black");
   set_line_width context line_width;
   set_font context font;
@@ -148,4 +145,6 @@ let create_ticks_texture label {number; text} =
 
   pop context;
   assert (Stack.is_empty stack);
+  if false then
+    Element.append_child (Document.body document) canvas;
   canvas

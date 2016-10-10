@@ -223,12 +223,12 @@ class type drawable =
     method ray: three Vector.vector -> three Vector.vector -> three Vector.vector option
   end
 
-let prepare_scene gl =
+let prepare_scene gl component =
   let basic_shader = Shaders.Basic.init gl in
   let texture_shader = Shaders.Texture.init gl in
   let repere = Repere.initialize gl texture_shader in
   let sphere_factory = colored_sphere gl basic_shader in
-
+  let textbox = component # new_textbox in
   let sphere_pointer = sphere_factory (0.0, 0.0, 0.0) in
   let () = sphere_pointer # set_scale (0.005, 0.005, 0.005) in
   object
@@ -243,7 +243,6 @@ let prepare_scene gl =
     method set_angle x = angle <- x
     method set_move x = move <- x
     method set_pointer p = pointer <- p
-
 
     method repere = repere
 
@@ -293,9 +292,16 @@ let prepare_scene gl =
                   (multiply_vector matrix' (Vector.of_four (x,y,-1.0,1.0)))
               in
               match List.choose (fun x -> x # ray o e) objects with
-              | [] -> ()
+              | [] -> begin
+                  textbox # set_text "";
+                  component # set_cursor_visibility true;
+                end
               | p :: _ -> begin
-                  sphere_pointer # set_position (Vector.to_three p);
+                  textbox # set_position pointer;
+                  component # set_cursor_visibility false;
+                  let (x,y,z) as p = Vector.to_three p in
+                  textbox # set_text (Printf.sprintf "%.2f, %.2f, %.2f" x y z);
+                  sphere_pointer # set_position p;
                   sphere_pointer # draw
                 end
             end

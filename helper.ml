@@ -34,8 +34,9 @@ let configure_element ?text ?class_name ?style ?(attributes = []) element =
    | _ -> ());
   List.iter (fun (name, value) -> Element.set_attribute element name value) attributes
 
-let create ?text ?class_name ?style ?attributes name children =
+let create ?text ?class_name ?style ?attributes ?parent name children =
   let element = Document.create_element document name in
   configure_element ?text ?class_name ?style ?attributes element;
   List.iter (Element.append_child element) children;
+  (match parent with Some p -> Element.append_child p element | _ -> ());
   element

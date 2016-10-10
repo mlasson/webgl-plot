@@ -55,6 +55,7 @@ module Style : sig
   val set_left: t -> string -> unit
   val set_top: t -> string -> unit
   val set_right: t -> string -> unit
+  val set_cursor: t -> string -> unit
 end
 
 
@@ -231,7 +232,7 @@ module Canvas : sig
   [@@js.custom
       val get_context_internal: Element.t -> string -> context_attribute -> context option
          [@@js.call "getContext"]
-      let get_context ?(alpha = false) canvas =
+      let get_context ?(alpha = true) canvas =
          get_context_internal canvas "2d" {alpha}
   ]
 

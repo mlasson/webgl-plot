@@ -74,17 +74,10 @@ let create_webgl_canvas renderer =
       -moz-user-select: none;
       width: 100%;
       height: 100%;
+      cursor: none;
     |css} in
     let attributes = [ "width", string_of_int 400; "height", string_of_int 400] in
     Helper.create ~attributes ~style "canvas" []
-  in
-
-  let floating_div =
-    let style = {css|
-      position: absolute;
-      text-shadow: -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white;
-    |css} in
-    Helper.create ~style "div" []
   in
   let container =
     let style = {css|
@@ -97,7 +90,7 @@ let create_webgl_canvas renderer =
       overflow: hidden;
       pointer-events:none;
     |css} in
-    Helper.create ~style "div" [floating_div] in
+    Helper.create ~style "div" [] in
   let fps_counter = Helper.create "div" [] in
   let overlap =
     let style = {css|
@@ -125,6 +118,22 @@ let create_webgl_canvas renderer =
       height = 0.0;
     }
   in
+  let new_textbox () =
+    let style = {css|
+      position: absolute;
+      text-shadow: -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white;
+    |css} in
+    let element = Helper.create ~parent:container ~style "div" [] in
+    object
+      method element = element
+      method set_text = Element.set_text_content element
+      method set_position (x,y) =
+       let style = Element.style element in
+       Style.set_left style (Printf.sprintf "%.2f%%" (50.0 *. (1. +. x)));
+       Style.set_top style (Printf.sprintf "%.2f%%" (50.0 *. (1. -. y)))
+    end
+  in
+
   (* Register all event listeners *)
 
   (* Disable context menu on right click: *)
@@ -178,7 +187,14 @@ let create_webgl_canvas renderer =
 
   let gl = setup_webgl_context canvas in
 
-  let next_frame = renderer gl in
+  let next_frame = renderer gl
+      (object
+        method new_textbox = new_textbox ()
+        method set_cursor_visibility b =
+          let style = Element.style canvas in
+          Style.set_cursor style (if b then "auto" else "none")
+      end)
+  in
 
   (* Main loop : *)
   let fps = ref 0 in
