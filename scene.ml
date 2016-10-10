@@ -58,6 +58,7 @@ let flatten_matrix m =
 
 class dummy_ray = object
   method ray (_ : three Vector.vector) (_ : three Vector.vector) = (None : three Vector.vector option)
+  method compute_texture = ()
 end
 
 let colored_sphere gl shader =
@@ -101,7 +102,25 @@ let rainbow_surface gl (shader : Shaders.Basic.shader) shader2d xs zs ys =
   let rainbow y =
       Math.Color.cold_to_hot ((y -. min) /. range)
   in
-  let {Geometry.Surface.vertices; triangles; wireframe; normals} = Geometry.Surface.create xs zs ys in
+  let {Geometry.Surface.vertices; triangles; wireframe; normals; bounds} =
+    Geometry.Surface.create xs zs ys
+  in
+  let texture_matrix =
+    let scale_x, scale_z =
+      2.0 /. (bounds.x_max -. bounds.x_min), 2.0 /. (bounds.z_max -. bounds.z_min)
+    in
+    let shift_x, shift_z =
+      -1.0 -. 2.0 *. bounds.x_min /. (bounds.x_max -. bounds.x_min),
+      -1.0 -. 2.0 *. bounds.z_min /. (bounds.z_max -. bounds.z_min)
+    in
+    (* Projects (x,_,z) into [-1,1] × [-1,1] × {1} *)
+    Float32Array.new_float32_array (`Data [|
+     scale_x; 0.; 0.; 0.;
+         0.0; 0.; 0.; 0.;
+         0.0; scale_z; 0.0; 0.0;
+     shift_x; shift_z; 1.0; 1.0
+      |])
+  in
   let table = Intersection.build_ray_table vertices triangles in
   let a_positions = create_attrib_array gl 3 vertices in
   let a_normals = create_attrib_array gl 3 normals in
@@ -115,9 +134,37 @@ let rainbow_surface gl (shader : Shaders.Basic.shader) shader2d xs zs ys =
   in
   let e_triangles = create_element_array gl triangles in
   let e_wireframe = create_element_array gl wireframe in
+  let texture_framebuffer = Webgl.create_framebuffer gl in
+  let texture_surface = Webgl.create_texture gl in
+  let first = ref true in
   object
     val scale = (1., 1., 1.)
     val position = (0., 0., 0.)
+
+    method compute_texture =
+      let open Webgl in
+      let open Webgl.Constant in
+      (* bind_framebuffer gl _FRAMEBUFFER_ texture_framebuffer; *)
+      shader2d # set_matrix texture_matrix;
+      shader2d # set_colors a_colors;
+      shader2d # set_positions a_positions;
+      if !first then
+        print_endline "yo";
+      if not !first then
+        shader2d # draw_elements Shaders.Triangles e_triangles;
+      if !first then
+        print_endline "yi";
+      first := false
+      (* bind_framebuffer gl _FRAMEBUFFER_ null_framebuffer *)
+
+    method set_texture =
+      let open Webgl in
+      let open Webgl.Constant in
+      bind_texture gl _TEXTURE_2D_ texture_surface;
+      tex_image_2D gl _TEXTURE_2D_ 0 _RGBA_ _RGBA_ _UNSIGNED_BYTE_  (`Framebuffer texture_framebuffer);
+      tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MAG_FILTER_ _LINEAR_;
+      tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MIN_FILTER_ _LINEAR_MIPMAP_LINEAR_;
+      generate_mipmap gl _TEXTURE_2D_
 
     method draw =
       shader # set_object_matrix
@@ -185,12 +232,13 @@ let histogram gl (shader : Shaders.Basic.shader) xs zs ys =
 class type drawable =
   object
     method draw : unit
+    method compute_texture: unit
     method ray: three Vector.vector -> three Vector.vector -> three Vector.vector option
   end
 
 let prepare_scene gl component =
   let basic_shader = Shaders.Basic.init gl in
-  let basic2d_shader = 2 (* Shaders.Basic2d.init gl *) in
+  let basic2d_shader = Shaders.Basic2d.init gl in
   let texture_shader = Shaders.Texture.init gl in
   let repere = Repere.initialize gl texture_shader in
   let sphere_factory = colored_sphere gl basic_shader in
@@ -232,48 +280,49 @@ let prepare_scene gl component =
       | Some frame -> begin
           let _proportion, matrix, matrix' = world_matrix aspect frame angle move in
 
+          (*
           texture_shader # use;
           texture_shader # set_world_matrix (flatten_matrix matrix);
           begin
             let angle_x, angle_y, _ = angle in
             repere # draw angle_x angle_y
-          end;
+          end; *)
 
+          basic2d_shader # use;
+          List.iter (fun o -> o # compute_texture) objects;
           basic_shader # use;
+
           basic_shader # set_world_matrix (flatten_matrix matrix);
           basic_shader # set_ambient_light 1.0 1.0 1.0;
           basic_shader # set_light_position 1.0 1.0 (-2.0);
-
           List.iter (fun o -> o # draw) objects;
+          (*
 
           let x,y = pointer in
           begin
             let open Math.Vector in
             let o =
               four_to_three
-                  (multiply_vector matrix' (Vector.of_four (x,y,1.0,1.0)))
-              in
-              let e =
-                four_to_three
-                  (multiply_vector matrix' (Vector.of_four (x,y,-1.0,1.0)))
-              in
-              match List.choose (fun x -> x # ray o e) objects with
-              | [] -> begin
-                  textbox # set_text "";
-                  component # set_cursor_visibility true;
-                end
-              | p :: _ -> begin
-                  textbox # set_position pointer;
-                  component # set_cursor_visibility false;
-                  let (x,y,z) as p = Vector.to_three p in
-                  textbox # set_text (Printf.sprintf "%.2f, %.2f, %.2f" x y z);
-                  sphere_pointer # set_position p;
-                  sphere_pointer # draw
-                end
-            end
+                (multiply_vector matrix' (Vector.of_four (x,y,1.0,1.0)))
+            in
+            let e =
+              four_to_three
+                (multiply_vector matrix' (Vector.of_four (x,y,-1.0,1.0)))
+            in
+            match List.choose (fun x -> x # ray o e) objects with
+            | [] -> begin
+                textbox # set_text "";
+                component # set_cursor_visibility true;
+              end
+            | p :: _ -> begin
+                textbox # set_position pointer;
+                component # set_cursor_visibility false;
+                let (x,y,z) as p = Vector.to_three p in
+                textbox # set_text (Printf.sprintf "%.2f, %.2f, %.2f" x y z);
+                sphere_pointer # set_position p;
+                sphere_pointer # draw
+              end
+          end *)
         end
-
   end
-
-
 

@@ -344,18 +344,16 @@ end
 
 module Basic2d = struct
   let vertex_shader = {gsl|
-  attribute vec3 a_position; /* we ignore the z component */
+  attribute vec3 a_position;
   attribute vec3 a_color;
 
-  uniform mat3 u_matrix;
+  uniform mat4 u_matrix;
 
-  varying mediump vec2 v_position;
   varying mediump vec3 v_color;
 
   void main() {
-    vec4 pos = u_matrix * vec3(a_position.xy,1);
-    v_color = a_color.xyz;
-    gl_Position = vec4(pos.xy / pos.z,0, 1);
+    v_color = a_color;
+    gl_Position = u_matrix * vec4(a_position,1);
   }
 |gsl}
 
@@ -372,7 +370,7 @@ module Basic2d = struct
   class type shader = object
     method use : unit
 
-    method set_world_matrix: Float32Array.t -> unit
+    method set_matrix: Float32Array.t -> unit
 
     method set_positions: attrib_array -> unit
     method set_colors: attrib_array -> unit
@@ -395,11 +393,12 @@ module Basic2d = struct
     (object
       method use = use_program gl program
 
-      method set_world_matrix data =
-        uniform_matrix3fv gl world_matrix false data
+      method set_matrix data =
+        uniform_matrix4fv gl world_matrix false data
 
       method set_positions a =
         a # plug position_location
+
       method set_colors a =
         a # plug color_location
 

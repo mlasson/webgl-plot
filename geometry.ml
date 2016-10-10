@@ -281,6 +281,7 @@ module Surface = struct
     normals: Float32Array.t;
     wireframe : Index.t;
     triangles: Index.t;
+    bounds: box;
   }
 
   let create xs zs ys =
@@ -295,11 +296,13 @@ module Surface = struct
   in
   let triangles = triangles_indexes_from_grid n m in
   let wireframe = lines_indexes_from_grid n m in
+  let bounds = bounding_box vertices in
   {
     triangles;
     wireframe;
     normals;
-    vertices
+    vertices;
+    bounds
   }
 end
 
