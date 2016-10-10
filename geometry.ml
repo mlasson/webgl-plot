@@ -99,22 +99,22 @@ module Index = struct
     | `Short of Uint16Array.t
     | `Int of Uint32Array.t]
 
-  let length = function 
+  let length = function
      | `Int data -> Uint32Array.length data
      | `Short data -> Uint16Array.length data
      | `Byte data -> Uint8Array.length data
 
-  let get = function 
+  let get = function
      | `Int data -> Uint32Array.get data
      | `Short data -> Uint16Array.get data
      | `Byte data -> Uint8Array.get data
 
-  let set = function 
+  let set = function
      | `Int data -> Uint32Array.set data
      | `Short data -> Uint16Array.set data
      | `Byte data -> Uint8Array.set data
 
-  let of_array a : t = 
+  let of_array a : t =
     let len = Array.length a in
     if len < 256 then
       `Byte (Uint8Array.new_uint8_array (`Data a))
@@ -330,7 +330,6 @@ module Histogram = struct
   let create xs zs ys =
     let n, m = Array.length xs, Array.length zs in
     assert (Array.length ys = (n - 1) * (m - 1));
-    print_endline "triangles";
     let triangles =
       flatten (6 * 2 * 3 * 3) (n-1) (m-1)
         (fun i j ->
@@ -357,7 +356,6 @@ module Histogram = struct
              v1;v8;v7;v7;v2;v1;
            ])
     in
-    print_endline "normals";
     let normals =
       flatten (6 * 2 * 3 * 3) (n-1) (m-1)
         (fun _ _ ->
@@ -382,7 +380,6 @@ module Histogram = struct
              front; front; front;
            ])
     in
-    print_endline "wireframe";
     let wireframe =
       flatten (6 * 2 * 4 * 3) (n-1) (m-1)
         (fun i j ->
@@ -409,7 +406,6 @@ module Histogram = struct
              v1;v8;v8;v7;v7;v2;v2;v1;
            ])
     in
-    print_endline "wireframe_normals";
     let wireframe_normals =
       flatten (6 * 2 * 4 * 3) (n-1) (m-1)
         (fun _ _ ->

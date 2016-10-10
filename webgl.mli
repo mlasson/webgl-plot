@@ -463,6 +463,7 @@ val create_texture: context -> texture[@@js.call]
 val bind_texture: context -> Constant.t -> texture -> unit
 val tex_image_2D: context -> Constant.t -> int -> Constant.t -> Constant.t -> Constant.t -> ([`Canvas of (* <canvas> *) Js_bindings.Element.t | `Bytes of Uint8Array.t][@js.union]) -> unit
 val tex_image_2D_array: context -> Constant.t -> int -> Constant.t -> int -> int -> int -> Constant.t -> Constant.t -> ([`Bytes of Uint8Array.t][@js.union]) -> unit [@@js.call "texImage2D"]
+val generate_mipmap: context -> Constant.t -> unit
 
 val tex_parameteri: context -> Constant.t -> Constant.t -> Constant.t -> unit
 

@@ -50,9 +50,9 @@ let pop context =
  | `Rotate rho -> rotate context (-. rho)
 
 let tick_height = 0.03
-let real_size = 2048
+let real_size = 512
 let inner_size = 0.9 *. (float real_size)
-let line_width = 8.0
+let line_width = float real_size /. 256.0
 let font_size = 10.0 *. line_width
 let font = Printf.sprintf "%.0fpx Arial" font_size
 
@@ -92,6 +92,9 @@ let create_ticks_texture label {number; text} =
   in
   let size = float real_size in
   clear_rect context 0.0 0.0 size size;
+  set_fill_style context (`Color "white");
+  fill_rect context 0.0 0.0 size size;
+  set_fill_style context (`Color "black");
   set_line_width context line_width;
   set_font context font;
   let padding = 0.5 *. (size -. inner_size) in

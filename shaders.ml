@@ -316,7 +316,8 @@ module Texture = struct
         bind_texture gl _TEXTURE_2D_ texture;
         tex_image_2D gl _TEXTURE_2D_ 0 _RGBA_ _RGBA_ _UNSIGNED_BYTE_  (`Canvas canvas);
         tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MAG_FILTER_ _LINEAR_;
-        tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MIN_FILTER_ _LINEAR_
+        tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MIN_FILTER_ _LINEAR_MIPMAP_LINEAR_;
+        generate_mipmap gl _TEXTURE_2D_
 
       method draw =
         enable gl _CULL_FACE_;

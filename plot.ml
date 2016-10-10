@@ -306,7 +306,7 @@ let new_plot {width; height; x_axis_label; y_axis_label; z_axis_label; _} ?(on_c
           bind_texture gl (_TEXTURE_2D_ gl) texture;
           tex_image_2D gl (_TEXTURE_2D_ gl) 0 (_RGBA_ gl) (_RGBA_ gl) (type_unsigned_byte gl)  (`Canvas canvas);
           tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MAG_FILTER_ gl) (_LINEAR_ gl);
-          tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MIN_FILTER_ gl) (_LINEAR_ gl);
+          tex_parameteri gl (_TEXTURE_2D_ gl) (_TEXTURE_MIN_FILTER_ gl) (_LINEAR_MIPMAP_NEAREST_ gl);
           texture
         in
         let cube_texture =
