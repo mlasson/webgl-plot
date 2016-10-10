@@ -444,6 +444,7 @@ val draw_elements: context -> Constant.t -> int -> Constant.t -> int -> unit
 val uniform4f: context -> uniform_location -> float -> float -> float -> float -> unit
 val uniform3f: context -> uniform_location -> float -> float -> float -> unit
 val uniform_matrix4fv: context -> uniform_location -> bool -> Float32Array.t -> unit
+val uniform_matrix3fv: context -> uniform_location -> bool -> Float32Array.t -> unit
 
 val enable: context -> Constant.t -> unit
 val is_enabled: context -> Constant.t -> bool
@@ -458,6 +459,8 @@ val depth_mask: context -> bool -> unit
 type texture = private Ojs.t
 val texture_of_js: Ojs.t -> texture
 val texture_to_js: texture -> Ojs.t
+val null_texture : texture
+  [@@js.custom let null_texture = texture_of_js Ojs.null]
 val create_texture: context -> texture[@@js.call]
 
 val bind_texture: context -> Constant.t -> texture -> unit
@@ -466,6 +469,14 @@ val tex_image_2D_array: context -> Constant.t -> int -> Constant.t -> int -> int
 val generate_mipmap: context -> Constant.t -> unit
 
 val tex_parameteri: context -> Constant.t -> Constant.t -> Constant.t -> unit
+
+type framebuffer = private Ojs.t
+val framebuffer_of_js: Ojs.t -> framebuffer
+val framebuffer_to_js: framebuffer -> Ojs.t
+val null_framebuffer : framebuffer
+  [@@js.custom let null_framebuffer = framebuffer_of_js Ojs.null]
+val create_framebuffer: context -> framebuffer
+val bind_framebuffer: context -> Constant.t -> framebuffer -> unit
 
 type context_type =
   | WebGl [@js "webgl"]

@@ -309,7 +309,7 @@ module Histogram = struct
     triangles: Float32Array.t;
     normals: Float32Array.t;
     wireframe: Float32Array.t;
-    wireframe_normals: Float32Array.t;
+    normals_wireframe: Float32Array.t;
   }
 
   (* Invariant: forall i j, length (f i j) = dim *)
@@ -406,7 +406,7 @@ module Histogram = struct
              v1;v8;v8;v7;v7;v2;v2;v1;
            ])
     in
-    let wireframe_normals =
+    let normals_wireframe =
       flatten (6 * 2 * 4 * 3) (n-1) (m-1)
         (fun _ _ ->
            let top = [| 0.; 1.; 0.|] in
@@ -428,7 +428,7 @@ module Histogram = struct
       triangles;
       normals;
       wireframe;
-      wireframe_normals;
+      normals_wireframe;
     }
 
 

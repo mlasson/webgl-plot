@@ -148,7 +148,7 @@ module Basic = struct
   void main() {
     vec3 lightDirection = normalize(u_lightPos - v_position);
     float lighting = abs(dot(normalize(v_normal), lightDirection));
-    gl_FragColor = vec4( v_color * (1.0 * lighting + 0.0 * u_ambientLight), 1);
+    gl_FragColor = vec4( v_color * (0.3 * lighting + 0.7 * u_ambientLight), 1);
   }
 |gsl}
 
@@ -341,3 +341,74 @@ module Texture = struct
         tex_image_2D_array gl _TEXTURE_2D_ 0 _RGBA_ 1 1 0 _RGBA_ _UNSIGNED_BYTE_ (`Bytes white)
     end
 end
+
+module Basic2d = struct
+  let vertex_shader = {gsl|
+  attribute vec3 a_position; /* we ignore the z component */
+  attribute vec3 a_color;
+
+  uniform mat3 u_matrix;
+
+  varying mediump vec2 v_position;
+  varying mediump vec3 v_color;
+
+  void main() {
+    vec4 pos = u_matrix * vec3(a_position.xy,1);
+    v_color = a_color.xyz;
+    gl_Position = vec4(pos.xy / pos.z,0, 1);
+  }
+|gsl}
+
+  let fragment_shader = {gsl|
+  precision mediump float;
+
+  varying vec3 v_color;
+
+  void main() {
+    gl_FragColor = vec4(v_color, 1.0);
+  }
+|gsl}
+
+  class type shader = object
+    method use : unit
+
+    method set_world_matrix: Float32Array.t -> unit
+
+    method set_positions: attrib_array -> unit
+    method set_colors: attrib_array -> unit
+
+    method draw_arrays: mode -> ?first:int -> int -> unit
+    method draw_elements: mode -> element_array -> unit
+  end
+
+  let init gl =
+    let vertex_shader = new_shader gl vertex_shader `Vertex in
+    let fragment_shader = new_shader gl fragment_shader `Fragment in
+    let program = compile_program gl vertex_shader fragment_shader in
+    let position_location = get_and_enable_vertex_attrib_array_location gl program "a_position" in
+    let color_location = get_and_enable_vertex_attrib_array_location gl program "a_color" in
+    let world_matrix =
+      match get_uniform_location gl program "u_matrix" with
+      | Some thing -> thing
+      | None -> error "unable to get 'u_matrix'"
+    in
+    (object
+      method use = use_program gl program
+
+      method set_world_matrix data =
+        uniform_matrix3fv gl world_matrix false data
+
+      method set_positions a =
+        a # plug position_location
+      method set_colors a =
+        a # plug color_location
+
+      method draw_arrays mode ?(first = 0) count =
+        Webgl.draw_arrays gl (constant_of_mode mode) first count
+
+      method draw_elements mode elements =
+        elements # bind;
+        Webgl.draw_elements gl (constant_of_mode mode) (elements # size) (elements # index_type) 0
+    end : shader)
+end
+
