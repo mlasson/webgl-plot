@@ -1,12 +1,16 @@
-open Math
+open Js_array
+open Webgl_plot_math
 
+module Math = Webgl_plot_math
+module Geometry = Webgl_plot_geometry
+module Shaders = Webgl_plot_shaders
+module Intersection = Webgl_plot_intersection
+module Repere = Webgl_plot_repere
 
 class type context =
   object
     method pointer : float * float
   end
-
-module Float32Array = Webgl.Float32Array
 
 let my_projection near far aspect =
   Vector.Const.projection ~fov:(pi /. 4.0) ~near ~far ~aspect
@@ -60,7 +64,7 @@ let world_matrix aspect {Geometry.x_max; x_min; y_max; y_min; z_min; z_max} (ang
   proportions, matrix, matrix'
 
 let flatten_matrix m =
-  Webgl.Float32Array.new_float32_array (`Data (Vector.to_array m))
+  Float32Array.new_float32_array (`Data (Vector.to_array m))
 
 class dummy_ray = object
   method ray (_ : three Vector.vector) (_ : three Vector.vector) = (None : three Vector.vector option)

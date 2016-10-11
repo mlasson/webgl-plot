@@ -1,5 +1,8 @@
+open Js_array
+module Math = Webgl_plot_math
+module Geometry = Webgl_plot_geometry
+
 open Math
-open Webgl
 open Geometry
 
 let epsilon = 1e-9

@@ -1,5 +1,5 @@
-open Math
-open Webgl
+open Js_array
+open Webgl_plot_math
 
 let normal_of_triangle a b c =
   let open Vector in
@@ -145,7 +145,6 @@ module Index = struct
 end
 
 module Buffer = struct
-  open Webgl
 
   let iteri f a =
     let open Float32Array in

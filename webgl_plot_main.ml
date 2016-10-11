@@ -1,4 +1,9 @@
-open Js_bindings
+open Js_windows
+module Geometry = Webgl_plot_geometry
+module Scene = Webgl_plot_scene
+module Component = Webgl_plot_component
+module Math = Webgl_plot_math
+module Helper = Webgl_plot_dom_helper
 
 module Examples = struct
 

@@ -1,4 +1,4 @@
-open Js_bindings
+open Js_windows
 
 let error s =
   print_endline ("Error: "^s);

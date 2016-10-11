@@ -1,4 +1,7 @@
-open Js_bindings
+open Js_windows
+
+module Math = Webgl_plot_math
+module Helper = Webgl_plot_dom_helper
 
 let initial_angle = (-0.5, 0.8, 0.0)
 let initial_move = (0.0, 0.15, 2.0)

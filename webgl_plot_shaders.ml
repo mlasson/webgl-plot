@@ -1,6 +1,10 @@
-open Helper
 open Webgl
 open Webgl.Constant
+open Js_array
+
+module Geometry = Webgl_plot_geometry
+
+let error s = failwith s
 
 let id_generator = ref 0
 

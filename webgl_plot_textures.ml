@@ -1,5 +1,7 @@
-open Js_bindings
+open Js_windows
 open Canvas
+
+module Math = Webgl_plot_math
 
 type ticks = {
   number : int;

@@ -1,68 +1,7 @@
-module Float32Array : sig
-  type t
-  val t_of_js: Ojs.t -> t
-  val t_to_js: t -> Ojs.t
-
-  val new_float32_array: ([`Data of float array | `Size of int | `Copy of t][@js.union]) -> t [@@js.new]
-  val length: t -> int
-
-  val get : t -> int -> float
-  [@@js.custom
-    external get : t -> int -> float = "caml_js_get" ]
-  val set : t -> int -> float -> unit
-  [@@js.custom
-    external set : t -> int -> float -> unit = "caml_js_set" ]
-end
-
-module Uint8Array : sig
-  type t
-  val t_of_js: Ojs.t -> t
-  val t_to_js: t -> Ojs.t
-
-  val new_uint8_array: ([`Data of int array | `Size of int | `Copy of t][@js.union]) -> t [@@js.new]
-  val length: t -> int
-
-  val get : t -> int -> int
-  [@@js.custom
-    external get : t -> int -> int = "caml_js_get" ]
-  val set : t -> int -> int -> unit
-  [@@js.custom
-    external set : t -> int -> int -> unit = "caml_js_set" ]
-end
-
-module Uint16Array : sig
-  type t
-  val t_of_js: Ojs.t -> t
-  val t_to_js: t -> Ojs.t
-
-  val new_uint16_array: ([`Data of int array | `Size of int | `Copy of t][@js.union]) -> t [@@js.new]
-  val length: t -> int
-
-  val get : t -> int -> int
-  [@@js.custom
-    external get : t -> int -> int = "caml_js_get" ]
-  val set : t -> int -> int -> unit
-  [@@js.custom
-    external set : t -> int -> int -> unit = "caml_js_set" ]
-end
-
-module Uint32Array : sig
-  type t
-  val t_of_js: Ojs.t -> t
-  val t_to_js: t -> Ojs.t
-
-  val new_uint32_array: ([`Data of int array | `Size of int | `Copy of t][@js.union]) -> t [@@js.new]
-  val length: t -> int
-
-  val get : t -> int -> int
-  [@@js.custom
-    external get : t -> int -> int = "caml_js_get" ]
-  val set : t -> int -> int -> unit
-  [@@js.custom
-    external set : t -> int -> int -> unit = "caml_js_set" ]
-end
-
-
+[@@@js.stop]
+open Js_array
+[@@@js.start]
+[@@@js.implem open Js_array ]
 
 module Constant : sig
   type t = private int
@@ -468,7 +407,7 @@ val texture_to_js: texture -> Ojs.t
 val create_texture: context -> texture[@@js.call]
 
 val bind_texture: context -> Constant.t -> texture option -> unit
-val tex_image_2D: context -> Constant.t -> int -> Constant.t -> Constant.t -> Constant.t -> ([`Canvas of (* <canvas> *) Js_bindings.Element.t | `Bytes of Uint8Array.t][@js.union]) -> unit
+val tex_image_2D: context -> Constant.t -> int -> Constant.t -> Constant.t -> Constant.t -> ([`Canvas of (* <canvas> *) Js_windows.Element.t | `Bytes of Uint8Array.t][@js.union]) -> unit
 val tex_image_2D_array: context -> Constant.t -> int -> Constant.t -> int -> int -> int -> Constant.t -> Constant.t -> ([`Bytes of Uint8Array.t][@js.union]) option -> unit [@@js.call "texImage2D"]
 val framebuffer_texture_2D: context -> Constant.t -> Constant.t -> Constant.t -> texture -> int -> unit
 val generate_mipmap: context -> Constant.t -> unit
@@ -491,9 +430,9 @@ val get_supported_extensions: context -> string array
 val get_extension: context -> string -> unit
 val viewport: context -> int -> int -> int -> int -> unit
 
-val get_context: ?context_attribute:context_attribute -> (* <canvas> *) Js_bindings.Element.t -> context_type -> context option
+val get_context: ?context_attribute:context_attribute -> (* <canvas> *) Js_windows.Element.t -> context_type -> context option
   [@@js.custom
-      val get_context: Js_bindings.Element.t -> context_type -> context_attribute -> context option[@@js.call]
+      val get_context: Js_windows.Element.t -> context_type -> context_attribute -> context option[@@js.call]
       let default_context_attribute = {
         alpha = Some true;
         depth = Some true;

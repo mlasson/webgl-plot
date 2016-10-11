@@ -1,9 +1,14 @@
-open Math
-open Webgl
-open Geometry
+open Js_array
+
+open Webgl_plot_math
+open Webgl_plot_geometry
+
+module Math = Webgl_plot_math
+module Shaders = Webgl_plot_shaders
+module Textures = Webgl_plot_textures
 
 let delay f =
-  let open Js_bindings in
+  let open Js_windows in
   Window.set_timeout window f 0 |> ignore
 
 
