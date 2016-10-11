@@ -127,8 +127,8 @@ let partition points size =
   done;
   Array.of_list (List.rev !results)
 
-let hashtbl_to_list table = 
-  let keys = 
+let hashtbl_to_list table =
+  let keys =
     List.sort_uniq compare
       (Hashtbl.fold (fun k _ acc -> k :: acc) table [])
   in
@@ -140,8 +140,6 @@ let build_ray_table points triangles =
   let boxes = partition points size in
   let nb_boxes = Array.length boxes in
   let table = Hashtbl.create nb_boxes in
-  let chunks = 1000 in
-  let cpt = ref 0 in
   Buffer.iter_triangles triangles (fun ((a,b,c) as triangle) ->
       let x_a, _, z_a = Vector.to_three (Buffer.get3 points a) in
       let x_b, _, z_b = Vector.to_three (Buffer.get3 points b) in

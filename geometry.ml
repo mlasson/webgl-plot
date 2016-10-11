@@ -156,7 +156,7 @@ module Buffer = struct
   let number_of_triangles indexes =
     Index.length indexes / 3
 
-  let iter_triangles ?(chunk_size = 1000) indexes f =
+  let iter_triangles indexes f =
     let size = number_of_triangles indexes in
     let get = Index.get indexes in
     for k = 0 to size - 1 do

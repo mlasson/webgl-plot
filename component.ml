@@ -74,7 +74,6 @@ let create_webgl_canvas renderer =
       -moz-user-select: none;
       width: 100%;
       height: 100%;
-      cursor: none;
     |css} in
     let attributes = [ "width", string_of_int 400; "height", string_of_int 400] in
     Helper.create ~attributes ~style "canvas" []

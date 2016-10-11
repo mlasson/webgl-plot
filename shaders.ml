@@ -35,11 +35,10 @@ let new_shader gl shader shader_type =
   in
   compile_shader gl shader shader_type
 
-let get_and_enable_vertex_attrib_array_location gl program location =
+let get_vertex_attrib_array_location gl program location =
   let attrib_location = get_attrib_location gl program location in
   if attrib_location < 0 then
     error (Printf.sprintf "unable to get '%s'" location);
-  enable_vertex_attrib_array gl attrib_location;
   attrib_location
 
 class attrib_array gl dim =
@@ -54,8 +53,10 @@ class attrib_array gl dim =
       count <- size / dim;
       this # bind;
       buffer_data gl _ARRAY_BUFFER_ (Float32Array.t_to_js data) _STATIC_DRAW_
+
     method private bind =
       bind_buffer gl _ARRAY_BUFFER_ buffer
+
     method plug location =
       this # bind;
       vertex_attrib_pointer gl location dim _FLOAT_ false 0 0
@@ -172,9 +173,9 @@ module Basic = struct
     let vertex_shader = new_shader gl vertex_shader `Vertex in
     let fragment_shader = new_shader gl fragment_shader `Fragment in
     let program = compile_program gl vertex_shader fragment_shader in
-    let position_location = get_and_enable_vertex_attrib_array_location gl program "a_position" in
-    let normal_location = get_and_enable_vertex_attrib_array_location gl program "a_normal" in
-    let color_location = get_and_enable_vertex_attrib_array_location gl program "a_color" in
+    let position_location = get_vertex_attrib_array_location gl program "a_position" in
+    let normal_location = get_vertex_attrib_array_location gl program "a_normal" in
+    let color_location = get_vertex_attrib_array_location gl program "a_color" in
     let world_matrix =
       match get_uniform_location gl program "u_world_matrix" with
       | Some thing -> thing
@@ -196,7 +197,12 @@ module Basic = struct
       | None -> error "unable to get 'u_lightPos'"
     in
     (object
-      method use = use_program gl program
+      method use =
+        use_program gl program;
+        enable_vertex_attrib_array gl position_location;
+        enable_vertex_attrib_array gl normal_location;
+        enable_vertex_attrib_array gl color_location
+
 
       method set_ambient_light r g b =
         uniform3f gl ambient_light r g b
@@ -262,7 +268,7 @@ module Texture = struct
     let fragment_shader = new_shader gl fragment_shader `Fragment in
     let program = compile_program gl vertex_shader fragment_shader in
     let position_location =
-      get_and_enable_vertex_attrib_array_location gl program "a_position"
+      get_vertex_attrib_array_location gl program "a_position"
     in
     let world_matrix =
       match get_uniform_location gl program "u_matrix" with
@@ -270,7 +276,7 @@ module Texture = struct
       | None -> error "unable to get 'u_matrix'"
     in
     let texcoord_location =
-      get_and_enable_vertex_attrib_array_location gl program "a_texcoord"
+      get_vertex_attrib_array_location gl program "a_texcoord"
     in
     let binds dim location buffer =
       bind_buffer gl _ARRAY_BUFFER_ buffer;
@@ -278,7 +284,9 @@ module Texture = struct
     in
 
     (object
-      method use = use_program gl program
+      method use =
+        use_program gl program;
+        enable_vertex_attrib_array gl position_location
 
       method set_world_matrix data =
         uniform_matrix4fv gl world_matrix false data
@@ -383,15 +391,18 @@ module Basic2d = struct
     let vertex_shader = new_shader gl vertex_shader `Vertex in
     let fragment_shader = new_shader gl fragment_shader `Fragment in
     let program = compile_program gl vertex_shader fragment_shader in
-    let position_location = get_and_enable_vertex_attrib_array_location gl program "a_position" in
-    let color_location = get_and_enable_vertex_attrib_array_location gl program "a_color" in
+    let position_location = get_vertex_attrib_array_location gl program "a_position" in
+    let color_location = get_vertex_attrib_array_location gl program "a_color" in
     let world_matrix =
       match get_uniform_location gl program "u_matrix" with
       | Some thing -> thing
       | None -> error "unable to get 'u_matrix'"
     in
     (object
-      method use = use_program gl program
+      method use =
+        use_program gl program;
+        enable_vertex_attrib_array gl position_location;
+        enable_vertex_attrib_array gl color_location
 
       method set_matrix data =
         uniform_matrix4fv gl world_matrix false data

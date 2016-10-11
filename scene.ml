@@ -136,25 +136,18 @@ let rainbow_surface gl (shader : Shaders.Basic.shader) shader2d xs zs ys =
   let e_wireframe = create_element_array gl wireframe in
   let texture_framebuffer = Webgl.create_framebuffer gl in
   let texture_surface = Webgl.create_texture gl in
-  let first = ref true in
   object
     val scale = (1., 1., 1.)
     val position = (0., 0., 0.)
 
     method compute_texture =
-      let open Webgl in
-      let open Webgl.Constant in
+      (* let open Webgl in
+      let open Webgl.Constant in *)
       (* bind_framebuffer gl _FRAMEBUFFER_ texture_framebuffer; *)
       shader2d # set_matrix texture_matrix;
       shader2d # set_colors a_colors;
       shader2d # set_positions a_positions;
-      if !first then
-        print_endline "yo";
-      if not !first then
-        shader2d # draw_elements Shaders.Triangles e_triangles;
-      if !first then
-        print_endline "yi";
-      first := false
+      shader2d # draw_elements Shaders.Triangles e_triangles;
       (* bind_framebuffer gl _FRAMEBUFFER_ null_framebuffer *)
 
     method set_texture =
@@ -280,13 +273,12 @@ let prepare_scene gl component =
       | Some frame -> begin
           let _proportion, matrix, matrix' = world_matrix aspect frame angle move in
 
-          (*
           texture_shader # use;
           texture_shader # set_world_matrix (flatten_matrix matrix);
           begin
             let angle_x, angle_y, _ = angle in
             repere # draw angle_x angle_y
-          end; *)
+          end;
 
           basic2d_shader # use;
           List.iter (fun o -> o # compute_texture) objects;
@@ -296,7 +288,6 @@ let prepare_scene gl component =
           basic_shader # set_ambient_light 1.0 1.0 1.0;
           basic_shader # set_light_position 1.0 1.0 (-2.0);
           List.iter (fun o -> o # draw) objects;
-          (*
 
           let x,y = pointer in
           begin
@@ -322,7 +313,7 @@ let prepare_scene gl component =
                 sphere_pointer # set_position p;
                 sphere_pointer # draw
               end
-          end *)
+          end
         end
   end
 
