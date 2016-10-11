@@ -2,6 +2,8 @@ open Helper
 open Webgl
 open Webgl.Constant
 
+let id_generator = ref 0
+
 let compile_shader gl source shader_type =
   let shader = create_shader gl shader_type in
   shader_source gl shader source;
@@ -45,6 +47,7 @@ class attrib_array gl dim =
   let buffer = create_buffer gl in
   object(this)
     val mutable count = 0
+
     method count = count
     method dim = dim
     method fill data =
@@ -111,6 +114,7 @@ let constant_of_mode = function
   | Lines -> _LINES_
 
 module Basic = struct
+
   let vertex_shader = {gsl|
   attribute vec3 a_position;
   attribute vec3 a_normal;
@@ -155,6 +159,7 @@ module Basic = struct
 
   class type shader = object
     method use : unit
+    method id : int
 
     method set_ambient_light: float -> float -> float -> unit
     method set_light_position: float -> float -> float -> unit
@@ -197,6 +202,8 @@ module Basic = struct
       | None -> error "unable to get 'u_lightPos'"
     in
     (object
+      val id = !id_generator
+      method id = id
       method use =
         use_program gl program;
         enable_vertex_attrib_array gl position_location;
@@ -226,6 +233,9 @@ module Basic = struct
       method draw_elements mode elements =
         elements # bind;
         Webgl.draw_elements gl (constant_of_mode mode) (elements # size) (elements # index_type) 0
+
+      initializer
+        incr id_generator
     end : shader)
 
 end
@@ -255,6 +265,7 @@ module Texture = struct
 
   class type shader = object
     method use : unit
+    method id : int
 
     method set_world_matrix: Float32Array.t -> unit
 
@@ -284,6 +295,8 @@ module Texture = struct
     in
 
     (object
+      val id = !id_generator
+      method id = id
       method use =
         use_program gl program;
         enable_vertex_attrib_array gl position_location
@@ -300,6 +313,8 @@ module Texture = struct
       method binds_texture texture =
         bind_texture gl _TEXTURE_2D_ (Some texture)
 
+      initializer
+        incr id_generator
     end : shader)
 
   class drawable gl shader =
@@ -351,6 +366,7 @@ module Texture = struct
 end
 
 module Basic2d = struct
+
   let vertex_shader = {gsl|
   attribute vec3 a_position;
   attribute vec3 a_color;
@@ -377,6 +393,7 @@ module Basic2d = struct
 
   class type shader = object
     method use : unit
+    method id : int
 
     method set_matrix: Float32Array.t -> unit
 
@@ -399,6 +416,8 @@ module Basic2d = struct
       | None -> error "unable to get 'u_matrix'"
     in
     (object
+      val id = !id_generator
+      method id = id
       method use =
         use_program gl program;
         enable_vertex_attrib_array gl position_location;
@@ -419,6 +438,137 @@ module Basic2d = struct
       method draw_elements mode elements =
         elements # bind;
         Webgl.draw_elements gl (constant_of_mode mode) (elements # size) (elements # index_type) 0
+
+      initializer
+        incr id_generator
     end : shader)
 end
+
+module LightAndTexture = struct
+  let vertex_shader = {gsl|
+  attribute vec3 a_position;
+  attribute vec3 a_normal;
+  attribute vec2 a_texcoord;
+
+  uniform mat4 u_world_matrix;
+  uniform mat4 u_object_matrix;
+
+  varying mediump vec3 v_position;
+  varying mediump vec3 v_normal;
+  varying mediump vec2 v_texcoord;
+
+  void main() {
+
+    vec4 pos = u_world_matrix * u_object_matrix * vec4(a_position,1);
+    vec4 norm = u_world_matrix * u_object_matrix * vec4(a_normal,1);
+
+    v_position = pos.xyz;
+    v_normal = norm.xyz;
+    v_texcoord = a_texcoord;
+
+    gl_Position = pos;
+  }
+|gsl}
+
+  let fragment_shader = {gsl|
+  precision mediump float;
+
+  varying vec3 v_position;
+  varying vec3 v_normal;
+  varying vec2 v_texcoord;
+
+  uniform vec3 u_lightPos;
+  uniform vec3 u_ambientLight;
+
+  uniform sampler2D u_texture;
+
+  void main() {
+    vec3 lightDirection = normalize(u_lightPos - v_position);
+    float lighting = abs(dot(normalize(v_normal), lightDirection));
+    gl_FragColor = texture2D(u_texture, v_texcoord) * vec4((0.3 * lighting + 0.7 * u_ambientLight), 1);
+  }
+|gsl}
+
+  class type shader = object
+    method use : unit
+    method id : int
+
+    method set_ambient_light: float -> float -> float -> unit
+    method set_light_position: float -> float -> float -> unit
+    method set_object_matrix: Float32Array.t -> unit
+    method set_world_matrix: Float32Array.t -> unit
+
+    method set_positions: attrib_array -> unit
+    method set_texcoords: attrib_array -> unit
+    method set_normals: attrib_array -> unit
+
+    method draw_arrays: mode -> ?first:int -> int -> unit
+    method draw_elements: mode -> element_array -> unit
+  end
+
+  let init gl =
+    let vertex_shader = new_shader gl vertex_shader `Vertex in
+    let fragment_shader = new_shader gl fragment_shader `Fragment in
+    let program = compile_program gl vertex_shader fragment_shader in
+    let position_location = get_vertex_attrib_array_location gl program "a_position" in
+    let normal_location = get_vertex_attrib_array_location gl program "a_normal" in
+    let texcoord_location = get_vertex_attrib_array_location gl program "a_texcoord" in
+    let world_matrix =
+      match get_uniform_location gl program "u_world_matrix" with
+      | Some thing -> thing
+      | None -> error "unable to get 'u_world_matrix'"
+    in
+    let object_matrix =
+      match get_uniform_location gl program "u_object_matrix" with
+      | Some thing -> thing
+      | None -> error "unable to get 'u_object_matrix'"
+    in
+    let ambient_light =
+      match get_uniform_location gl program "u_ambientLight" with
+      | Some thing -> thing
+      | None -> error "unable to get 'u_ambientLight'"
+    in
+    let light_position =
+      match get_uniform_location gl program "u_lightPos" with
+      | Some thing -> thing
+      | None -> error "unable to get 'u_lightPos'"
+    in
+    (object
+      val id = !id_generator
+      method id = id
+      method use =
+        use_program gl program;
+        enable_vertex_attrib_array gl position_location;
+        enable_vertex_attrib_array gl normal_location;
+        enable_vertex_attrib_array gl texcoord_location
+
+      method set_ambient_light r g b =
+        uniform3f gl ambient_light r g b
+      method set_light_position x y z =
+        uniform3f gl light_position x y z
+      method set_object_matrix data =
+        uniform_matrix4fv gl object_matrix false data
+      method set_world_matrix data =
+        uniform_matrix4fv gl world_matrix false data
+
+      method set_positions a =
+        a # plug position_location
+      method set_texcoords a =
+        a # plug texcoord_location
+      method set_normals a =
+        a # plug normal_location
+
+      method draw_arrays mode ?(first = 0) count =
+        Webgl.draw_arrays gl (constant_of_mode mode) first count
+
+      method draw_elements mode elements =
+        elements # bind;
+        Webgl.draw_elements gl (constant_of_mode mode) (elements # size) (elements # index_type) 0
+
+      initializer
+        incr id_generator
+    end : shader)
+
+end
+
 

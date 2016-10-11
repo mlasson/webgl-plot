@@ -12,7 +12,7 @@ let normal_of_triangle a b c =
   let n = sqrt (xn *. xn +. yn *. yn +. zn *. zn) in
   (of_three (xn /. n, yn /. n, zn /. n))
 
-let flatten n m f =
+let flatten3 n m f =
   let points = Float32Array.new_float32_array (`Size (n * m * 3)) in
   let pos = ref 0 in
   for i = 0 to n - 1 do
@@ -26,12 +26,30 @@ let flatten n m f =
   done;
   points
 
+let flatten2 n m f =
+  let points = Float32Array.new_float32_array (`Size (n * m * 2)) in
+  let pos = ref 0 in
+  for i = 0 to n - 1 do
+    for j = 0 to m - 1 do
+       let x, y = f i j in
+       Float32Array.set points (!pos + 0) x;
+       Float32Array.set points (!pos + 1) y;
+       pos := !pos + 2;
+    done
+  done;
+  points
+
 let compute_vertices dim1 dim2 desc =
   let n, m = Array.length dim1, Array.length dim2 in
-  flatten n m (fun i j -> desc dim1.(i) dim2.(j))
+  flatten3 n m (fun i j -> desc dim1.(i) dim2.(j))
+
+let texcoords_from_grid n m =
+  let n' = float (n - 1) in
+  let m' = float (m - 1) in
+  flatten2 n m (fun i j -> (float i) /. n', (float j) /. m')
 
 let compute_normals n m points =
-  flatten n m (fun i j ->
+  flatten3 n m (fun i j ->
       let get i j =
         let pos = (i*m + j) * 3 in
         Vector.of_three
@@ -281,13 +299,14 @@ module Surface = struct
     normals: Float32Array.t;
     wireframe : Index.t;
     triangles: Index.t;
+    texcoords: Float32Array.t;
     bounds: box;
   }
 
   let create xs zs ys =
   let n, m = Array.length xs, Array.length zs in
   let vertices =
-    flatten n m
+    flatten3 n m
       (fun i j ->
          (xs.(i), ys.(i*m + j), zs.(j)))
   in
@@ -296,12 +315,14 @@ module Surface = struct
   in
   let triangles = triangles_indexes_from_grid n m in
   let wireframe = lines_indexes_from_grid n m in
+  let texcoords = texcoords_from_grid n m in
   let bounds = bounding_box vertices in
   {
     triangles;
     wireframe;
     normals;
     vertices;
+    texcoords;
     bounds
   }
 end

@@ -14,7 +14,7 @@ module Examples = struct
       for i = 0 to n - 1 do
         for j = 0 to m - 1 do
           ys.(i * m + j) <-
-            (Math.sq (cos (alpha *. xs.(i))) +. Math.sq (sin (beta *. zs.(j)))) *. 0.5
+            (Math.sq (cos (alpha *. xs.(i))) +. Math.sq (sin (beta *. zs.(j)))) *. 0.4 +. Random.float 0.1
         done
       done
     end;
@@ -51,7 +51,7 @@ let () = Window.set_onload window (fun _ ->
     repere # set_z_axis_label "ZZZ axis label";
     repere # set_frame {x_max = 1.;x_min=0.;y_max=1.;y_min=0.;z_max=1.;z_min=0.};
     Examples.surface scene;
-    Examples.histogram scene;
+ (*   Examples.histogram scene; *)
     fun _clock {Component.aspect; angle; move; pointer; width; height; _} ->
       scene # set_aspect aspect;
       scene # set_angle angle;
