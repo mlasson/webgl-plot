@@ -459,21 +459,18 @@ val depth_mask: context -> bool -> unit
 type framebuffer = private Ojs.t
 val framebuffer_of_js: Ojs.t -> framebuffer
 val framebuffer_to_js: framebuffer -> Ojs.t
-val null_framebuffer : framebuffer
-  [@@js.custom let null_framebuffer = framebuffer_of_js Ojs.null]
 val create_framebuffer: context -> framebuffer[@@js.call]
-val bind_framebuffer: context -> Constant.t -> framebuffer -> unit
+val bind_framebuffer: context -> Constant.t -> framebuffer option -> unit
 
 type texture = private Ojs.t
 val texture_of_js: Ojs.t -> texture
 val texture_to_js: texture -> Ojs.t
-val null_texture : texture
-  [@@js.custom let null_texture = texture_of_js Ojs.null]
 val create_texture: context -> texture[@@js.call]
 
-val bind_texture: context -> Constant.t -> texture -> unit
-val tex_image_2D: context -> Constant.t -> int -> Constant.t -> Constant.t -> Constant.t -> ([`Canvas of (* <canvas> *) Js_bindings.Element.t | `Bytes of Uint8Array.t | `Framebuffer of framebuffer][@js.union]) -> unit
-val tex_image_2D_array: context -> Constant.t -> int -> Constant.t -> int -> int -> int -> Constant.t -> Constant.t -> ([`Bytes of Uint8Array.t][@js.union]) -> unit [@@js.call "texImage2D"]
+val bind_texture: context -> Constant.t -> texture option -> unit
+val tex_image_2D: context -> Constant.t -> int -> Constant.t -> Constant.t -> Constant.t -> ([`Canvas of (* <canvas> *) Js_bindings.Element.t | `Bytes of Uint8Array.t][@js.union]) -> unit
+val tex_image_2D_array: context -> Constant.t -> int -> Constant.t -> int -> int -> int -> Constant.t -> Constant.t -> ([`Bytes of Uint8Array.t][@js.union]) option -> unit [@@js.call "texImage2D"]
+val framebuffer_texture_2D: context -> Constant.t -> Constant.t -> Constant.t -> texture -> int -> unit
 val generate_mipmap: context -> Constant.t -> unit
 
 val tex_parameteri: context -> Constant.t -> Constant.t -> Constant.t -> unit

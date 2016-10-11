@@ -298,7 +298,7 @@ module Texture = struct
         binds 2 texcoord_location buffer
 
       method binds_texture texture =
-        bind_texture gl _TEXTURE_2D_ texture
+        bind_texture gl _TEXTURE_2D_ (Some texture)
 
     end : shader)
 
@@ -321,7 +321,7 @@ module Texture = struct
         fill_float_buffer texcoords data
 
       method set_texture canvas =
-        bind_texture gl _TEXTURE_2D_ texture;
+        bind_texture gl _TEXTURE_2D_ (Some texture);
         tex_image_2D gl _TEXTURE_2D_ 0 _RGBA_ _RGBA_ _UNSIGNED_BYTE_  (`Canvas canvas);
         tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MAG_FILTER_ _LINEAR_;
         tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MIN_FILTER_ _LINEAR_MIPMAP_LINEAR_;
@@ -344,9 +344,9 @@ module Texture = struct
 
       initializer
         (* Starts with a white pixel (really load the texture later) *)
-        bind_texture gl _TEXTURE_2D_ texture;
+        bind_texture gl _TEXTURE_2D_ (Some texture);
         let white = Uint8Array.new_uint8_array (`Data [| 255; 255; 255; 255|]) in
-        tex_image_2D_array gl _TEXTURE_2D_ 0 _RGBA_ 1 1 0 _RGBA_ _UNSIGNED_BYTE_ (`Bytes white)
+        tex_image_2D_array gl _TEXTURE_2D_ 0 _RGBA_ 1 1 0 _RGBA_ _UNSIGNED_BYTE_ (Some (`Bytes white))
     end
 end
 

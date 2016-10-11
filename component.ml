@@ -210,7 +210,6 @@ let create_webgl_canvas renderer =
       let h, w = int_of_float height, int_of_float width in
       Element.set_attribute canvas "height" (string_of_int h);
       Element.set_attribute canvas "width" (string_of_int w);
-      Webgl.viewport gl 0 0 w h;
     end;
     state.aspect <- width /. height;
 

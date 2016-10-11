@@ -141,23 +141,18 @@ let rainbow_surface gl (shader : Shaders.Basic.shader) shader2d xs zs ys =
     val position = (0., 0., 0.)
 
     method compute_texture =
-      (* let open Webgl in
-      let open Webgl.Constant in *)
-      (* bind_framebuffer gl _FRAMEBUFFER_ texture_framebuffer; *)
+      let open Webgl in
+      let open Webgl.Constant in
+      bind_framebuffer gl _FRAMEBUFFER_ (Some texture_framebuffer);
+      disable gl _DEPTH_TEST_;
+      viewport gl 0 0 512 512;
       shader2d # set_matrix texture_matrix;
       shader2d # set_colors a_colors;
       shader2d # set_positions a_positions;
       shader2d # draw_elements Shaders.Triangles e_triangles;
-      (* bind_framebuffer gl _FRAMEBUFFER_ null_framebuffer *)
-
-    method set_texture =
-      let open Webgl in
-      let open Webgl.Constant in
-      bind_texture gl _TEXTURE_2D_ texture_surface;
-      tex_image_2D gl _TEXTURE_2D_ 0 _RGBA_ _RGBA_ _UNSIGNED_BYTE_  (`Framebuffer texture_framebuffer);
-      tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MAG_FILTER_ _LINEAR_;
-      tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MIN_FILTER_ _LINEAR_MIPMAP_LINEAR_;
-      generate_mipmap gl _TEXTURE_2D_
+      bind_texture gl _TEXTURE_2D_ (Some texture_surface);
+      generate_mipmap gl _TEXTURE_2D_;
+      bind_texture gl _TEXTURE_2D_ None;
 
     method draw =
       shader # set_object_matrix
@@ -172,6 +167,19 @@ let rainbow_surface gl (shader : Shaders.Basic.shader) shader2d xs zs ys =
       shader # draw_elements Shaders.Lines e_wireframe
 
     method ray o e = Intersection.ray_triangles vertices table o e
+
+    initializer
+      let open Webgl in
+      let open Webgl.Constant in
+      bind_texture gl _TEXTURE_2D_ (Some texture_surface);
+      tex_image_2D_array gl _TEXTURE_2D_ 0 _RGBA_ 512 512 0 _RGBA_ _UNSIGNED_BYTE_  None;
+      tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MAG_FILTER_ _LINEAR_;
+      tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MIN_FILTER_ _LINEAR_MIPMAP_LINEAR_;
+      bind_framebuffer gl _FRAMEBUFFER_ (Some texture_framebuffer);
+      framebuffer_texture_2D gl _FRAMEBUFFER_ _COLOR_ATTACHMENT0_ _TEXTURE_2D_ texture_surface 0;
+      bind_framebuffer gl _FRAMEBUFFER_ None;
+      bind_texture gl _TEXTURE_2D_ None
+
   end
 
 let histogram gl (shader : Shaders.Basic.shader) xs zs ys =
@@ -243,6 +251,8 @@ let prepare_scene gl component =
     val mutable angle = (0., 0., 0.)
     val mutable move = (0., 0., 0.)
     val mutable pointer = (0., 0.)
+    val mutable height = 100
+    val mutable width = 100
 
     val mutable objects : #drawable list = []
 
@@ -250,6 +260,8 @@ let prepare_scene gl component =
     method set_angle x = angle <- x
     method set_move x = move <- x
     method set_pointer p = pointer <- p
+    method set_height h = height <- h
+    method set_width w = width <- w
 
     method repere = repere
 
@@ -272,6 +284,12 @@ let prepare_scene gl component =
       | None -> ()
       | Some frame -> begin
           let _proportion, matrix, matrix' = world_matrix aspect frame angle move in
+          basic2d_shader # use;
+          List.iter (fun o -> o # compute_texture) objects;
+          Webgl.(
+            bind_framebuffer gl Constant._FRAMEBUFFER_ None;
+            enable gl Constant._DEPTH_TEST_;
+            viewport gl 0 0 width height);
 
           texture_shader # use;
           texture_shader # set_world_matrix (flatten_matrix matrix);
@@ -280,10 +298,7 @@ let prepare_scene gl component =
             repere # draw angle_x angle_y
           end;
 
-          basic2d_shader # use;
-          List.iter (fun o -> o # compute_texture) objects;
           basic_shader # use;
-
           basic_shader # set_world_matrix (flatten_matrix matrix);
           basic_shader # set_ambient_light 1.0 1.0 1.0;
           basic_shader # set_light_position 1.0 1.0 (-2.0);

@@ -52,11 +52,13 @@ let () = Window.set_onload window (fun _ ->
     repere # set_frame {x_max = 1.;x_min=0.;y_max=1.;y_min=0.;z_max=1.;z_min=0.};
     Examples.surface scene;
     Examples.histogram scene;
-    fun _clock {Component.aspect; angle; move; pointer; _} ->
+    fun _clock {Component.aspect; angle; move; pointer; width; height; _} ->
       scene # set_aspect aspect;
       scene # set_angle angle;
       scene # set_move move;
       scene # set_pointer pointer;
+      scene # set_width (int_of_float width);
+      scene # set_height (int_of_float height);
       scene # render
   in
   let canvas = Component.create_webgl_canvas renderer in
