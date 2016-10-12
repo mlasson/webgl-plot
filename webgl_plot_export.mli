@@ -1,72 +1,66 @@
-type specification =
-  | Constant of {
-      data : float * float * float
-    }
-  | TimeConstant of {
-      data : (float * float * float) array
-    }
-  | Pointwise of {
-      data: (float * float * float) array array
-    }
-  | TimePointwise of {
-      data: (float * float * float) array array array
-    }
-  | Unknown of Ojs.t [@js.default]
-[@@js.sum]
+module Histogram : sig
+  type t =
+    | Uniform of {
+        name: string option;
 
-type series_specification =
-  | Uniform of {
-      x: float array;
-      z: float array;
-      y: float array array;
-    }
+        x: float array;
+        z: float array;
+        y: float array array;
 
-  | Parametric of {
-      a: float array;
-      b: float array;
-      p: (float * float * float) array array;
-    }
+        widths: float array array option;
+        colors: float array array array option;
+        wireframe: bool option;
+      } [@js "uniform"]
 
-  | TimeUniform of {
-      x: float array;
-      z: float array;
-      t: float array;
-      y: float array array array;
-    }
+    | Parametric of {
+        name: string option;
 
-  | TimeParametric of {
-      a: float array;
-      b: float array;
-      t: float array;
-      p: (float * float * float) array array array;
-    }
-  | Unknown of Ojs.t [@js.default]
-[@@js.sum]
+        a: float array;
+        b: float array;
+        p: float array array array;
 
+        widths: float array array option;
+        colors: float array array array option;
+        wireframe: bool option;
+      } [@js "parametric"]
+
+    | Unknown of Ojs.t [@js.default]
+  [@@js.sum "representation"]
+end
+
+module Surface : sig
+  type t =
+    | Uniform of {
+        name: string option;
+
+        x: float array;
+        z: float array;
+        y: float array array;
+
+        colors: float array array array option;
+        wireframe: bool option;
+      }[@js "uniform"]
+
+    | Parametric of {
+        name: string option;
+
+        a: float array;
+        b: float array;
+        p: float array array array;
+
+        colors: float array array array option;
+        wireframe: bool option;
+      }[@js "parametric"]
+
+    | Unknown of Ojs.t [@js.default]
+  [@@js.sum "representation"]
+
+end
 
 type series =
-  | Histogram of {
-      name: string option;
-      data: series_specification;
-      colors: specification option;
-      widths: specification option;
-      wireframe: bool option;
-    }
-
-  | Scatter of {
-      name: string option;
-      data: series_specification;
-      colors: specification option;
-      widths: specification option;
-      wireframe: bool option;
-    }
-
-  | Surface of {
-      name: string option;
-      data: series_specification;
-      colors: specification;
-      wireframe: bool option;
-    }
+  | Histogram of Histogram.t [@js.arg "data"][@js "histogram"]
+  | Scatter of Histogram.t [@js.arg "data"][@js "scatter"]
+  | Surface of Surface.t [@js.arg "data"][@js "surface"]
   | Unknown of Ojs.t [@js.default]
 [@@js.sum]
 
@@ -85,18 +79,21 @@ type tick = {
 type axis_option = {
   label: string option;
   ticks: tick list option;
+  bounds: (float * float) option;
 }
 
 type chart = {
-  x_label: axis_option option;
-  y_label: axis_option option;
-  z_label: axis_option option;
-  t_label: axis_option option;
+  x_axis: axis_option option;
+  y_axis: axis_option option;
+  z_axis: axis_option option;
 
   series: series list;
 
   pointer_kind: pointer_kind option;
 
   magnetic: bool option;
-  morphing: bool option;
+
+  ratio: (float * float * float) option;
 }
+val chart_to_js: chart -> Ojs.t
+val chart_of_js: Ojs.t -> chart

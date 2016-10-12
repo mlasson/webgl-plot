@@ -26,6 +26,9 @@ let flatten3 n m f =
   done;
   points
 
+let array_of_float32 a =
+  Array.init (Float32Array.length a) (fun k -> Float32Array.get a k)
+
 let flatten2 n m f =
   let points = Float32Array.new_float32_array (`Size (n * m * 2)) in
   let pos = ref 0 in

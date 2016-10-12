@@ -14,6 +14,64 @@ html, body {
 </style>
 </head>
 <body>
+  <script>
+
+  window.onload = function() {
+    var res_x = 10;
+    var res_z = 20;
+
+    var new_unit_range = function(res) {
+      var a = new Array(res);
+      for (var i = 0;i < res; i++) {
+        a[i] = i / (res - 1);
+      }
+      return a;
+    };
+
+    var x = new_unit_range(res_x);
+    var z = new_unit_range(res_z);
+
+    var graph3d = function (f, x, z) {
+      var res_x = x.length;
+      var res_z = z.length;
+
+      var y = new Array(res_x);
+      for (var i = 0;i < res_x; i++) {
+        var row = new Array(res_z);
+        y[i] = row;
+        for (var j = 0;j < res_z; j++) {
+          row[j] = f(x[i],z[j]);
+        }
+      }
+      return y;
+    }
+
+    var sq = function(x) { return (x * x) };
+
+    var y = graph3d(function(x,z) { return (0.5 * (sq(Math.cos(3 * x)) + sq (Math.sin(6.0 * z))))}, x, z);
+
+    var series = [
+      { 
+	kind : "surface",
+	data : { 
+	  name : "test",
+          representation: "uniform",
+  	  x,
+	  z,
+	  y,
+	}
+      }
+    ];
+
+    var graph = { series };
+
+    var plot = WebglPlot.create(graph);
+
+    document.getElementById("main").appendChild(plot);
+
+  };
+
+  </script>
   <div id="main" style="height:95%">
     <!-- HERE GOES THE RESULTS -->
   </div>

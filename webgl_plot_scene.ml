@@ -108,6 +108,9 @@ let colored_sphere gl shader =
 
 let rainbow_surface gl (shader : Shaders.LightAndTexture.shader) (shader2d : Shaders.Basic2d.shader) xs zs ys =
   let open Shaders in
+  let xs = Geometry.array_of_float32 xs in
+  let ys = Geometry.array_of_float32 ys in
+  let zs = Geometry.array_of_float32 zs in
   let min, max = match Array.min_max ys with Some c -> c | None -> 0.0, 1.0 in
   let range = (max -. min) in
   let rainbow y =
@@ -297,6 +300,11 @@ class type drawable =
     method ray: three Vector.vector -> three Vector.vector -> three Vector.vector option
   end
 
+type pointer_kind =
+  | Cross
+  | Sphere
+  | None
+
 let prepare_scene gl component =
 
   let basic_shader = Shaders.Basic.init gl in
@@ -310,6 +318,7 @@ let prepare_scene gl component =
   let textbox = component # new_textbox in
   let sphere_pointer = sphere_factory (0.0, 0.0, 0.0) in
   let () = sphere_pointer # set_scale (0.005, 0.005, 0.005) in
+
   object(this)
     val mutable aspect = 1.0
     val mutable angle = (0., 0., 0.)
@@ -317,6 +326,9 @@ let prepare_scene gl component =
     val mutable pointer = (0., 0.)
     val mutable height = 100
     val mutable width = 100
+    val mutable magnetic = false
+    val mutable clock = 0.0
+    val mutable pointer_kind = Cross
 
     val mutable objects : #drawable list = []
 
@@ -328,8 +340,22 @@ let prepare_scene gl component =
     method set_pointer p = pointer <- p
     method set_height h = height <- h
     method set_width w = width <- w
+    method set_pointer_kind k = pointer_kind <- k
+
+    method set_magnetic b = magnetic <- b
+    method set_clock c = clock <- c
 
     method repere = repere
+
+
+    method add_uniform_histogram ?widths ?colors ?wireframe ?name x z y = ()
+    method add_parametric_histogram ?widths ?colors ?wireframe ?name a b p = ()
+    method add_uniform_scatter ?widths ?colors ?wireframe ?name x z y = ()
+    method add_parametric_scatter ?widths ?colors ?wireframe ?name a b p = ()
+    method add_uniform_surface ?colors ?wireframe ?name x z y =
+      this # add_surface x z y
+
+    method add_parametric_surface ?colors ?wireframe ?name a b p = ()
 
     method add_surface xs zs ys =
       let obj = rainbow_surface gl light_texture_shader basic2d_shader xs zs ys in

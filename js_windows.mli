@@ -215,6 +215,10 @@ end
 val window: Window.t
 val document: Document.t
 
+module Console: sig
+    val log: Ojs.t -> unit [@@js.global]
+end [@js.scope "console"]
+
 module Canvas : sig
   type context
   val context_of_js: Ojs.t -> context
