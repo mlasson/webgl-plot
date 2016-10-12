@@ -292,19 +292,65 @@ let initialize gl texture_shader =
     val mutable ticks = None
     val mutable cube = None
 
+    val mutable ratio = (1., 1., 1.)
+    val mutable x_axis_min = 0.0
+    val mutable x_axis_max = 1.0
+
+    val mutable y_axis_min = 0.0
+    val mutable y_axis_max = 1.0
+
+    val mutable z_axis_min = 0.0
+    val mutable z_axis_max = 1.0
+
     val mutable x_axis_label = ""
     val mutable y_axis_label = ""
     val mutable z_axis_label = ""
+
+    val mutable x_axis_ticks = []
+    val mutable y_axis_ticks = []
+    val mutable z_axis_ticks = []
+
     val mutable changed = true
+
 
     method modify = changed <- true
 
     method frame = frame
 
-    method set_frame b = this # modify; frame <- Some b
-    method set_x_axis_label s = this # modify; x_axis_label <- s
-    method set_y_axis_label s = this # modify; y_axis_label <- s
-    method set_z_axis_label s = this # modify; z_axis_label <- s
+    method set_frame =
+      this # modify;
+      frame <- Some {
+          x_min = x_axis_min;
+          x_max = x_axis_max;
+          y_min = y_axis_min;
+          y_max = y_axis_max;
+          z_min = z_axis_min;
+          z_max = z_axis_max;
+        }
+
+    method set_ratio r =
+      this # modify; ratio <- r
+
+    method set_x_axis_label s =
+      this # modify; x_axis_label <- s
+    method set_x_axis_ticks l =
+      this # modify; x_axis_ticks <- l
+    method set_x_axis_bounds (x_min, x_max) =
+      this # modify; x_axis_min <- x_min; x_axis_max <- x_max; this # set_frame
+
+    method set_y_axis_label s =
+      this # modify; y_axis_label <- s
+    method set_y_axis_ticks l =
+      this # modify; y_axis_ticks <- l
+    method set_y_axis_bounds (y_min, y_max) =
+      this # modify; y_axis_min <- y_min; y_axis_max <- y_max; this # set_frame
+
+    method set_z_axis_label s =
+      this # modify; z_axis_label <- s
+    method set_z_axis_ticks l =
+      this # modify; z_axis_ticks <- l
+    method set_z_axis_bounds (z_min, z_max) =
+      this # modify; z_axis_min <- z_min; z_axis_max <- z_max; this # set_frame
 
     method compute =
       if changed then begin
