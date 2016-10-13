@@ -1,42 +1,5 @@
 let debug = false
 
-module List = struct
-  include List
-
-  let choose f l =
-    let rec aux acc = function
-      | [] -> List.rev acc
-      | hd :: tl ->
-        begin match f hd with
-          | Some hd -> aux (hd :: acc) tl
-          | None -> aux acc tl
-        end
-    in
-    aux [] l
-
-  let flatten l =
-    let rec aux acc =
-      function
-      | [] -> List.rev acc
-      | hd :: tl -> aux (List.rev_append hd acc) tl
-    in aux [] l
-
-  let map f l = List.rev_map f l |> List.rev
-end
-
-module Array = struct
-  include Array
-  let min_max a =
-    if Array.length a = 0 then None
-    else
-      let min = ref a.(0) in
-      let max = ref !min in
-      Array.iter (fun x ->
-          if x < !min then min := x;
-          if x > !max then max := x) a;
-      Some (!min, !max)
-end
-
 type four
 type three
 type two
@@ -324,7 +287,7 @@ module Color = struct
     let m = v -. c in
     (r +. m, g +. m, b +. m)
 
-  
+
   let gradient colors =
      let n = Array.length colors in
      fun t ->
@@ -344,7 +307,7 @@ module Color = struct
          z *. t +. z' *. t'
 
   let cold_to_hot =
-    let colors = [| 
+    let colors = [|
       0.0, 0.0, 1.0;
       0.0, 1.0, 1.0;
       0.0, 1.0, 0.0;
@@ -353,7 +316,7 @@ module Color = struct
     gradient colors
 
  let white_cold_to_hot =
-    let colors = [| 
+    let colors = [|
       1.0, 1.0, 1.0;
       0.0, 0.0, 1.0;
       0.0, 1.0, 1.0;

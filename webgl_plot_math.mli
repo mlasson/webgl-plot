@@ -1,22 +1,11 @@
 val debug : bool
 
-module List :
-  sig
-    include module type of List
-    val choose : ('a -> 'b option) -> 'a list -> 'b list
-  end
-
-module Array :
-  sig
-    include module type of Array
-    val min_max: 'a array -> ('a * 'a) option
-  end
-
 type four
 type three
 type two
 val pi : float
 val sq : float -> float
+
 module Vector :
   sig
     type 'a vector = private float array

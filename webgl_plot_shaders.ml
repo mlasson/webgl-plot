@@ -1,6 +1,7 @@
 open Webgl
 open Webgl.Constant
 open Js_array
+open Webgl_plot_misc
 
 module Geometry = Webgl_plot_geometry
 
@@ -82,7 +83,7 @@ class element_array gl =
     method index_type = index_type
     method size = size
     method buffer = buffer
-    method fill (data : Geometry.Index.t) =
+    method fill (data : Index.t) =
       let data =
         match data with
         | `Byte data ->

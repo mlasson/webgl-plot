@@ -2,7 +2,11 @@ OCAMLDEP=ocamlfind ocamldep
 OCAMLC=ocamlfind ocamlc
 OCAMLFLAGS=-w +a-4-29-30-40-41-42-44-45-48-26 -strict-sequence -strict-formats -bin-annot -package gen_js_api.ppx
 
-MODULES=js_windows js_array webgl webgl_plot_math webgl_plot_dom_helper webgl_plot_geometry webgl_plot_intersection webgl_plot_shaders webgl_plot_textures webgl_plot_repere webgl_plot_scene webgl_plot_component webgl_plot_export webgl_plot_main # models plot main
+MODULES=js_windows js_array webgl webgl_plot_math webgl_plot_misc webgl_plot_dom_helper \
+	webgl_plot_geometry webgl_plot_intersection webgl_plot_shaders \
+	webgl_plot_drawable webgl_plot_histogram webgl_plot_surface \
+	webgl_plot_textures webgl_plot_repere \
+	webgl_plot_scene webgl_plot_component webgl_plot_export webgl_plot_main
 
 CMOS=$(patsubst %,%.cmo,$(MODULES))
 GENERATED=webgl.ml js_windows.ml js_array.ml webgl_plot_export.ml

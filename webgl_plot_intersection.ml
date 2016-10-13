@@ -1,11 +1,35 @@
 open Js_array
+open Webgl_plot_misc
 module Math = Webgl_plot_math
-module Geometry = Webgl_plot_geometry
-
 open Math
-open Geometry
 
 let epsilon = 1e-9
+
+let iter_triangles indexes f =
+  let size = Index.length indexes / 3 in
+  let get = Index.get indexes in
+  for k = 0 to size - 1 do
+    f (get (3 * k),
+       get (3 * k + 1),
+       get (3 * k + 2))
+  done
+
+let get_generic tmp float_array k =
+  let dim = Array.length tmp in
+  for i = 0 to dim - 1 do
+    tmp.(i) <- Float32Array.get float_array (k * dim + i)
+  done
+
+let vec3_of_array a =
+  match Vector.of_array a with
+  | `Three v -> v
+  | _ -> failwith "vec3_of_array"
+
+let get3 buffer k =
+  let tmp = Array.create_float 3 in
+  get_generic tmp buffer k;
+  vec3_of_array tmp
+
 
 (* https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm *)
 let triangle_intersection o d v1 v2 v3 =
@@ -138,15 +162,15 @@ let hashtbl_to_list table =
   List.map (fun key -> key, Hashtbl.find_all table key) keys
 
 let build_ray_table points triangles =
-  let nb_triangles = Buffer.number_of_triangles triangles in
+  let nb_triangles = Index.length triangles / 3 in
   let size = max (int_of_float (sqrt (float nb_triangles) /. 10.0)) 1 in
   let boxes = partition points size in
   let nb_boxes = Array.length boxes in
   let table = Hashtbl.create nb_boxes in
-  Buffer.iter_triangles triangles (fun ((a,b,c) as triangle) ->
-      let x_a, _, z_a = Vector.to_three (Buffer.get3 points a) in
-      let x_b, _, z_b = Vector.to_three (Buffer.get3 points b) in
-      let x_c, _, z_c = Vector.to_three (Buffer.get3 points c) in
+  iter_triangles triangles (fun ((a,b,c) as triangle) ->
+      let x_a, _, z_a = Vector.to_three (get3 points a) in
+      let x_b, _, z_b = Vector.to_three (get3 points b) in
+      let x_c, _, z_c = Vector.to_three (get3 points c) in
       let x_min = min x_a (min x_b x_c) in
       let x_max = max x_a (max x_b x_c) in
       let z_min = min z_a (min z_b z_c) in
@@ -206,9 +230,9 @@ let ray_triangles points table o e =
     Printf.printf "nb_boxes : %d / %d\n%!" (List.length l) (List.length table);
   let hits =
     List.map (List.choose (fun (a,b,c) ->
-        let a = Buffer.get3 points a in
-        let b = Buffer.get3 points b in
-        let c = Buffer.get3 points c in
+        let a = get3 points a in
+        let b = get3 points b in
+        let c = get3 points c in
         triangle_intersection o d a b c)) l
     |> List.flatten
   in

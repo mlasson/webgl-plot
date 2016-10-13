@@ -1,5 +1,6 @@
 open Js_array
 open Webgl_plot_math
+open Webgl_plot_misc
 
 let normal_of_triangle a b c =
   let open Vector in
@@ -12,47 +13,17 @@ let normal_of_triangle a b c =
   let n = sqrt (xn *. xn +. yn *. yn +. zn *. zn) in
   (of_three (xn /. n, yn /. n, zn /. n))
 
-let flatten3 n m f =
-  let points = Float32Array.new_float32_array (`Size (n * m * 3)) in
-  let pos = ref 0 in
-  for i = 0 to n - 1 do
-    for j = 0 to m - 1 do
-       let x, y, z = f i j in
-       Float32Array.set points (!pos + 0) x;
-       Float32Array.set points (!pos + 1) y;
-       Float32Array.set points (!pos + 2) z;
-       pos := !pos + 3;
-    done
-  done;
-  points
-
-let array_of_float32 a =
-  Array.init (Float32Array.length a) (fun k -> Float32Array.get a k)
-
-let flatten2 n m f =
-  let points = Float32Array.new_float32_array (`Size (n * m * 2)) in
-  let pos = ref 0 in
-  for i = 0 to n - 1 do
-    for j = 0 to m - 1 do
-       let x, y = f i j in
-       Float32Array.set points (!pos + 0) x;
-       Float32Array.set points (!pos + 1) y;
-       pos := !pos + 2;
-    done
-  done;
-  points
-
 let compute_vertices dim1 dim2 desc =
   let n, m = Array.length dim1, Array.length dim2 in
-  flatten3 n m (fun i j -> desc dim1.(i) dim2.(j))
+  FloatData.init3_matrix n m (fun i j -> desc dim1.(i) dim2.(j))
 
 let texcoords_from_grid n m =
   let n' = float (n - 1) in
   let m' = float (m - 1) in
-  flatten2 n m (fun i j -> (float i) /. n', (float j) /. m')
+  FloatData.init2_matrix n m (fun i j -> (float i) /. n', (float j) /. m')
 
 let compute_normals n m points =
-  flatten3 n m (fun i j ->
+  FloatData.init3_matrix n m (fun i j ->
       let get i j =
         let pos = (i*m + j) * 3 in
         Vector.of_three
@@ -113,91 +84,6 @@ let triangles_indexes_from_grid dim1 dim2 =
     aux result Uint32Array.set;
     `Int result
 
-module Index = struct
-
-  type t =
-    [ `Byte of Uint8Array.t
-    | `Short of Uint16Array.t
-    | `Int of Uint32Array.t]
-
-  let length = function
-     | `Int data -> Uint32Array.length data
-     | `Short data -> Uint16Array.length data
-     | `Byte data -> Uint8Array.length data
-
-  let get = function
-     | `Int data -> Uint32Array.get data
-     | `Short data -> Uint16Array.get data
-     | `Byte data -> Uint8Array.get data
-
-  let set = function
-     | `Int data -> Uint32Array.set data
-     | `Short data -> Uint16Array.set data
-     | `Byte data -> Uint8Array.set data
-
-  let of_array a : t =
-    let len = Array.length a in
-    if len < 256 then
-      `Byte (Uint8Array.new_uint8_array (`Data a))
-    else if len < 65536 then
-      `Short (Uint16Array.new_uint16_array (`Data a))
-    else
-      `Int (Uint32Array.new_uint32_array (`Data a))
-
-
-end
-
-module Buffer = struct
-
-  let iteri f a =
-    let open Float32Array in
-    for k = 0 to length a - 1 do
-       f k (get a k)
-    done
-
-  let iter_generic dim float_array f =
-    let tmp = Array.create_float dim in
-    iteri (fun k x ->
-        let i = k mod dim in
-        tmp.(i) <- x;
-        if i = dim - 1 then
-          f tmp
-      ) float_array
-
-  let vec3_of_array a =
-    match Vector.of_array a with
-    | `Three v -> v
-    | _ -> failwith "vec3_of_array"
-
-  let iter3 buffer f =
-    iter_generic 3 buffer (fun a ->
-        f (vec3_of_array (Array.copy a)))
-
-  let number_of_triangles indexes =
-    Index.length indexes / 3
-
-  let iter_triangles indexes f =
-    let size = number_of_triangles indexes in
-    let get = Index.get indexes in
-    for k = 0 to size - 1 do
-        f (get (3 * k),
-           get (3 * k + 1),
-           get (3 * k + 2))
-    done
-
-
-  let get_generic tmp float_array k =
-    let dim = Array.length tmp in
-    for i = 0 to dim - 1 do
-      tmp.(i) <- Float32Array.get float_array (k * dim + i)
-    done
-
-  let get3 buffer k =
-    let tmp = Array.create_float 3 in
-    get_generic tmp buffer k;
-    vec3_of_array tmp
-end
-
 type box = {
   x_min : float;
   x_max : float;
@@ -225,7 +111,7 @@ let bounding_box points =
       let z = Float32Array.get points 2 in
       ref z, ref z
     in
-    Buffer.iteri (fun k v ->
+    FloatData.iteri (fun k v ->
         let r_min, r_max = match k mod 3 with 0 -> x_min, x_max | 1 -> y_min, y_max | 2 -> z_min, z_max | _ -> assert false in
         if !r_min > v then r_min := v;
         if !r_max < v then r_max := v;
@@ -308,7 +194,7 @@ module Surface = struct
   let create xs zs ys =
   let n, m = Array.length xs, Array.length zs in
   let vertices =
-    flatten3 n m
+    FloatData.init3_matrix n m
       (fun i j ->
          (xs.(i), ys.(i*m + j), zs.(j)))
   in
@@ -460,15 +346,3 @@ module Histogram = struct
 
 end
 
-let init_triple_array size f =
-  let result = Float32Array.new_float32_array (`Size (3 * size)) in
-  let k = ref 0 in
-  while !k < size do
-    let x,y,z = f !k in
-    let pos = 3 * !k in
-    incr k;
-    Float32Array.set result pos x;
-    Float32Array.set result (pos + 1) y;
-    Float32Array.set result (pos + 2) z;
-  done;
-  result

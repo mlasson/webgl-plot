@@ -1,16 +1,15 @@
 open Js_array
 open Webgl_plot_math
+open Webgl_plot_misc
+open Webgl_plot_drawable
 
 module Math = Webgl_plot_math
 module Geometry = Webgl_plot_geometry
 module Shaders = Webgl_plot_shaders
 module Intersection = Webgl_plot_intersection
 module Repere = Webgl_plot_repere
-
-class type context =
-  object
-    method pointer : float * float
-  end
+module Surface = Webgl_plot_surface
+module Histogram = Webgl_plot_histogram
 
 let my_projection near far aspect =
   Vector.Const.projection ~fov:(pi /. 4.0) ~near ~far ~aspect
@@ -63,26 +62,19 @@ let world_matrix aspect {Geometry.x_max; x_min; y_max; y_min; z_min; z_max} (ang
   in
   proportions, matrix, matrix'
 
-let flatten_matrix m =
-  Float32Array.new_float32_array (`Data (Vector.to_array m))
-
-class dummy_ray = object
-  method ray (_ : three Vector.vector) (_ : three Vector.vector) = (None : three Vector.vector option)
-end
-
 let colored_sphere gl shader =
   let open Geometry in
   let open Shaders in
   let mesh = Sphere.create 8 in
   let a_positions = create_attrib_array gl 3 mesh.vertices in
   let a_colors_wireframe = create_attrib_array gl 3
-    (Geometry.init_triple_array (Float32Array.length mesh.vertices) (fun _ -> 0.0, 0.0, 0.0))
+    (FloatData.init3 (Float32Array.length mesh.vertices) (fun _ -> 0.0, 0.0, 0.0))
   in
   let e_triangles = create_element_array gl mesh.triangles in
   let e_wireframe = create_element_array gl mesh.wireframe in
   fun color ->
     let a_colors = create_attrib_array gl 3
-      (Geometry.init_triple_array (Float32Array.length mesh.vertices) (fun _ -> color));
+      (FloatData.init3 (Float32Array.length mesh.vertices) (fun _ -> color));
     in
     object
       inherit dummy_ray
@@ -93,9 +85,9 @@ let colored_sphere gl shader =
       method draw (_ : context) id =
         if id = shader # id then begin
           shader # set_object_matrix
-            (flatten_matrix
+            (float32_array (Vector.to_array
                (Vector.Const.scale_translation
-                  (Vector.of_three scale) (Vector.of_three position)));
+                  (Vector.of_three scale) (Vector.of_three position))));
           shader # set_colors a_colors;
           shader # set_normals a_positions;
           shader # set_positions  a_positions;
@@ -105,200 +97,6 @@ let colored_sphere gl shader =
         end
 
     end
-
-let rainbow_surface gl (shader : Shaders.LightAndTexture.shader) (shader2d : Shaders.Basic2d.shader) xs zs ys =
-  let open Shaders in
-  let xs = Geometry.array_of_float32 xs in
-  let ys = Geometry.array_of_float32 ys in
-  let zs = Geometry.array_of_float32 zs in
-  let min, max = match Array.min_max ys with Some c -> c | None -> 0.0, 1.0 in
-  let range = (max -. min) in
-  let rainbow y =
-      Math.Color.cold_to_hot ((y -. min) /. range)
-  in
-  let {Geometry.Surface.vertices; triangles; wireframe; normals; bounds; texcoords} =
-    Geometry.Surface.create xs zs ys
-  in
-  let texture_matrix =
-    let scale_x, scale_z =
-      2.0 /. (bounds.x_max -. bounds.x_min), 2.0 /. (bounds.z_max -. bounds.z_min)
-    in
-    let shift_x, shift_z =
-      -1.0 -. 2.0 *. bounds.x_min /. (bounds.x_max -. bounds.x_min),
-      -1.0 -. 2.0 *. bounds.z_min /. (bounds.z_max -. bounds.z_min)
-    in
-    (* Projects (x,_,z) into [-1,1] × [-1,1] × {1} *)
-    Float32Array.new_float32_array (`Data [|
-     scale_x; 0.; 0.; 0.;
-         0.0; 0.; 0.; 0.;
-         0.0; scale_z; 0.0; 0.0;
-     shift_x; shift_z; 1.0; 1.0
-      |])
-  in
-  let identity_matrix =
-    Float32Array.new_float32_array (`Data [|
-         1.0; 0.; 0.; 0.;
-         0.0; 1.0; 0.; 0.;
-         0.0; 0.0; 1.0; 0.0;
-         0.0; 0.0; 0.0; 1.0
-      |])
-  in
-  let table = Intersection.build_ray_table vertices triangles in
-  let a_positions = create_attrib_array gl 3 vertices in
-  let a_normals = create_attrib_array gl 3 normals in
-  let a_colors_wireframe =
-    create_attrib_array gl 3 (* black *)
-      (Geometry.init_triple_array (Float32Array.length vertices) (fun _ -> 0.0, 0.0, 0.0))
-  in
-  let a_colors = create_attrib_array gl 3 (* rainbow *)
-    (Geometry.init_triple_array (Float32Array.length vertices) (fun k ->
-        rainbow (Float32Array.get vertices (3 * k + 1))))
-  in
-  let a_texcoords = create_attrib_array gl 2 texcoords in
-  let e_triangles = create_element_array gl triangles in
-  let e_wireframe = create_element_array gl wireframe in
-  let texture_framebuffer = Webgl.create_framebuffer gl in
-  let texture_surface = Webgl.create_texture gl in
-  let a_grid = new attrib_array gl 3 in
-  let a_grid_colors = create_attrib_array gl 3 (Geometry.init_triple_array 12 (fun _ -> 0.0, 0.0, 0.0)) in
-  object
-    val mutable last_intersection = None
-    val mutable grid_width = 0.005
-
-    method draw (ctx : context) id =
-      let open Webgl in
-      let open Constant in
-      if id = shader2d # id then begin
-        bind_framebuffer gl _FRAMEBUFFER_ (Some texture_framebuffer);
-        disable gl _DEPTH_TEST_;
-
-        viewport gl 0 0 1024 1024;
-        shader2d # set_matrix texture_matrix;
-        shader2d # set_colors a_colors;
-        shader2d # set_positions a_positions;
-        shader2d # draw_elements Shaders.Triangles e_triangles;
-
-        begin match last_intersection with
-        | None -> ()
-        | Some p ->
-          let x,_,z = Vector.to_three p in
-          let x = -1. +. 2.0 *. (x -. bounds.x_min) /. (bounds.x_max -. bounds.x_min) in
-          let z = -1. +. 2.0 *. (z -. bounds.z_min) /. (bounds.z_max -. bounds.z_min) in
-
-          a_grid # fill (Float32Array.new_float32_array (`Data [|
-              x -. grid_width;-1.0; 1.0;
-              x +. grid_width;-1.0; 1.0;
-              x -. grid_width; 1.0; 1.0;
-              x +. grid_width;-1.0; 1.0;
-              x +. grid_width; 1.0; 1.0;
-              x -. grid_width; 1.0; 1.0;
-              -1.0;z -. grid_width; 1.0;
-              -1.0;z +. grid_width; 1.0;
-               1.0;z -. grid_width; 1.0;
-              -1.0;z +. grid_width; 1.0;
-               1.0;z +. grid_width; 1.0;
-               1.0;z -. grid_width; 1.0;
-            |]));
-
-          shader2d # set_matrix identity_matrix;
-          shader2d # set_colors a_grid_colors;
-          shader2d # set_positions a_grid;
-          shader2d # draw_arrays Shaders.Triangles (a_grid # count);
-        end;
-
-        bind_texture gl _TEXTURE_2D_ (Some texture_surface);
-        generate_mipmap gl _TEXTURE_2D_;
-        bind_texture gl _TEXTURE_2D_ None;
-      end else if id = shader # id then begin
-        shader # set_object_matrix identity_matrix;
-        shader # set_texcoords a_texcoords;
-        shader # set_normals a_normals;
-        shader # set_positions  a_positions;
-        Webgl.bind_texture gl _TEXTURE_2D_ (Some texture_surface);
-        shader # draw_elements Shaders.Triangles e_triangles;
-        Webgl.bind_texture gl _TEXTURE_2D_ None;
-      end
-      (*
-      shader # set_colors a_colors_wireframe;
-      shader # draw_elements Shaders.Lines e_wireframe *)
-
-    method ray o e =
-      let r =
-        Intersection.ray_triangles vertices table o e
-      in
-      last_intersection <- r;
-      r
-
-    initializer
-      let open Webgl in
-      let open Webgl.Constant in
-      bind_texture gl _TEXTURE_2D_ (Some texture_surface);
-      tex_image_2D_array gl _TEXTURE_2D_ 0 _RGBA_ 1024 1024 0 _RGBA_ _UNSIGNED_BYTE_  None;
-      tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MAG_FILTER_ _LINEAR_;
-      tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MIN_FILTER_ _LINEAR_MIPMAP_LINEAR_;
-      bind_framebuffer gl _FRAMEBUFFER_ (Some texture_framebuffer);
-      framebuffer_texture_2D gl _FRAMEBUFFER_ _COLOR_ATTACHMENT0_ _TEXTURE_2D_ texture_surface 0;
-      bind_framebuffer gl _FRAMEBUFFER_ None;
-      bind_texture gl _TEXTURE_2D_ None
-
-  end
-
-let histogram gl (shader : Shaders.Basic.shader) xs zs ys =
-  let open Shaders in
-  let open Geometry in
-  let min, max = match Array.min_max ys with Some c -> c | None -> 0.0, 1.0 in
-  let range = max -. min in
-  let rainbow y =
-      Math.Color.white_cold_to_hot ((y -. min) /. range)
-  in
-  let {Histogram.triangles; normals; wireframe; normals_wireframe} = Histogram.create xs zs ys in
-  let a_triangles = create_attrib_array gl 3 triangles in
-  let a_normals = create_attrib_array gl 3 normals in
-  let a_colors = create_attrib_array gl 3 (* rainbow *)
-    (Geometry.init_triple_array (Float32Array.length triangles) (fun k ->
-        rainbow (Float32Array.get triangles (3 * k + 1))))
-  in
-  let a_wireframe = create_attrib_array gl 3 wireframe in
-  let a_normals_wireframe = create_attrib_array gl 3 normals_wireframe in
-  let a_colors_wireframe =
-    create_attrib_array gl 3 (* black *)
-      (Geometry.init_triple_array (Float32Array.length triangles) (fun _ -> 0.0, 0.0, 0.0))
-  in
-  object
-    inherit dummy_ray
-    val mutable scale = (1., 1., 1.)
-    val mutable position = (0., 0., 0.)
-
-    method set_scale x =
-      scale <- x
-
-    method set_position x =
-      position <- x
-
-    method draw (_ : context) shader_id =
-      if shader_id = shader # id then begin
-        shader # set_object_matrix
-          (flatten_matrix
-             (Vector.Const.scale_translation
-                (Vector.of_three scale) (Vector.of_three position)));
-        shader # set_colors a_colors;
-        shader # set_normals a_normals;
-        shader # set_positions a_triangles;
-        shader # draw_arrays Shaders.Triangles (a_triangles # count);
-
-        shader # set_positions a_wireframe;
-        shader # set_colors a_colors_wireframe;
-        shader # set_normals a_normals_wireframe;
-        shader # draw_arrays Shaders.Lines (a_wireframe # count)
-      end
-  end
-
-
-class type drawable =
-  object
-    method draw : context -> int -> unit
-    method ray: three Vector.vector -> three Vector.vector -> three Vector.vector option
-  end
 
 type pointer_kind =
   | Cross
@@ -347,22 +145,19 @@ let prepare_scene gl component =
 
     method repere = repere
 
-
     method add_uniform_histogram ?widths ?colors ?wireframe ?name x z y = ()
     method add_parametric_histogram ?widths ?colors ?wireframe ?name a b p = ()
     method add_uniform_scatter ?widths ?colors ?wireframe ?name x z y = ()
     method add_parametric_scatter ?widths ?colors ?wireframe ?name a b p = ()
+
     method add_uniform_surface ?colors ?wireframe ?name x z y =
-      this # add_surface x z y
+      let obj = Surface.create gl light_texture_shader basic2d_shader basic_shader ?name ?colors ?wireframe x z y in
+      objects <- (obj :> drawable) :: objects
 
     method add_parametric_surface ?colors ?wireframe ?name a b p = ()
 
-    method add_surface xs zs ys =
-      let obj = rainbow_surface gl light_texture_shader basic2d_shader xs zs ys in
-      objects <- (obj :> drawable) :: objects
-
     method add_histogram xs zs ys =
-      let obj = histogram gl basic_shader xs zs ys in
+      let obj = Histogram.create gl basic_shader xs zs ys in
       objects <- (obj :> drawable) :: objects
 
     method add_sphere position scale color =
@@ -373,11 +168,13 @@ let prepare_scene gl component =
 
     method render =
       match repere # frame with
-      | None -> ()
-      | Some frame -> begin
+      | None -> repere # set_frame
+      | Some frame ->
+        begin
+          print_endline "frame";
           let this = (this :> context) in
           let _proportion, matrix, matrix' = world_matrix aspect frame angle move in
-          let flat_matrix = flatten_matrix matrix in
+          let flat_matrix = float32_array (Vector.to_array matrix) in
 
           basic2d_shader # use;
           List.iter (fun o -> o # draw this (basic2d_shader # id)) objects;

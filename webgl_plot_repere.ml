@@ -360,7 +360,7 @@ let initialize gl texture_shader =
           delay (fun () ->
               cube <- Some (build_cube gl texture_shader box);
               ticks <- Some (draw_axis gl texture_shader box x_axis_label y_axis_label z_axis_label))
-        | _ -> ()
+        | _ -> this # set_frame
       end
 
     method draw angle_x angle_y =
