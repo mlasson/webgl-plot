@@ -43,8 +43,8 @@ let create gl (shader : Shaders.Basic.shader) xs zs ys =
     method set_position x =
       position <- x
 
-    method draw (_ : context) shader_id =
-      if shader_id = shader # id then begin
+    method draw (_ : context) shader_id round =
+      if shader_id = shader # id && round = 0 then begin
         shader # set_alpha alpha;
         shader # set_object_matrix
           (float32_array (Vector.to_array

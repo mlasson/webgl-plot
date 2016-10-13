@@ -81,7 +81,7 @@ let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio
           let y = flatten_array_array y in
           scene # add_uniform_scatter ?widths ?colors ?wireframe ?name x z y
 
-        | Scatter Parametric {name; a; b; p; widths; colors; wireframe;} ->
+        | Scatter Parametric {name; a; b; p; widths; colors; wireframe; } ->
           let widths = option_map flatten_array_array widths in
           let colors = option_map flatten_array_array_array colors in
           let a = float32_array a in
@@ -89,19 +89,19 @@ let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio
           let p = flatten_array_array_array p in
           scene # add_parametric_scatter ?widths ?colors ?wireframe ?name a b p
 
-        | Surface Uniform {name; x; z; y; colors; wireframe;} ->
+        | Surface Uniform {name; x; z; y; colors; wireframe; alpha} ->
           let colors = option_map flatten_array_array_array colors in
           let x = float32_array x in
           let z = float32_array z in
           let y = flatten_array_array y in
-          scene # add_uniform_surface ?colors ?wireframe ?name x z y
+          scene # add_uniform_surface ?colors ?wireframe ?name ?alpha x z y
 
-        | Surface Parametric {name; a; b; p; colors; wireframe;} ->
+        | Surface Parametric {name; a; b; p; colors; wireframe; alpha} ->
           let colors = option_map flatten_array_array_array colors in
           let a = float32_array a in
           let b = float32_array b in
           let p = flatten_array_array_array p in
-          scene # add_parametric_surface ?colors ?wireframe ?name a b p
+          scene # add_parametric_surface ?colors ?wireframe ?name ?alpha a b p
         | _ -> (* TODO *) assert false) series;
 
     fun clock {Component.aspect; angle; move; pointer; width; height; _} ->

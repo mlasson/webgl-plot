@@ -17,8 +17,8 @@ html, body {
   <script>
 
   window.onload = function() {
-    var res_x = 10;
-    var res_z = 20;
+    var res_x = 100;
+    var res_z = 200;
 
     var new_unit_range = function(res) {
       var a = new Array(res);
@@ -50,31 +50,50 @@ html, body {
 
     var red = graph3d(function(x,z) { return [1,0,0]}, x, z);
     var green = graph3d(function(x,z) { return [0,1,0]}, x, z);
+    var blue = graph3d(function(x,z) { return [0,0,1]}, x, z);
+
     var y1 = graph3d(function(x,z) { return (0.5 * (sq(Math.cos(3 * x)) + sq (Math.sin(6.0 * z))))}, x, z);
     var y2 = graph3d(function(x,z) { return 0.5}, x, z);
+    var y3 = graph3d(function(x,z) { return x}, x, z);
 
     var series = [
       { 
-	kind : "surface",
-	data : { 
-	  name : "wave",
+        kind : "surface",
+        data : { 
+          name : "wave",
           representation: "uniform",
-  	  x,
-	  z,
-	  y : y1,
-          colors: red
-	}
+          x,
+          z,
+          y : y1,
+          alpha:0.2,
+          wireframe: true
+        }
       },
       { 
-	kind : "surface",
-	data : { 
-	  name : "constant",
+        kind : "surface",
+        data : { 
+          name : "constant",
           representation: "uniform",
-  	  x,
-	  z,
-	  y : y2,
-          colors: green
-	}
+          x,
+          z,
+          y : y2,
+          colors: red,
+          alpha:1.0,
+          wireframe: true
+        }
+      },
+      { 
+        kind : "surface",
+        data : { 
+          name : "constant",
+          representation: "uniform",
+          x,
+          z,
+          y : y3,
+          colors: blue,
+          alpha: 0.5,
+          wireframe: true
+        }
       }
     ];
 

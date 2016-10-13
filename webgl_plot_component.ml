@@ -56,7 +56,6 @@ let normalize_angle x =
 
 let setup_webgl_context canvas =
   let open Webgl in
-  let open Constant in
   let gl =
     match get_context canvas WebGl with
     | Some gl -> gl

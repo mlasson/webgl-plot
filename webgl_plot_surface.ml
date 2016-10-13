@@ -8,7 +8,7 @@ module Shaders = Webgl_plot_shaders
 module Intersection = Webgl_plot_intersection
 
 let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shaders.Basic2d.shader) (shader_wireframe : Shaders.Basic.shader)
-              ?(name = "") ?(wireframe = false) ?colors xs zs ys =
+              ?(name = "") ?(wireframe = false) ?colors ?alpha xs zs ys =
   let open Shaders in
   let min, max = match FloatData.min_max ys with Some c -> c | None -> 0.0, 1.0 in
   let xs = array_of_float32 xs in
@@ -16,6 +16,11 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
   let zs = array_of_float32 zs in
   let {Geometry.Surface.vertices; triangles; wireframe = wireframe_vertices; normals; bounds; texcoords} =
     Geometry.Surface.create xs zs ys
+  in
+  let alpha, blending =
+    match alpha with
+    | Some alpha -> alpha, true
+    | None -> 1.0, false
   in
   let colors = match colors with
     | None ->
@@ -67,27 +72,36 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
   object
     val name = name
     val wireframe = wireframe
-    val alpha = 0.6
+    val alpha = alpha
+    val blending = blending
+    val texture_resolution = 512
+
     val mutable last_intersection = None
     val mutable grid_width = 0.005
 
-    method draw (ctx : context) id =
+    method draw (_ctx : context) id round =
       let open Webgl in
       let open Constant in
-      if id = shader_texture # id then begin
+      if round = 0 && id = shader_texture # id then begin
         bind_framebuffer gl _FRAMEBUFFER_ (Some texture_framebuffer);
-        disable gl _DEPTH_TEST_;
 
-        viewport gl 0 0 1024 1024;
+        viewport gl 0 0 texture_resolution texture_resolution;
+
         shader_texture # set_alpha alpha;
-        shader_texture # set_matrix texture_matrix;
-        shader_texture # set_colors a_colors;
-        shader_texture # set_positions a_positions;
-        shader_texture # draw_elements Shaders.Triangles e_triangles;
+        if round = 0 then begin
+          shader_texture # set_matrix texture_matrix;
+          shader_texture # set_colors a_colors;
+          shader_texture # set_positions a_positions;
+          shader_texture # draw_elements Shaders.Triangles e_triangles;
+        end;
+
+        if round = 1 && blending then begin
+          clear_color gl 0.0 1.0 0.0 1.0;
+          clear gl (_COLOR_BUFFER_BIT_ lor _DEPTH_BUFFER_BIT_);
+        end;
 
         begin match last_intersection with
-        | None -> ()
-        | Some p ->
+        | Some p when (blending && round = 2) || (round = 0 && not blending) ->
           let x,_,z = Vector.to_three p in
           let x = -1. +. 2.0 *. (x -. bounds.x_min) /. (bounds.x_max -. bounds.x_min) in
           let z = -1. +. 2.0 *. (z -. bounds.z_min) /. (bounds.z_max -. bounds.z_min) in
@@ -112,20 +126,25 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
           shader_texture # set_positions a_grid;
           shader_texture # set_alpha 1.0;
           shader_texture # draw_arrays Shaders.Triangles (a_grid # count);
+        | _ -> ()
         end;
 
         bind_texture gl _TEXTURE_2D_ (Some texture_surface);
         generate_mipmap gl _TEXTURE_2D_;
-        bind_texture gl _TEXTURE_2D_ None;
-      end else if id = shader # id then begin
+        bind_texture gl _TEXTURE_2D_ None
+      end else if (id = shader # id) && ((not blending && round = 0) || (blending && round > 0)) then begin
         shader # set_object_matrix identity_matrix;
         shader # set_texcoords a_texcoords;
         shader # set_normals a_normals;
-        shader # set_positions  a_positions;
+        shader # set_positions a_positions;
+
         Webgl.bind_texture gl _TEXTURE_2D_ (Some texture_surface);
         shader # draw_elements Shaders.Triangles e_triangles;
-        Webgl.bind_texture gl _TEXTURE_2D_ None;
-      end else if (id = shader_wireframe # id) && wireframe then begin
+        Webgl.bind_texture gl _TEXTURE_2D_ None
+
+      end else if (id = shader_wireframe # id) && wireframe
+               && ((not blending && round = 0)
+                    || (blending && round = 1)) then begin
         shader_wireframe # set_alpha 1.0;
         shader_wireframe # set_object_matrix identity_matrix;
         shader_wireframe # set_positions a_positions;
@@ -145,7 +164,7 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
       let open Webgl in
       let open Webgl.Constant in
       bind_texture gl _TEXTURE_2D_ (Some texture_surface);
-      tex_image_2D_array gl _TEXTURE_2D_ 0 _RGBA_ 1024 1024 0 _RGBA_ _UNSIGNED_BYTE_  None;
+      tex_image_2D_array gl _TEXTURE_2D_ 0 _RGBA_ texture_resolution texture_resolution 0 _RGBA_ _UNSIGNED_BYTE_  None;
       tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MAG_FILTER_ _LINEAR_;
       tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MIN_FILTER_ _LINEAR_MIPMAP_LINEAR_;
       bind_framebuffer gl _FRAMEBUFFER_ (Some texture_framebuffer);

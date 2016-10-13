@@ -38,6 +38,7 @@ module Surface : sig
         y: float array array;
 
         colors: float array array array option;
+        alpha: float option;
         wireframe: bool option;
       }[@js "uniform"]
 
@@ -49,6 +50,7 @@ module Surface : sig
         p: float array array array;
 
         colors: float array array array option;
+        alpha: float option;
         wireframe: bool option;
       }[@js "parametric"]
 

@@ -82,8 +82,8 @@ let colored_sphere gl shader =
       val mutable position = (0., 0., 0.)
       method set_scale x = scale <- x
       method set_position x = position <- x
-      method draw (_ : context) id =
-        if id = shader # id then begin
+      method draw (_ : context) id round =
+        if id = shader # id && round = 0 then begin
           shader # set_object_matrix
             (float32_array (Vector.to_array
                (Vector.Const.scale_translation
@@ -107,10 +107,10 @@ let prepare_scene gl component =
 
   let basic_shader = Shaders.Basic.init gl in
   let basic2d_shader = Shaders.Basic2d.init gl in
-  let texture_shader = Shaders.Texture.init gl in
+  let repere_shader = Shaders.Texture.init gl in
   let light_texture_shader = Shaders.LightAndTexture.init gl in
 
-  let repere = Repere.initialize gl texture_shader in
+  let repere = Repere.initialize gl repere_shader in
 
   let sphere_factory = colored_sphere gl basic_shader in
   let textbox = component # new_textbox in
@@ -145,16 +145,24 @@ let prepare_scene gl component =
 
     method repere = repere
 
-    method add_uniform_histogram ?widths ?colors ?wireframe ?name x z y = ()
-    method add_parametric_histogram ?widths ?colors ?wireframe ?name a b p = ()
-    method add_uniform_scatter ?widths ?colors ?wireframe ?name x z y = ()
-    method add_parametric_scatter ?widths ?colors ?wireframe ?name a b p = ()
+    method add_uniform_histogram ?widths ?colors ?wireframe ?name x z y =
+      ignore (x, z, y, widths, colors, wireframe, name)
 
-    method add_uniform_surface ?colors ?wireframe ?name x z y =
-      let obj = Surface.create gl light_texture_shader basic2d_shader basic_shader ?name ?colors ?wireframe x z y in
+    method add_parametric_histogram ?widths ?colors ?wireframe ?name x z y =
+      ignore (x, z, y, widths, colors, wireframe, name)
+
+    method add_uniform_scatter ?widths ?colors ?wireframe ?name x z y =
+      ignore (x, z, y, widths, colors, wireframe, name)
+
+    method add_parametric_scatter ?widths ?colors ?wireframe ?name x z y =
+      ignore (x, z, y, widths, colors, wireframe, name)
+
+    method add_uniform_surface ?colors ?wireframe ?name ?alpha x z y =
+      let obj = Surface.create gl light_texture_shader basic2d_shader basic_shader ?name ?colors ?wireframe ?alpha x z y in
       objects <- (obj :> drawable) :: objects
 
-    method add_parametric_surface ?colors ?wireframe ?name a b p = ()
+    method add_parametric_surface ?colors ?wireframe ?name ?alpha x z y =
+      ignore (x, z, y, colors, wireframe, name, alpha)
 
     method add_histogram xs zs ys =
       let obj = Histogram.create gl basic_shader xs zs ys in
@@ -171,41 +179,55 @@ let prepare_scene gl component =
       | None -> repere # set_frame
       | Some frame ->
         begin
-          let this = (this :> context) in
+          let context = (this :> context) in
           let open Webgl in
           let open Constant in
           let _proportion, matrix, matrix' = world_matrix aspect frame angle move in
           let flat_matrix = float32_array (Vector.to_array matrix) in
 
-          basic2d_shader # use;
-          List.iter (fun o -> o # draw this (basic2d_shader # id)) objects;
-
-          bind_framebuffer gl _FRAMEBUFFER_ None;
-          viewport gl 0 0 width height;
-
-          texture_shader # use;
-          texture_shader # set_world_matrix flat_matrix;
+          repere_shader # use;
+          repere_shader # set_world_matrix flat_matrix;
           begin
             let angle_x, angle_y, _ = angle in
             repere # draw angle_x angle_y
           end;
 
-          disable gl _DEPTH_TEST_;
-          enable gl _BLEND_;
-          blend_func gl _SRC_ALPHA_ _ONE_MINUS_DST_ALPHA_;
+          (* round :
+           * 0 - all opaque things
+           * 1 - first layer of blending
+           * 2 - second layer of blending
+           * *)
 
+          depth_mask gl true;
+          disable gl _BLEND_;
 
-          light_texture_shader # use;
-          light_texture_shader # set_world_matrix flat_matrix;
-          light_texture_shader # set_ambient_light 1.0 1.0 1.0;
-          light_texture_shader # set_light_position 1.0 1.0 (-2.0);
-          List.iter (fun o -> o # draw this (light_texture_shader # id)) objects;
+          for round = 0 to 2 do
 
-          basic_shader # use;
-          basic_shader # set_world_matrix flat_matrix;
-          basic_shader # set_ambient_light 1.0 1.0 1.0;
-          basic_shader # set_light_position 1.0 1.0 (-2.0);
-          List.iter (fun o -> o # draw this (basic_shader # id)) objects;
+            if round = 1 then begin
+              (* disable gl _DEPTH_TEST_; *)
+              depth_mask gl false;
+              enable gl _BLEND_;
+              blend_func gl _SRC_ALPHA_ _ONE_MINUS_SRC_ALPHA_;
+            end;
+
+            basic2d_shader # use;
+            List.iter (fun o -> o # draw context (basic2d_shader # id) round) objects;
+
+            bind_framebuffer gl _FRAMEBUFFER_ None;
+            viewport gl 0 0 width height;
+
+            light_texture_shader # use;
+            light_texture_shader # set_world_matrix flat_matrix;
+            light_texture_shader # set_ambient_light 1.0 1.0 1.0;
+            light_texture_shader # set_light_position 1.0 1.0 (-2.0);
+            List.iter (fun o -> o # draw context (light_texture_shader # id) round) objects;
+
+            basic_shader # use;
+            basic_shader # set_world_matrix flat_matrix;
+            basic_shader # set_ambient_light 1.0 1.0 1.0;
+            basic_shader # set_light_position 1.0 1.0 (-2.0);
+            List.iter (fun o -> o # draw context (basic_shader # id) round) objects;
+          done;
 
           let x,y = pointer in
           begin
@@ -229,7 +251,7 @@ let prepare_scene gl component =
                 let (x,y,z) as p = Vector.to_three p in
                 textbox # set_text (Printf.sprintf "%.2f, %.2f, %.2f" x y z);
                 sphere_pointer # set_position p;
-                sphere_pointer # draw this (basic_shader # id)
+                sphere_pointer # draw context (basic_shader # id) 0
               end
           end
         end

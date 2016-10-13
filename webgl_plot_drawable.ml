@@ -7,7 +7,7 @@ class type context =
 
 class type drawable =
   object
-    method draw : context -> int -> unit
+    method draw : context -> int -> int -> unit
     method ray: three Vector.vector -> three Vector.vector -> three Vector.vector option
   end
 

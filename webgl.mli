@@ -4,7 +4,7 @@ open Js_array
 [@@@js.implem open Js_array ]
 
 module Constant : sig
-  type t = private int
+  type t = int
   val t_of_js: Ojs.t -> t
   val t_to_js: t -> Ojs.t
 
@@ -374,6 +374,7 @@ val enable_vertex_attrib_array: context -> int -> unit
 val vertex_attrib_pointer: context -> int -> int -> Constant.t -> bool -> int -> int -> unit
 
 val clear: context -> Constant.t -> unit
+val clear_color: context -> float -> float -> float -> float -> unit
 
 val line_width: context -> float -> unit
 
