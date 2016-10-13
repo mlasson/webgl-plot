@@ -171,7 +171,6 @@ let prepare_scene gl component =
       | None -> repere # set_frame
       | Some frame ->
         begin
-          print_endline "frame";
           let this = (this :> context) in
           let _proportion, matrix, matrix' = world_matrix aspect frame angle move in
           let flat_matrix = float32_array (Vector.to_array matrix) in
