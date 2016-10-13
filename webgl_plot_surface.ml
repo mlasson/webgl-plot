@@ -14,7 +14,7 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
   let xs = array_of_float32 xs in
   let ys = array_of_float32 ys in
   let zs = array_of_float32 zs in
-  let {Geometry.Surface.vertices; triangles; wireframe; normals; bounds; texcoords} =
+  let {Geometry.Surface.vertices; triangles; wireframe = wireframe_vertices; normals; bounds; texcoords} =
     Geometry.Surface.create xs zs ys
   in
   let colors = match colors with
@@ -59,7 +59,7 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
   let a_colors = create_attrib_array gl 3 colors  in
   let a_texcoords = create_attrib_array gl 2 texcoords in
   let e_triangles = create_element_array gl triangles in
-  let e_wireframe = create_element_array gl wireframe in
+  let e_wireframe = create_element_array gl wireframe_vertices in
   let texture_framebuffer = Webgl.create_framebuffer gl in
   let texture_surface = Webgl.create_texture gl in
   let a_grid = new attrib_array gl 3 in
@@ -125,7 +125,7 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
         Webgl.bind_texture gl _TEXTURE_2D_ (Some texture_surface);
         shader # draw_elements Shaders.Triangles e_triangles;
         Webgl.bind_texture gl _TEXTURE_2D_ None;
-      end else if id = shader_wireframe # id then begin
+      end else if (id = shader_wireframe # id) && wireframe then begin
         shader_wireframe # set_alpha 1.0;
         shader_wireframe # set_object_matrix identity_matrix;
         shader_wireframe # set_positions a_positions;
