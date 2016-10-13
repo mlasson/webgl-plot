@@ -139,6 +139,9 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
     initializer
       let open Webgl in
       let open Webgl.Constant in
+      enable gl _DEPTH_TEST_;
+      depth_func gl _LEQUAL_;
+
       bind_texture gl _TEXTURE_2D_ (Some texture_surface);
       tex_image_2D_array gl _TEXTURE_2D_ 0 _RGBA_ 1024 1024 0 _RGBA_ _UNSIGNED_BYTE_  None;
       tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MAG_FILTER_ _LINEAR_;

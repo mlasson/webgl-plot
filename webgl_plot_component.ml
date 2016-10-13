@@ -66,8 +66,6 @@ let setup_webgl_context canvas =
       | None -> Helper.error "webgl is not supported"
   in
   ignore (get_extension gl "OES_element_index_uint");
-  enable gl _DEPTH_TEST_;
-  depth_func gl _LEQUAL_;
   gl
 
 let create_webgl_canvas renderer =
