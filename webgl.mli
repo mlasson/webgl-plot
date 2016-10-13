@@ -382,6 +382,8 @@ val draw_elements: context -> Constant.t -> int -> Constant.t -> int -> unit
 
 val uniform4f: context -> uniform_location -> float -> float -> float -> float -> unit
 val uniform3f: context -> uniform_location -> float -> float -> float -> unit
+val uniform2f: context -> uniform_location -> float -> float -> unit
+val uniform1f: context -> uniform_location -> float -> unit
 val uniform_matrix4fv: context -> uniform_location -> bool -> Float32Array.t -> unit
 val uniform_matrix3fv: context -> uniform_location -> bool -> Float32Array.t -> unit
 

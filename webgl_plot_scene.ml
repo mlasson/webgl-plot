@@ -172,17 +172,16 @@ let prepare_scene gl component =
       | Some frame ->
         begin
           let this = (this :> context) in
+          let open Webgl in
+          let open Constant in
           let _proportion, matrix, matrix' = world_matrix aspect frame angle move in
           let flat_matrix = float32_array (Vector.to_array matrix) in
 
           basic2d_shader # use;
           List.iter (fun o -> o # draw this (basic2d_shader # id)) objects;
 
-
-          Webgl.(
-            bind_framebuffer gl Constant._FRAMEBUFFER_ None;
-            enable gl Constant._DEPTH_TEST_;
-            viewport gl 0 0 width height);
+          bind_framebuffer gl _FRAMEBUFFER_ None;
+          viewport gl 0 0 width height;
 
           texture_shader # use;
           texture_shader # set_world_matrix flat_matrix;
@@ -190,6 +189,11 @@ let prepare_scene gl component =
             let angle_x, angle_y, _ = angle in
             repere # draw angle_x angle_y
           end;
+
+          disable gl _DEPTH_TEST_;
+          enable gl _BLEND_;
+          blend_func gl _SRC_ALPHA_ _ONE_MINUS_DST_ALPHA_;
+
 
           light_texture_shader # use;
           light_texture_shader # set_world_matrix flat_matrix;
@@ -229,5 +233,12 @@ let prepare_scene gl component =
               end
           end
         end
+
+    initializer
+      let open Webgl in
+      let open Constant in
+      enable gl _DEPTH_TEST_;
+      depth_func gl _LEQUAL_;
+
   end
 

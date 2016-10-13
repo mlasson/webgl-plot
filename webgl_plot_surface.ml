@@ -14,12 +14,16 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
   let xs = array_of_float32 xs in
   let ys = array_of_float32 ys in
   let zs = array_of_float32 zs in
-  let range = (max -. min) in
-  let rainbow y =
-      Color.cold_to_hot ((y -. min) /. range)
-  in
   let {Geometry.Surface.vertices; triangles; wireframe; normals; bounds; texcoords} =
     Geometry.Surface.create xs zs ys
+  in
+  let colors = match colors with
+    | None ->
+      let range = (max -. min) in
+      (FloatData.init3 (Float32Array.length vertices) (fun k ->
+           let y = Float32Array.get vertices (3 * k + 1) in
+           Color.cold_to_hot ((y -. min) /. range)))
+    | Some colors -> colors
   in
   let texture_matrix =
     let scale_x, scale_z =
@@ -52,10 +56,7 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
     create_attrib_array gl 3 (* black *)
       (FloatData.init3 (Float32Array.length vertices) (fun _ -> 0.0, 0.0, 0.0))
   in
-  let a_colors = create_attrib_array gl 3 (* rainbow *)
-    (FloatData.init3 (Float32Array.length vertices) (fun k ->
-        rainbow (Float32Array.get vertices (3 * k + 1))))
-  in
+  let a_colors = create_attrib_array gl 3 colors  in
   let a_texcoords = create_attrib_array gl 2 texcoords in
   let e_triangles = create_element_array gl triangles in
   let e_wireframe = create_element_array gl wireframe in
@@ -66,6 +67,7 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
   object
     val name = name
     val wireframe = wireframe
+    val alpha = 0.6
     val mutable last_intersection = None
     val mutable grid_width = 0.005
 
@@ -77,6 +79,7 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
         disable gl _DEPTH_TEST_;
 
         viewport gl 0 0 1024 1024;
+        shader_texture # set_alpha alpha;
         shader_texture # set_matrix texture_matrix;
         shader_texture # set_colors a_colors;
         shader_texture # set_positions a_positions;
@@ -107,6 +110,7 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
           shader_texture # set_matrix identity_matrix;
           shader_texture # set_colors a_grid_colors;
           shader_texture # set_positions a_grid;
+          shader_texture # set_alpha 1.0;
           shader_texture # draw_arrays Shaders.Triangles (a_grid # count);
         end;
 
@@ -122,6 +126,7 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
         shader # draw_elements Shaders.Triangles e_triangles;
         Webgl.bind_texture gl _TEXTURE_2D_ None;
       end else if id = shader_wireframe # id then begin
+        shader_wireframe # set_alpha 1.0;
         shader_wireframe # set_object_matrix identity_matrix;
         shader_wireframe # set_positions a_positions;
         shader_wireframe # set_colors a_colors_wireframe;
@@ -139,9 +144,6 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
     initializer
       let open Webgl in
       let open Webgl.Constant in
-      enable gl _DEPTH_TEST_;
-      depth_func gl _LEQUAL_;
-
       bind_texture gl _TEXTURE_2D_ (Some texture_surface);
       tex_image_2D_array gl _TEXTURE_2D_ 0 _RGBA_ 1024 1024 0 _RGBA_ _UNSIGNED_BYTE_  None;
       tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MAG_FILTER_ _LINEAR_;

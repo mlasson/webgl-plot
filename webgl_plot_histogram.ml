@@ -33,6 +33,7 @@ let create gl (shader : Shaders.Basic.shader) xs zs ys =
   in
   object
     inherit dummy_ray
+    val alpha = 0.7
     val mutable scale = (1., 1., 1.)
     val mutable position = (0., 0., 0.)
 
@@ -44,6 +45,7 @@ let create gl (shader : Shaders.Basic.shader) xs zs ys =
 
     method draw (_ : context) shader_id =
       if shader_id = shader # id then begin
+        shader # set_alpha alpha;
         shader # set_object_matrix
           (float32_array (Vector.to_array
              (Vector.Const.scale_translation

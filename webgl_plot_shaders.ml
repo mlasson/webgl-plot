@@ -48,6 +48,11 @@ let get_vertex_attrib_array_location gl program location =
     error (Printf.sprintf "unable to get '%s'" location);
   attrib_location
 
+let get_uniform_location gl program location =
+  match get_uniform_location gl program location with
+  | Some thing -> thing
+  | None -> error (Printf.sprintf "unable to get '%s'" location)
+
 class attrib_array gl dim =
   let buffer = create_buffer gl in
   object(this)
@@ -154,11 +159,12 @@ module Basic = struct
 
   uniform vec3 u_lightPos;
   uniform vec3 u_ambientLight;
+  uniform float u_alpha;
 
   void main() {
     vec3 lightDirection = normalize(u_lightPos - v_position);
     float lighting = abs(dot(normalize(v_normal), lightDirection));
-    gl_FragColor = vec4( v_color * (0.3 * lighting + 0.7 * u_ambientLight), 1);
+    gl_FragColor = vec4( v_color * (0.3 * lighting + 0.7 * u_ambientLight), u_alpha);
   }
 |gsl}
 
@@ -166,6 +172,7 @@ module Basic = struct
     method use : unit
     method id : int
 
+    method set_alpha: float -> unit
     method set_ambient_light: float -> float -> float -> unit
     method set_light_position: float -> float -> float -> unit
     method set_object_matrix: Float32Array.t -> unit
@@ -186,26 +193,11 @@ module Basic = struct
     let position_location = get_vertex_attrib_array_location gl program "a_position" in
     let normal_location = get_vertex_attrib_array_location gl program "a_normal" in
     let color_location = get_vertex_attrib_array_location gl program "a_color" in
-    let world_matrix =
-      match get_uniform_location gl program "u_world_matrix" with
-      | Some thing -> thing
-      | None -> error "unable to get 'u_world_matrix'"
-    in
-    let object_matrix =
-      match get_uniform_location gl program "u_object_matrix" with
-      | Some thing -> thing
-      | None -> error "unable to get 'u_object_matrix'"
-    in
-    let ambient_light =
-      match get_uniform_location gl program "u_ambientLight" with
-      | Some thing -> thing
-      | None -> error "unable to get 'u_ambientLight'"
-    in
-    let light_position =
-      match get_uniform_location gl program "u_lightPos" with
-      | Some thing -> thing
-      | None -> error "unable to get 'u_lightPos'"
-    in
+    let world_matrix = get_uniform_location gl program "u_world_matrix" in
+    let object_matrix = get_uniform_location gl program "u_object_matrix" in
+    let ambient_light = get_uniform_location gl program "u_ambientLight" in
+    let light_position = get_uniform_location gl program "u_lightPos" in
+    let alpha = get_uniform_location gl program "u_alpha" in
     (object
       val id = !id_generator
       method id = id
@@ -215,11 +207,12 @@ module Basic = struct
         enable_vertex_attrib_array gl normal_location;
         enable_vertex_attrib_array gl color_location
 
-
       method set_ambient_light r g b =
         uniform3f gl ambient_light r g b
       method set_light_position x y z =
         uniform3f gl light_position x y z
+      method set_alpha a =
+        uniform1f gl alpha a
       method set_object_matrix data =
         uniform_matrix4fv gl object_matrix false data
       method set_world_matrix data =
@@ -283,22 +276,14 @@ module Texture = struct
     let vertex_shader = new_shader gl vertex_shader `Vertex in
     let fragment_shader = new_shader gl fragment_shader `Fragment in
     let program = compile_program gl vertex_shader fragment_shader in
-    let position_location =
-      get_vertex_attrib_array_location gl program "a_position"
-    in
-    let world_matrix =
-      match get_uniform_location gl program "u_matrix" with
-      | Some thing -> thing
-      | None -> error "unable to get 'u_matrix'"
-    in
-    let texcoord_location =
-      get_vertex_attrib_array_location gl program "a_texcoord"
-    in
+    let position_location = get_vertex_attrib_array_location gl program "a_position" in
+    let world_matrix = get_uniform_location gl program "u_matrix" in
+    let texcoord_location = get_vertex_attrib_array_location gl program "a_texcoord" in
+
     let binds dim location buffer =
       bind_buffer gl _ARRAY_BUFFER_ buffer;
       vertex_attrib_pointer gl location dim _FLOAT_ false 0 0;
     in
-
     (object
       val id = !id_generator
       method id = id
@@ -390,9 +375,9 @@ module Basic2d = struct
   precision mediump float;
 
   varying vec3 v_color;
-
+  uniform float u_alpha;
   void main() {
-    gl_FragColor = vec4(v_color, 1.0);
+    gl_FragColor = vec4(v_color, u_alpha);
   }
 |gsl}
 
@@ -402,6 +387,7 @@ module Basic2d = struct
 
     method set_matrix: Float32Array.t -> unit
 
+    method set_alpha: float -> unit
     method set_positions: attrib_array -> unit
     method set_colors: attrib_array -> unit
 
@@ -415,11 +401,8 @@ module Basic2d = struct
     let program = compile_program gl vertex_shader fragment_shader in
     let position_location = get_vertex_attrib_array_location gl program "a_position" in
     let color_location = get_vertex_attrib_array_location gl program "a_color" in
-    let world_matrix =
-      match get_uniform_location gl program "u_matrix" with
-      | Some thing -> thing
-      | None -> error "unable to get 'u_matrix'"
-    in
+    let world_matrix = get_uniform_location gl program "u_matrix" in
+    let alpha = get_uniform_location gl program "u_alpha" in
     (object
       val id = !id_generator
       method id = id
@@ -430,6 +413,9 @@ module Basic2d = struct
 
       method set_matrix data =
         uniform_matrix4fv gl world_matrix false data
+
+      method set_alpha a =
+        uniform1f gl alpha a
 
       method set_positions a =
         a # plug position_location
@@ -490,7 +476,7 @@ module LightAndTexture = struct
   void main() {
     vec3 lightDirection = normalize(u_lightPos - v_position);
     float lighting = abs(dot(normalize(v_normal), lightDirection));
-    gl_FragColor = texture2D(u_texture, v_texcoord) * vec4((0.3 * lighting + 0.7 * u_ambientLight), 1);
+    gl_FragColor = texture2D(u_texture, v_texcoord) * vec4((0.6 * lighting + 0.4 * u_ambientLight), 1.0);
   }
 |gsl}
 
@@ -518,26 +504,10 @@ module LightAndTexture = struct
     let position_location = get_vertex_attrib_array_location gl program "a_position" in
     let normal_location = get_vertex_attrib_array_location gl program "a_normal" in
     let texcoord_location = get_vertex_attrib_array_location gl program "a_texcoord" in
-    let world_matrix =
-      match get_uniform_location gl program "u_world_matrix" with
-      | Some thing -> thing
-      | None -> error "unable to get 'u_world_matrix'"
-    in
-    let object_matrix =
-      match get_uniform_location gl program "u_object_matrix" with
-      | Some thing -> thing
-      | None -> error "unable to get 'u_object_matrix'"
-    in
-    let ambient_light =
-      match get_uniform_location gl program "u_ambientLight" with
-      | Some thing -> thing
-      | None -> error "unable to get 'u_ambientLight'"
-    in
-    let light_position =
-      match get_uniform_location gl program "u_lightPos" with
-      | Some thing -> thing
-      | None -> error "unable to get 'u_lightPos'"
-    in
+    let world_matrix = get_uniform_location gl program "u_world_matrix" in
+    let object_matrix = get_uniform_location gl program "u_object_matrix" in
+    let ambient_light = get_uniform_location gl program "u_ambientLight" in
+    let light_position = get_uniform_location gl program "u_lightPos" in
     (object
       val id = !id_generator
       method id = id

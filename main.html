@@ -48,17 +48,32 @@ html, body {
 
     var sq = function(x) { return (x * x) };
 
-    var y = graph3d(function(x,z) { return (0.5 * (sq(Math.cos(3 * x)) + sq (Math.sin(6.0 * z))))}, x, z);
+    var red = graph3d(function(x,z) { return [1,0,0]}, x, z);
+    var green = graph3d(function(x,z) { return [0,1,0]}, x, z);
+    var y1 = graph3d(function(x,z) { return (0.5 * (sq(Math.cos(3 * x)) + sq (Math.sin(6.0 * z))))}, x, z);
+    var y2 = graph3d(function(x,z) { return 0.5}, x, z);
 
     var series = [
       { 
 	kind : "surface",
 	data : { 
-	  name : "test",
+	  name : "wave",
           representation: "uniform",
   	  x,
 	  z,
-	  y,
+	  y : y1,
+          colors: red
+	}
+      },
+      { 
+	kind : "surface",
+	data : { 
+	  name : "constant",
+          representation: "uniform",
+  	  x,
+	  z,
+	  y : y2,
+          colors: green
 	}
       }
     ];
