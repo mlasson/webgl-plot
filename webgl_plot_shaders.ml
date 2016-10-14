@@ -110,6 +110,51 @@ class element_array gl =
       bind_buffer gl _ELEMENT_ARRAY_BUFFER_ buffer
   end
 
+class fbo gl init_xres init_yres =
+  object(this)
+    val framebuffer = create_framebuffer gl
+    val texture = create_texture gl
+    val depth_buffer = create_renderbuffer gl
+
+    val mutable xres = 0
+    val mutable yres = 0
+
+    method resize xres' yres' =
+      if xres' <> xres || yres' <> yres then begin
+        xres <- xres';
+        yres <- yres';
+        bind_texture gl _TEXTURE_2D_ (Some texture);
+        let colors_type =
+          if get_extension gl "OES_texture_float" <> None then
+            _FLOAT_
+          else
+            _UNSIGNED_BYTE_
+        in
+        tex_image_2D_array gl _TEXTURE_2D_ 0 _RGBA_ xres yres 0 _RGBA_ colors_type None;
+        tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MAG_FILTER_ _NEAREST_;
+        tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MIN_FILTER_ _NEAREST_;
+        tex_parameteri gl _TEXTURE_2D_ _TEXTURE_WRAP_S_ _CLAMP_TO_EDGE_;
+        tex_parameteri gl _TEXTURE_2D_ _TEXTURE_WRAP_T_ _CLAMP_TO_EDGE_;
+        bind_framebuffer gl _FRAMEBUFFER_ (Some framebuffer);
+        framebuffer_texture_2D gl _FRAMEBUFFER_ _COLOR_ATTACHMENT0_ _TEXTURE_2D_ texture 0;
+        bind_renderbuffer gl _RENDERBUFFER_ depth_buffer;
+        renderbuffer_storage gl _RENDERBUFFER_ _DEPTH_COMPONENT16_ xres yres;
+        framebuffer_renderbuffer gl _FRAMEBUFFER_ _DEPTH_ATTACHMENT_ _RENDERBUFFER_ depth_buffer;
+        bind_framebuffer gl _FRAMEBUFFER_ None;
+        bind_texture gl _TEXTURE_2D_ None
+      end
+
+    method texture = texture
+
+    method bind =
+      bind_framebuffer gl _FRAMEBUFFER_ (Some framebuffer);
+      viewport gl 0 0 xres yres
+
+    initializer
+      this # resize init_xres init_yres
+
+  end
+
 let create_element_array gl data =
   let o = new element_array gl in
   o # fill data;
@@ -539,6 +584,63 @@ module LightAndTexture = struct
       method draw_elements mode elements =
         elements # bind;
         Webgl.draw_elements gl (constant_of_mode mode) (elements # size) (elements # index_type) 0
+
+      initializer
+        incr id_generator
+    end : shader)
+
+end
+
+module Screen = struct
+  let vertex_shader = {gsl|
+  attribute vec2 a_position;
+  varying mediump vec2 v_position;
+
+  void main() {
+    v_position = a_position;
+    gl_Position = vec4(a_position, 0, 1);
+  }
+|gsl}
+
+  let fragment_shader = {gsl|
+  precision mediump float;
+  uniform sampler2D u_texture;
+
+  varying vec2 v_position;
+
+  void main() {
+    gl_FragColor = min(vec4(1,1,1,1), texture2D(u_texture, 0.5 * (v_position + 1.0)));
+  }
+|gsl}
+
+  class type shader = object
+    method use : unit
+    method id : int
+
+    method draw: unit
+  end
+
+  let init gl =
+    let vertex_shader = new_shader gl vertex_shader `Vertex in
+    let fragment_shader = new_shader gl fragment_shader `Fragment in
+    let program = compile_program gl vertex_shader fragment_shader in
+    let position_location = get_vertex_attrib_array_location gl program "a_position" in
+    let big_triangle =
+       create_attrib_array gl 2 (float32_array [|
+          -1.0; -1.0; -1.0; 4.0; 4.0; -1.0
+       |]);
+    in
+    (object
+      val id = !id_generator
+      method id = id
+
+      method use =
+        use_program gl program;
+        enable_vertex_attrib_array gl position_location;
+        big_triangle # plug position_location
+
+      method draw =
+        Webgl.draw_arrays gl _TRIANGLES_ 0 3
 
       initializer
         incr id_generator

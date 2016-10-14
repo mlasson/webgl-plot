@@ -105,6 +105,7 @@ type pointer_kind =
 
 let prepare_scene gl component =
 
+  let screen_shader = Shaders.Screen.init gl in
   let basic_shader = Shaders.Basic.init gl in
   let basic2d_shader = Shaders.Basic2d.init gl in
   let repere_shader = Shaders.Texture.init gl in
@@ -117,6 +118,7 @@ let prepare_scene gl component =
   let sphere_pointer = sphere_factory (0.0, 0.0, 0.0) in
   let () = sphere_pointer # set_scale (0.005, 0.005, 0.005) in
 
+  let composite_layer = new Shaders.fbo gl 1024 1024 in
   object(this)
     val mutable aspect = 1.0
     val mutable angle = (0., 0., 0.)
@@ -185,6 +187,12 @@ let prepare_scene gl component =
           let _proportion, matrix, matrix' = world_matrix aspect frame angle move in
           let flat_matrix = float32_array (Vector.to_array matrix) in
 
+          depth_mask gl true;
+          disable gl _BLEND_;
+          enable gl _DEPTH_TEST_;
+          color_mask gl true true true true;
+          clear gl (_DEPTH_BUFFER_BIT_ lor _COLOR_BUFFER_BIT_);
+
           repere_shader # use;
           repere_shader # set_world_matrix flat_matrix;
           begin
@@ -194,27 +202,39 @@ let prepare_scene gl component =
 
           (* round :
            * 0 - all opaque things
-           * 1 - first layer of blending
-           * 2 - second layer of blending
+           * ----- in framebuffer
+           * 1 - redraw opaque, only depth
+           * 2 - draw all transparent things with blending
+           *
+           * At the end we display the framebuffer on the screen shader
            * *)
-
-          depth_mask gl true;
-          disable gl _BLEND_;
 
           for round = 0 to 2 do
 
-            if round = 1 then begin
-              (* disable gl _DEPTH_TEST_; *)
-              depth_mask gl false;
-              enable gl _BLEND_;
-              blend_func gl _SRC_ALPHA_ _ONE_MINUS_SRC_ALPHA_;
+            if round = 0 then begin
+              basic2d_shader # use;
+              List.iter (fun o -> o # draw context (basic2d_shader # id) round) objects;
+              bind_framebuffer gl _FRAMEBUFFER_ None;
+              viewport gl 0 0 width height;
             end;
 
-            basic2d_shader # use;
-            List.iter (fun o -> o # draw context (basic2d_shader # id) round) objects;
+            if round = 1 then begin
+              composite_layer # resize width height;
+              composite_layer # bind;
+              clear_color gl 0.0 0.0 0.0 0.0;
+              clear gl (_DEPTH_BUFFER_BIT_ lor _COLOR_BUFFER_BIT_);
+              depth_mask gl true;
+              color_mask gl false false false false;
+            end;
 
-            bind_framebuffer gl _FRAMEBUFFER_ None;
-            viewport gl 0 0 width height;
+            if round = 2 then begin
+              depth_mask gl false;
+              color_mask gl true true true true;
+              enable gl _BLEND_;
+              blend_func gl _SRC_ALPHA_ _ONE_MINUS_DST_ALPHA_;
+              clear_color gl 0.0 0.0 0.0 0.0;
+              clear gl _COLOR_BUFFER_BIT_
+            end;
 
             light_texture_shader # use;
             light_texture_shader # set_world_matrix flat_matrix;
@@ -228,6 +248,11 @@ let prepare_scene gl component =
             basic_shader # set_light_position 1.0 1.0 (-2.0);
             List.iter (fun o -> o # draw context (basic_shader # id) round) objects;
           done;
+
+          bind_framebuffer gl _FRAMEBUFFER_ None;
+          viewport gl 0 0 width height;
+          enable gl _DEPTH_TEST_;
+          depth_mask gl true;
 
           let x,y = pointer in
           begin
@@ -253,14 +278,23 @@ let prepare_scene gl component =
                 sphere_pointer # set_position p;
                 sphere_pointer # draw context (basic_shader # id) 0
               end
+          end;
+
+          if true then begin
+            screen_shader # use;
+            bind_texture gl _TEXTURE_2D_ (Some (composite_layer # texture));
+            disable gl _DEPTH_TEST_;
+            enable gl _BLEND_;
+            blend_func gl _ONE_ _ONE_MINUS_SRC_ALPHA_;
+            screen_shader # draw
           end
+
         end
 
     initializer
       let open Webgl in
       let open Constant in
-      enable gl _DEPTH_TEST_;
-      depth_func gl _LEQUAL_;
+      depth_func gl _LEQUAL_
 
   end
 

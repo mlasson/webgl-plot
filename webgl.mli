@@ -397,12 +397,22 @@ val cull_face: context -> Constant.t -> unit
 
 val blend_func: context -> Constant.t -> Constant.t -> unit
 val depth_mask: context -> bool -> unit
+val color_mask: context -> bool -> bool -> bool -> bool -> unit
 
 type framebuffer = private Ojs.t
 val framebuffer_of_js: Ojs.t -> framebuffer
 val framebuffer_to_js: framebuffer -> Ojs.t
 val create_framebuffer: context -> framebuffer[@@js.call]
 val bind_framebuffer: context -> Constant.t -> framebuffer option -> unit
+
+type renderbuffer = private Ojs.t
+val renderbuffer_of_js: Ojs.t -> renderbuffer
+val renderbuffer_to_js: renderbuffer -> Ojs.t
+val create_renderbuffer: context -> renderbuffer[@@js.call]
+val bind_renderbuffer: context -> Constant.t -> renderbuffer -> unit
+val renderbuffer_storage: context -> Constant.t -> Constant.t -> int -> int -> unit
+val framebuffer_renderbuffer: context -> Constant.t -> Constant.t -> Constant.t -> renderbuffer -> unit
+
 
 type texture = private Ojs.t
 val texture_of_js: Ojs.t -> texture
@@ -430,7 +440,7 @@ type context_attribute = {
 }
 
 val get_supported_extensions: context -> string array
-val get_extension: context -> string -> unit
+val get_extension: context -> string -> Ojs.t option
 val viewport: context -> int -> int -> int -> int -> unit
 
 val get_context: ?context_attribute:context_attribute -> (* <canvas> *) Js_windows.Element.t -> context_type -> context option
