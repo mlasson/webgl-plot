@@ -62,8 +62,8 @@ html, body {
         data : { 
           name : "wave",
           representation: "uniform",
-          x,
-          z,
+          x : x,
+          z : z,
           y : y1,
         }
       },
@@ -72,10 +72,9 @@ html, body {
         data : { 
           name : "constant",
           representation: "uniform",
-          x,
-          z,
+          x : x,
+          z : z,
           y : y2,
-          alpha:0.5,
           colors: red,
         }
       },
@@ -84,16 +83,15 @@ html, body {
         data : { 
           name : "constant",
           representation: "uniform",
-          x,
-          z,
+          x : x,
+          z : z,
           y : y3,
-          alpha:0.5,
           colors: blue,
         }
       }
     ];
 
-    var graph = { series };
+    var graph = { series : series};
 
     var plot = WebglPlot.create(graph);
 

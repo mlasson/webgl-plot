@@ -8,6 +8,7 @@ class type context =
 class type drawable =
   object
     method draw : context -> int -> int -> unit
+    method opaque : bool
     method ray: three Vector.vector -> three Vector.vector -> three Vector.vector option
   end
 

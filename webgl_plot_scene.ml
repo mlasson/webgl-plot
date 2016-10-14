@@ -80,6 +80,7 @@ let colored_sphere gl shader =
       inherit dummy_ray
       val mutable scale = (1., 1., 1.)
       val mutable position = (0., 0., 0.)
+      method opaque = true
       method set_scale x = scale <- x
       method set_position x = position <- x
       method draw (_ : context) id round =
@@ -209,7 +210,9 @@ let prepare_scene gl component =
            * At the end we display the framebuffer on the screen shader
            * *)
 
-          for round = 0 to 2 do
+          let max_round = if List.for_all (fun x -> x # opaque) objects then 0 else 2 in
+
+          for round = 0 to max_round do
 
             if round = 0 then begin
               basic2d_shader # use;
@@ -280,7 +283,7 @@ let prepare_scene gl component =
               end
           end;
 
-          if true then begin
+          if max_round = 2 then begin
             screen_shader # use;
             bind_texture gl _TEXTURE_2D_ (Some (composite_layer # texture));
             disable gl _DEPTH_TEST_;

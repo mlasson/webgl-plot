@@ -37,6 +37,8 @@ let create gl (shader : Shaders.Basic.shader) xs zs ys =
     val mutable scale = (1., 1., 1.)
     val mutable position = (0., 0., 0.)
 
+    method opaque = true
+
     method set_scale x =
       scale <- x
 

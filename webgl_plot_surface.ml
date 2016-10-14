@@ -79,6 +79,8 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
     val mutable last_intersection = None
     val mutable grid_width = 0.005
 
+    method opaque = opaque
+
     method draw (_ctx : context) id round =
       let open Webgl in
       let open Constant in
