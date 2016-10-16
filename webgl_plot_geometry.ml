@@ -20,7 +20,7 @@ let compute_vertices dim1 dim2 desc =
 let texcoords_from_grid n m =
   let n' = float (n - 1) in
   let m' = float (m - 1) in
-  FloatData.init2_matrix n m (fun i j -> (float i) /. n', (float j) /. m')
+  FloatData.init2_matrix n m (fun i j -> 0.001 +. (float i) /. n', (float j) /. m' -. 0.001)
 
 let compute_normals n m points =
   FloatData.init3_matrix n m (fun i j ->
@@ -191,28 +191,39 @@ module Surface = struct
     bounds: box;
   }
 
-  let create xs zs ys =
-  let n, m = Array.length xs, Array.length zs in
-  let vertices =
-    FloatData.init3_matrix n m
-      (fun i j ->
-         (xs.(i), ys.(i*m + j), zs.(j)))
-  in
-  let normals =
-    compute_normals n m vertices
-  in
-  let triangles = triangles_indexes_from_grid n m in
-  let wireframe = lines_indexes_from_grid n m in
-  let texcoords = texcoords_from_grid n m in
-  let bounds = bounding_box vertices in
-  {
-    triangles;
-    wireframe;
-    normals;
-    vertices;
-    texcoords;
-    bounds
-  }
+  let create parametric xs zs ys =
+    let n = Float32Array.length xs in
+    let m = Float32Array.length zs in
+    let vertices =
+      if parametric then 
+        FloatData.init3_matrix n m 
+          (fun i j ->
+             let pos = (i * m + j) * 3 in
+             Float32Array.get ys pos, 
+             Float32Array.get ys (pos + 1), 
+             Float32Array.get ys (pos + 2))
+      else
+        FloatData.init3_matrix n m
+          (fun i j ->
+             Float32Array.get xs i, 
+             Float32Array.get ys (i * m +j), 
+             Float32Array.get zs j)
+    in
+    let normals =
+      compute_normals n m vertices
+    in
+    let triangles = triangles_indexes_from_grid n m in
+    let wireframe = lines_indexes_from_grid n m in
+    let texcoords = texcoords_from_grid n m in
+    let bounds = bounding_box vertices in
+    {
+      triangles;
+      wireframe;
+      normals;
+      vertices;
+      texcoords;
+      bounds
+    }
 end
 
 module Histogram = struct

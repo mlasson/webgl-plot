@@ -7,15 +7,13 @@ module Geometry = Webgl_plot_geometry
 module Shaders = Webgl_plot_shaders
 module Intersection = Webgl_plot_intersection
 
+
 let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shaders.Basic2d.shader) (shader_wireframe : Shaders.Basic.shader)
-              ?(name = "") ?(wireframe = false) ?colors ?alpha xs zs ys =
+              ?(name = "") ?(wireframe = false) ?colors ?alpha ~parametric xs zs ys =
   let open Shaders in
   let min, max = match FloatData.min_max ys with Some c -> c | None -> 0.0, 1.0 in
-  let xs = array_of_float32 xs in
-  let ys = array_of_float32 ys in
-  let zs = array_of_float32 zs in
   let {Geometry.Surface.vertices; triangles; wireframe = wireframe_vertices; normals; bounds; texcoords} =
-    Geometry.Surface.create xs zs ys
+    Geometry.Surface.create parametric xs zs ys
   in
   let alpha, opaque =
     match alpha with
@@ -56,6 +54,16 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
   in
   let table = if true then Intersection.build_ray_table vertices triangles else [] in
   let a_positions = create_attrib_array gl 3 vertices in
+  let a_params =
+    if parametric then
+      let n = Float32Array.length xs in 
+      let m = Float32Array.length zs in 
+      create_attrib_array gl 3 (FloatData.init3_matrix n m (fun i j ->
+         Float32Array.get xs i, 0.0, 
+         Float32Array.get zs j)) 
+    else
+      a_positions
+  in
   let a_normals = create_attrib_array gl 3 normals in
   let a_colors_wireframe =
     create_attrib_array gl 3 (* black *)
@@ -89,7 +97,7 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
         if round = 0 then begin
           shader_texture # set_matrix texture_matrix;
           shader_texture # set_colors a_colors;
-          shader_texture # set_positions a_positions;
+          shader_texture # set_positions a_params;
           shader_texture # draw_elements Shaders.Triangles e_triangles;
         end;
 
@@ -148,5 +156,14 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
       in
       last_intersection <- r;
       r
+
+    initializer
+      let open Webgl in
+      let open Webgl.Constant in
+      bind_texture gl _TEXTURE_2D_ (Some (framebuffer # texture));
+      tex_parameteri gl _TEXTURE_2D_ _TEXTURE_WRAP_S_ _REPEAT_;
+      tex_parameteri gl _TEXTURE_2D_ _TEXTURE_WRAP_T_ _REPEAT_;
+      bind_texture gl _TEXTURE_2D_ None
+
   end
 

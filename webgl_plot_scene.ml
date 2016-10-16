@@ -160,11 +160,12 @@ let prepare_scene gl component =
       ignore (x, z, y, widths, colors, wireframe, name)
 
     method add_uniform_surface ?colors ?wireframe ?name ?alpha x z y =
-      let obj = Surface.create gl light_texture_shader basic2d_shader basic_shader ?name ?colors ?wireframe ?alpha x z y in
+      let obj = Surface.create gl light_texture_shader basic2d_shader basic_shader ?name ?colors ?wireframe ?alpha ~parametric:false x z y in
       objects <- (obj :> drawable) :: objects
 
     method add_parametric_surface ?colors ?wireframe ?name ?alpha x z y =
-      ignore (x, z, y, colors, wireframe, name, alpha)
+      let obj = Surface.create gl light_texture_shader basic2d_shader basic_shader ?name ?colors ?wireframe ?alpha ~parametric:true x z y in
+      objects <- (obj :> drawable) :: objects
 
     method add_histogram xs zs ys =
       let obj = Histogram.create gl basic_shader xs zs ys in
@@ -220,7 +221,7 @@ let prepare_scene gl component =
 
             if round = 1 then begin
               composite_layer # resize width height;
-              composite_layer # bind;
+              composite_layer # bind; 
               clear_color gl 0.0 0.0 0.0 0.0;
               clear gl (_DEPTH_BUFFER_BIT_ lor _COLOR_BUFFER_BIT_);
               depth_mask gl true;
