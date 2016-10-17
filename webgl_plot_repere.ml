@@ -330,6 +330,7 @@ let initialize gl texture_shader =
 
     method set_ratio r =
       this # modify; ratio <- r
+    method ratio = ratio
 
     method set_x_axis_label s =
       this # modify; x_axis_label <- s

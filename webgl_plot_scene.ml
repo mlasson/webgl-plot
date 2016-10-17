@@ -17,7 +17,7 @@ let my_projection near far aspect =
 let my_inverse_projection near far aspect =
   Vector.Const.inverse_projection ~fov:(pi /. 4.0) ~near ~far ~aspect
 
-let world_matrix aspect {Geometry.x_max; x_min; y_max; y_min; z_min; z_max} (angle_x, angle_y, angle_z) (trans_x, trans_y, trans_z) =
+let world_matrix aspect {Geometry.x_max; x_min; y_max; y_min; z_min; z_max} (angle_x, angle_y, angle_z) (trans_x, trans_y, trans_z) (ratio_x, ratio_y, ratio_z) =
   let open Vector in
   let open Const in
   let range_x = x_max -. x_min in
@@ -28,9 +28,9 @@ let world_matrix aspect {Geometry.x_max; x_min; y_max; y_min; z_min; z_max} (ang
   let move_y = -. range_y /. 2.0 -. y_min in
   let move_z = -. range_z /. 2.0 -. z_min in
 
-  let scale_x = 1.0 /. range_x in
-  let scale_y = 1.0 /. range_y in
-  let scale_z = 1.0 /. range_z in
+  let scale_x = ratio_x in
+  let scale_y = ratio_y in
+  let scale_z = ratio_z in
 
   let near, far =
      max 0.1 (-1. +. trans_z), 2.0 +. trans_z
@@ -47,7 +47,7 @@ let world_matrix aspect {Geometry.x_max; x_min; y_max; y_min; z_min; z_max} (ang
     |> multiply (my_projection near far aspect)
   in
 
-  let proportions = of_three (1.0 /. scale_x, 1.0 /. scale_y, 1.0 /. scale_z) in
+  let proportions = of_three (1. /. ratio_x, 1. /. ratio_y, 1. /. ratio_z) in
 
   let matrix' =
     (my_inverse_projection near far aspect)
@@ -125,6 +125,7 @@ let prepare_scene gl component =
     val mutable angle = (0., 0., 0.)
     val mutable move = (0., 0., 0.)
     val mutable pointer = (0., 0.)
+    val mutable ratio = (1.0, 1.0, 1.0)
     val mutable height = 100
     val mutable width = 100
     val mutable magnetic = false
@@ -142,7 +143,7 @@ let prepare_scene gl component =
     method set_height h = height <- h
     method set_width w = width <- w
     method set_pointer_kind k = pointer_kind <- k
-
+    method set_ratio r = ratio <- r
     method set_magnetic b = magnetic <- b
     method set_clock c = clock <- c
 
@@ -186,7 +187,7 @@ let prepare_scene gl component =
           let context = (this :> context) in
           let open Webgl in
           let open Constant in
-          let _proportion, matrix, matrix' = world_matrix aspect frame angle move in
+          let _proportion, matrix, matrix' = world_matrix aspect frame angle move (repere # ratio) in
           let flat_matrix = float32_array (Vector.to_array matrix) in
 
           depth_mask gl true;
@@ -224,7 +225,7 @@ let prepare_scene gl component =
 
             if round = 1 then begin
               composite_layer # resize width height;
-              composite_layer # bind; 
+              composite_layer # bind;
               clear_color gl 0.0 0.0 0.0 0.0;
               clear gl (_DEPTH_BUFFER_BIT_ lor _COLOR_BUFFER_BIT_);
               depth_mask gl true;
