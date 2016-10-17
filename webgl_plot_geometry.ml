@@ -47,7 +47,7 @@ let compute_normals n m points =
        **)
       if 0 < j && i < n-1 then
         add_one i (j-1) (i+1) j; (* 1 - 2 *)
-      if j < m && i < n-1 then
+      if j < m-1 && i < n-1 then
         add_one (i+1) j i (j+1); (* 2 - 3 *)
       if 0 < i && j < m-1 then
         add_one i (j+1) (i-1) j; (* 3 - 4 *)
@@ -195,18 +195,18 @@ module Surface = struct
     let n = Float32Array.length xs in
     let m = Float32Array.length zs in
     let vertices =
-      if parametric then 
-        FloatData.init3_matrix n m 
+      if parametric then
+        FloatData.init3_matrix n m
           (fun i j ->
              let pos = (i * m + j) * 3 in
-             Float32Array.get ys pos, 
-             Float32Array.get ys (pos + 1), 
+             Float32Array.get ys pos,
+             Float32Array.get ys (pos + 1),
              Float32Array.get ys (pos + 2))
       else
         FloatData.init3_matrix n m
           (fun i j ->
-             Float32Array.get xs i, 
-             Float32Array.get ys (i * m +j), 
+             Float32Array.get xs i,
+             Float32Array.get ys (i * m +j),
              Float32Array.get zs j)
     in
     let normals =
