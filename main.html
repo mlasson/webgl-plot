@@ -17,8 +17,8 @@ html, body {
   <script>
 
   window.onload = function() {
-    var res_x = 100;
-    var res_z = 200;
+    var res_x = 10;
+    var res_z = 20;
 
     var new_unit_range = function(res) {
       var a = new Array(res);
@@ -52,19 +52,26 @@ html, body {
     var green = graph3d(function(x,z) { return [0,1,0]}, x, z);
     var blue = graph3d(function(x,z) { return [0,0,1]}, x, z);
 
-    var y1 = graph3d(function(x,z) { return (0.5 * (sq(Math.cos(3 * x)) + sq (Math.sin(6.0 * z))))}, x, z);
-    var y2 = graph3d(function(x,z) { return 0.5}, x, z);
-    var y3 = graph3d(function(x,z) { return x}, x, z);
+    var torus = graph3d(function(s,t) {
+		  var theta = 2.0 * Math.PI * s; 
+		  var phi = 2.0 * Math.PI * t;
+		  var R = 0.4;
+		  var r = 0.1;
+		  var x = 0.5 + (R + r * Math.cos(theta)) * Math.cos(phi);
+		  var y = 0.5 + (R + r * Math.cos(theta)) * Math.sin(phi);
+		  var z = 0.5 + r * Math.sin(theta);
+		  return  [x,y,z]}, x, z);
 
     var series = [
-      { 
+      /* { 
         kind : "surface",
         data : { 
           name : "wave",
           representation: "uniform",
+          alpha:0.0,
           x : x,
           z : z,
-          y : y1,
+          y : graph3d(function(x,z) { return (0.5 * (sq(Math.cos(3 * x)) + sq (Math.sin(6.0 * z))))}, x, z),
         }
       },
       { 
@@ -74,7 +81,8 @@ html, body {
           representation: "uniform",
           x : x,
           z : z,
-          y : y2,
+          y : graph3d(function(x,z) { return 0.5}, x, z),
+          alpha:0.0,
           colors: red,
         }
       },
@@ -85,8 +93,20 @@ html, body {
           representation: "uniform",
           x : x,
           z : z,
-          y : y3,
+          y : graph3d(function(x,z) { return x}, x, z),
+          alpha:0.0,
           colors: blue,
+        }
+      },*/{ 
+        kind : "surface",
+        data : { 
+          name : "constant",
+          representation: "parametric",
+          a : x,
+          b : z,
+          p : torus,
+          colors: red,
+          wireframe: true
         }
       }
     ];
