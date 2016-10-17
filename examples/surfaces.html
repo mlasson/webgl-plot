@@ -17,8 +17,8 @@ html, body {
   <script>
 
   window.onload = function() {
-    var res_x = 5;
-    var res_z = 10;
+    var res_x = 40;
+    var res_z = 20;
 
     var new_unit_range = function(res) {
       var a = new Array(res);
@@ -82,7 +82,7 @@ html, body {
           x : x,
           z : z,
           y : graph3d(function(x,z) { return 0.5}, x, z),
-          alpha:0.0,
+          alpha:0.5,
           colors: red,
         }
       },
@@ -94,7 +94,7 @@ html, body {
           x : x,
           z : z,
           y : graph3d(function(x,z) { return x}, x, z),
-          alpha:0.0,
+          alpha:0.5,
           colors: blue,
         }
       } 

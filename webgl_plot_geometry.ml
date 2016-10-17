@@ -36,7 +36,7 @@ let compute_normals n m points =
       let add_one i1 j1 i2 j2 =
         let a = get i1 j1 in
         let b = get i2 j2 in
-        res := Vector.add !res (normal_of_triangle o a b);
+        res := Vector.add !res (normal_of_triangle o b a);
         cpt := !cpt +. 1.0;
       in
       (*     1

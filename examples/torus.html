@@ -50,18 +50,19 @@ html, body {
     var green = graph3d(function(x,z) { return [0,1,0]}, x, z);
     var blue = graph3d(function(x,z) { return [0,0,1]}, x, z);
 
-    var torus = graph3d(function(s,t) {
+    var torus = function(xc,yc,zc,r,R,flip) {
+	    return graph3d(function(s,t) {
 		  var theta = 2.0 * Math.PI * s; 
 		  var phi = 2.0 * Math.PI * t;
 
-		  console.log(phi);
-
-		  var R = 0.4;
-		  var r = 0.1;
-		  var x = 0.5 + (R + r * Math.cos(theta)) * Math.cos(phi);
-		  var y = 0.5 + (R + r * Math.cos(theta)) * Math.sin(phi);
-		  var z = 0.5 + r * Math.sin(theta);
-		  return  [x,y,z]}, x, z);
+		  var x = xc + (R + r * Math.cos(theta)) * Math.cos(phi);
+		  var y = zc + r * Math.sin(theta);
+		  var z = yc + (R + r * Math.cos(theta)) * Math.sin(phi);
+		  if (flip) {
+   		    return [x,y,z];
+		  } else {
+                    return [x,z,y];
+		  }}, x, z);};
 
     var series = [
       { 
@@ -71,11 +72,37 @@ html, body {
           representation: "parametric",
           a : x,
           b : z,
-          p : torus,
+          p : torus(0.5, 0.5, 0.5, 0.05, 0.2, false),
           colors: red,
+          alpha: 0.5,
           wireframe: false
         }
-      }
+      }, 
+      { 
+        kind : "surface",
+        data : { 
+          name : "constant",
+          representation: "parametric",
+          a : x,
+          b : z,
+          p : torus(0.25, 0.5, 0.5, 0.05, 0.2, true),
+          colors: blue,
+          alpha: 0.5,
+          wireframe: false
+        }
+      }, 
+      { 
+        kind : "surface",
+        data : { 
+          name : "constant",
+          representation: "parametric",
+          a : x,
+          b : z,
+          p : torus(0.75, 0.5, 0.5, 0.05, 0.2, true),
+          colors: green,
+          wireframe: false
+        }
+      }, 
     ];
 
     var graph = { series : series};
