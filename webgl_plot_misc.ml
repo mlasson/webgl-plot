@@ -68,6 +68,28 @@ let float32_array a =
 
 module FloatData = struct
 
+  let init size f =
+    let result = Float32Array.new_float32_array (`Size size) in
+    let k = ref 0 in
+    while !k < size do
+      incr k;
+      Float32Array.set result !k (f !k);
+    done;
+    result
+
+  let init_array size dim f =
+    let result = Float32Array.new_float32_array (`Size (dim * size)) in
+    let k = ref 0 in
+    while !k < size do
+      let a = f !k in
+      let pos = dim * !k in
+      incr k;
+      assert (Array.length a = dim);
+      Array.iteri (fun k x ->
+        Float32Array.set result (pos + k) x) a;
+    done;
+    result
+
   let init3 size f =
     let result = Float32Array.new_float32_array (`Size (3 * size)) in
     let k = ref 0 in

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Test</title>
+<script src="main.js"></script> 
+<meta charset="utf-8"/>
+<style>
+
+html, body {
+  font-family: Menlo, Consolas, monospace;
+  height: 100%;
+}
+
+</style>
+</head>
+<body>
+  <script>
+
+  window.onload = function() {
+    var res_x = 5;
+    var res_z = 10;
+
+    var new_unit_range = function(res) {
+      var a = new Array(res);
+      for (var i = 0;i < res; i++) {
+        a[i] = i / (res - 1);
+      }
+      return a;
+    };
+
+    var x = new_unit_range(res_x);
+    var z = new_unit_range(res_z);
+
+    var graph3d = function (f, x, z) {
+      var res_x = x.length;
+      var res_z = z.length;
+
+      var y = new Array(res_x);
+      for (var i = 0;i < res_x; i++) {
+        var row = new Array(res_z);
+        y[i] = row;
+        for (var j = 0;j < res_z; j++) {
+          row[j] = f(x[i],z[j]);
+        }
+      }
+      return y;
+    }
+
+    var sq = function(x) { return (x * x) };
+
+    var red = graph3d(function(x,z) { return [1,0,0]}, x, z);
+    var green = graph3d(function(x,z) { return [0,1,0]}, x, z);
+    var blue = graph3d(function(x,z) { return [0,0,1]}, x, z);
+
+    var torus = graph3d(function(s,t) {
+		  var theta = 2.0 * Math.PI * s; 
+		  var phi = 1.9 * Math.PI * t;
+		  var R = 0.4;
+		  var r = 0.1;
+		  var x = 0.5 + (R + r * Math.cos(theta)) * Math.cos(phi);
+		  var y = 0.5 + (R + r * Math.cos(theta)) * Math.sin(phi);
+		  var z = 0.5 + r * Math.sin(theta);
+		  return  [x,y,z]}, x, z);
+
+    var series = [
+       { 
+        kind : "surface",
+        data : { 
+          name : "wave",
+          representation: "uniform",
+	  wireframe: true,
+          x : x,
+          z : z,
+          y : graph3d(function(x,z) { return (0.5 * (sq(Math.cos(3 * x)) + sq (Math.sin(6.0 * z))))}, x, z),
+        }
+      }, 
+      { 
+        kind : "surface",
+        data : { 
+          name : "constant",
+          representation: "uniform",
+          x : x,
+          z : z,
+          y : graph3d(function(x,z) { return 0.5}, x, z),
+          alpha:0.0,
+          colors: red,
+        }
+      },
+      { 
+        kind : "surface",
+        data : { 
+          name : "constant",
+          representation: "uniform",
+          x : x,
+          z : z,
+          y : graph3d(function(x,z) { return x}, x, z),
+          alpha:0.0,
+          colors: blue,
+        }
+      } 
+    ];
+
+    var graph = { series : series};
+
+    var plot = WebglPlot.create(graph);
+
+    document.getElementById("main").appendChild(plot);
+
+  };
+
+  </script>
+  <div id="main" style="height:95%">
+    <!-- HERE GOES THE RESULTS -->
+  </div>
+</body>
+</html>
