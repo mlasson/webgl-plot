@@ -156,19 +156,18 @@ let prepare_scene gl component =
     method z_min = repere # z_axis_min
     method z_max = repere # z_axis_max
 
-    method add_uniform_histogram ?widths ?colors ?name x z y =
-      let borders = 0.01, 0.01, 0.01 in
-      let obj = Histogram.create gl basic_shader ?name ?widths ?colors ~borders ~parametric:false x z y in
+    method add_uniform_histogram ?widths ?depths ?colors ?name ?border x z y =
+      let obj = Histogram.create gl basic_shader ?name ?widths ?depths ?colors ?border ~parametric:false x z y in
       objects <- (obj :> drawable) :: objects
 
-    method add_parametric_histogram ?widths ?colors ?name x z y =
-      ignore (x, z, y, widths, colors, name)
+    method add_parametric_histogram ?widths ?depths ?colors ?name ?border x z y =
+      ignore (x, z, y, widths, colors, name, depths, border)
 
-    method add_uniform_scatter ?widths ?colors ?wireframe ?name x z y =
-      ignore (x, z, y, widths, colors, wireframe, name)
+    method add_uniform_scatter ?radius ?colors ?name x z y =
+      ignore (x, z, y, colors, radius, name)
 
-    method add_parametric_scatter ?widths ?colors ?wireframe ?name x z y =
-      ignore (x, z, y, widths, colors, wireframe, name)
+    method add_parametric_scatter ?radius ?colors ?name x z y =
+      ignore (x, z, y, colors, radius, name)
 
     method add_uniform_surface ?colors ?wireframe ?name ?alpha x z y =
       let obj = Surface.create gl light_texture_shader basic2d_shader basic_shader ?name ?colors ?wireframe ?alpha ~parametric:false x z y in

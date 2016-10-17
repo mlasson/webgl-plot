@@ -231,9 +231,7 @@ module Histogram = struct
   type t = {
     normals: Float32Array.t;
     triangles: Float32Array.t;
-    wireframe: Float32Array.t;
     shrink_directions: Float32Array.t;
-    normals_wireframe: Float32Array.t;
   }
 
   (* Invariant: forall i j, length (f i j) = dim *)
@@ -355,69 +353,9 @@ module Histogram = struct
              left_top; left_bot; right_bot; right_bot; right_top; left_top;
            ])
     in
-
-    let wireframe =
-      flatten (6 * 2 * 4 * 3) (n-1) (m-1)
-        (fun i j ->
-           let w = get_w i j *. 1.01 in
-           let y_max = ys.(i * (m - 1) + j) in
-           let y_min = 0.0 in
-           let x_min = xs.(i) in
-           let x_max = xs.(i+1) in
-           let z_min = zs.(j) in
-           let z_max = zs.(j+1) in
-           let x_min, x_max =
-             let mid = x_min +. x_max in
-             let dif = x_max -. x_min in
-             (mid -. w *. dif) /. 2.0,
-             (mid +. w *. dif) /. 2.0
-           in
-           let z_min, z_max =
-             let mid = z_min +. z_max in
-             let dif = z_max -. z_min in
-             (mid -. w *. dif) /. 2.0,
-             (mid +. w *. dif) /. 2.0
-           in
-           let v1 = [| x_min; y_max; z_min|] in
-           let v2 = [| x_max; y_max; z_min|] in
-           let v3 = [| x_max; y_max; z_max|] in
-           let v4 = [| x_min; y_max; z_max|] in
-           let v5 = [| x_min; y_min; z_max|] in
-           let v6 = [| x_max; y_min; z_max|] in
-           let v7 = [| x_max; y_min; z_min|] in
-           let v8 = [| x_min; y_min; z_min|] in
-           Array.concat [
-             v1;v2;v2;v3;v3;v4;v4;v1;
-             v5;v6;v6;v7;v7;v8;v8;v5;
-             v2;v7;v7;v6;v6;v3;v3;v2;
-             v1;v4;v4;v5;v5;v8;v8;v1;
-             v3;v6;v6;v5;v5;v4;v4;v3;
-             v1;v8;v8;v7;v7;v2;v2;v1;
-           ])
-    in
-    let normals_wireframe =
-      flatten (6 * 2 * 4 * 3) (n-1) (m-1)
-        (fun _ _ ->
-           let top = [| 0.; 1.; 0.|] in
-           let bot = [| 0.; -1.; 0.|] in
-           let right = [| 1.; 0.; 0.|] in
-           let left = [| -1.; 0.; 0.|] in
-           let back = [| 0.; 0.; 1.|] in
-           let front = [| 0.; 0.; -1.|] in
-           Array.concat [
-             top;top;top;top;top;top;top;top;
-             bot;bot;bot;bot;bot;bot;bot;bot;
-             right;right;right;right;right;right;right;right;
-             left;left;left;left;left;left;left;left;
-             back;back;back;back;back;back;back;back;
-             front;front;front;front;front;front;front;front;
-           ])
-    in
     {
       triangles;
       normals;
-      wireframe;
-      normals_wireframe;
       shrink_directions
     }
 

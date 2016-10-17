@@ -451,7 +451,7 @@ val get_context: ?context_attribute:context_attribute -> (* <canvas> *) Js_windo
         alpha = Some true;
         depth = Some true;
         stencil = None;
-        antialias = Some false;
+        antialias = Some true;
       }
       let get_context ?(context_attribute = default_context_attribute) canvas context_type =
         get_context canvas context_type context_attribute]
