@@ -7,7 +7,7 @@ module Geometry = Webgl_plot_geometry
 module Shaders = Webgl_plot_shaders
 module Intersection = Webgl_plot_intersection
 
-let create gl (shader : Shaders.Basic.shader) xs zs ys =
+let create gl (shader : Shaders.Basic.shader) ?(name = "") ?widths ?depths ?colors ?borders ~(parametric:_) xs zs ys =
   let open Shaders in
   let open Geometry in
   let min, max = match FloatData.min_max ys with Some c -> c | None -> 0.0, 1.0 in
@@ -18,12 +18,17 @@ let create gl (shader : Shaders.Basic.shader) xs zs ys =
   let xs = array_of_float32 xs in
   let ys = array_of_float32 ys in
   let zs = array_of_float32 zs in
-  let {Histogram.triangles; normals; wireframe; normals_wireframe} = Histogram.create xs zs ys in
+  let {Histogram.triangles; normals; wireframe; normals_wireframe; shrink_directions} =
+    Histogram.create ?widths ?depths xs zs ys in
   let a_triangles = create_attrib_array gl 3 triangles in
   let a_normals = create_attrib_array gl 3 normals in
+  let a_shrink_directions = create_attrib_array gl 3 shrink_directions in
   let a_colors = create_attrib_array gl 3 (* rainbow *)
     (FloatData.init3 (Float32Array.length triangles) (fun k ->
         rainbow (Float32Array.get triangles (3 * k + 1))))
+  in
+  let a_border_colors = create_attrib_array gl 3
+    (FloatData.init3 (Float32Array.length triangles) (fun k -> 0.0, 0.0, 0.0))
   in
   let a_wireframe = create_attrib_array gl 3 wireframe in
   let a_normals_wireframe = create_attrib_array gl 3 normals_wireframe in
@@ -36,6 +41,8 @@ let create gl (shader : Shaders.Basic.shader) xs zs ys =
     val alpha = 0.7
     val mutable scale = (1., 1., 1.)
     val mutable position = (0., 0., 0.)
+    val mutable border = 0.001
+    val name = name
 
     method opaque = true
 
@@ -45,21 +52,36 @@ let create gl (shader : Shaders.Basic.shader) xs zs ys =
     method set_position x =
       position <- x
 
-    method draw (_ : context) shader_id round =
+    method draw (ctx : context) shader_id round =
       if shader_id = shader # id && round = 0 then begin
+
+        let x_border = -. border *. (ctx # x_max -. ctx # x_min) in
+        let y_border = -. border *. (ctx # y_max -. ctx # y_min) in
+        let z_border = -. border *. (ctx # z_max -. ctx # z_min) in
+
         shader # set_alpha alpha;
         shader # set_object_matrix
           (float32_array (Vector.to_array
              (Vector.Const.scale_translation
                 (Vector.of_three scale) (Vector.of_three position))));
-        shader # set_colors a_colors;
         shader # set_normals a_normals;
+        shader # set_shrink_directions a_shrink_directions;
         shader # set_positions a_triangles;
+        shader # set_colors a_border_colors;
+        shader # set_shrink (0.0, 0.0, 0.0);
+        shader # set_explode 0.0;
+        shader # draw_arrays Shaders.Triangles (a_triangles # count);
+        shader # set_shrink (x_border, y_border, z_border);
+        shader # set_explode 0.00001;
+        shader # set_colors a_colors;
         shader # draw_arrays Shaders.Triangles (a_triangles # count);
 
+        shader # set_shrink (0.0, 0.0, 0.0);
+        shader # set_explode 0.0;
         shader # set_positions a_wireframe;
         shader # set_colors a_colors_wireframe;
         shader # set_normals a_normals_wireframe;
+        shader # set_shrink_directions a_normals_wireframe;
         shader # draw_arrays Shaders.Lines (a_wireframe # count)
       end
   end

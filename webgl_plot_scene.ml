@@ -149,11 +149,20 @@ let prepare_scene gl component =
 
     method repere = repere
 
-    method add_uniform_histogram ?widths ?colors ?wireframe ?name x z y =
-      ignore (x, z, y, widths, colors, wireframe, name)
+    method x_min = repere # x_axis_min
+    method x_max = repere # x_axis_max
+    method y_min = repere # y_axis_min
+    method y_max = repere # y_axis_max
+    method z_min = repere # z_axis_min
+    method z_max = repere # z_axis_max
 
-    method add_parametric_histogram ?widths ?colors ?wireframe ?name x z y =
-      ignore (x, z, y, widths, colors, wireframe, name)
+    method add_uniform_histogram ?widths ?colors ?name x z y =
+      let borders = 0.01, 0.01, 0.01 in
+      let obj = Histogram.create gl basic_shader ?name ?widths ?colors ~borders ~parametric:false x z y in
+      objects <- (obj :> drawable) :: objects
+
+    method add_parametric_histogram ?widths ?colors ?name x z y =
+      ignore (x, z, y, widths, colors, name)
 
     method add_uniform_scatter ?widths ?colors ?wireframe ?name x z y =
       ignore (x, z, y, widths, colors, wireframe, name)
@@ -167,10 +176,6 @@ let prepare_scene gl component =
 
     method add_parametric_surface ?colors ?wireframe ?name ?alpha x z y =
       let obj = Surface.create gl light_texture_shader basic2d_shader basic_shader ?name ?colors ?wireframe ?alpha ~parametric:true x z y in
-      objects <- (obj :> drawable) :: objects
-
-    method add_histogram xs zs ys =
-      let obj = Histogram.create gl basic_shader xs zs ys in
       objects <- (obj :> drawable) :: objects
 
     method add_sphere position scale color =
@@ -203,6 +208,8 @@ let prepare_scene gl component =
             repere # draw angle_x angle_y
           end;
 
+          repere_shader # switch;
+
           (* round :
            * 0 - all opaque things
            * ----- in framebuffer
@@ -219,6 +226,7 @@ let prepare_scene gl component =
             if round = 0 then begin
               basic2d_shader # use;
               List.iter (fun o -> o # draw context (basic2d_shader # id) round) objects;
+              basic2d_shader # switch;
               bind_framebuffer gl _FRAMEBUFFER_ None;
               viewport gl 0 0 width height;
             end;
@@ -246,12 +254,14 @@ let prepare_scene gl component =
             light_texture_shader # set_ambient_light 1.0 1.0 1.0;
             light_texture_shader # set_light_position 1.0 1.0 (-2.0);
             List.iter (fun o -> o # draw context (light_texture_shader # id) round) objects;
+            light_texture_shader # switch;
 
             basic_shader # use;
             basic_shader # set_world_matrix flat_matrix;
             basic_shader # set_ambient_light 1.0 1.0 1.0;
             basic_shader # set_light_position 1.0 1.0 (-2.0);
             List.iter (fun o -> o # draw context (basic_shader # id) round) objects;
+            basic_shader # switch;
           done;
 
           bind_framebuffer gl _FRAMEBUFFER_ None;
@@ -259,6 +269,7 @@ let prepare_scene gl component =
           enable gl _DEPTH_TEST_;
           depth_mask gl true;
 
+          basic_shader # use;
           let x,y = pointer in
           begin
             let open Math.Vector in
@@ -284,6 +295,7 @@ let prepare_scene gl component =
                 sphere_pointer # draw context (basic_shader # id) 0
               end
           end;
+          basic_shader # switch;
 
           if max_round = 2 then begin
             screen_shader # use;
@@ -291,7 +303,8 @@ let prepare_scene gl component =
             disable gl _DEPTH_TEST_;
             enable gl _BLEND_;
             blend_func gl _ONE_ _ONE_MINUS_SRC_ALPHA_;
-            screen_shader # draw
+            screen_shader # draw;
+            screen_shader # switch;
           end
 
         end

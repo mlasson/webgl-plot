@@ -371,6 +371,7 @@ val bind_buffer: context -> Constant.t -> buffer -> unit
 val buffer_data: context -> Constant.t -> Ojs.t -> Constant.t -> unit
 
 val enable_vertex_attrib_array: context -> int -> unit
+val disable_vertex_attrib_array: context -> int -> unit
 val vertex_attrib_pointer: context -> int -> int -> Constant.t -> bool -> int -> int -> unit
 
 val clear: context -> Constant.t -> unit

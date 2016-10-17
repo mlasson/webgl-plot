@@ -229,9 +229,10 @@ end
 module Histogram = struct
 
   type t = {
-    triangles: Float32Array.t;
     normals: Float32Array.t;
+    triangles: Float32Array.t;
     wireframe: Float32Array.t;
+    shrink_directions: Float32Array.t;
     normals_wireframe: Float32Array.t;
   }
 
@@ -250,18 +251,40 @@ module Histogram = struct
     done;
     points
 
-  let create xs zs ys =
+  let create ?widths ?depths xs zs ys =
     let n, m = Array.length xs, Array.length zs in
     assert (Array.length ys = (n - 1) * (m - 1));
-    let triangles =
+    let get_w = match widths with
+      | None -> fun _ _ -> 1.0
+      | Some w -> fun i j -> Float32Array.get w (i * (m - 1) + j)
+    in
+    let get_h = match ignore(depths); widths with
+      | None -> fun _ _ -> 1.0
+      | Some h -> fun i j -> Float32Array.get h (i * (m - 1) + j)
+    in
+    let triangles_boxes w h =
       flatten (6 * 2 * 3 * 3) (n-1) (m-1)
         (fun i j ->
+           let w = w i j in
+           let h = h i j in
            let y_max = ys.(i * (m - 1) + j) in
            let y_min = 0.0 in
            let x_min = xs.(i) in
            let x_max = xs.(i+1) in
            let z_min = zs.(j) in
            let z_max = zs.(j+1) in
+           let x_min, x_max =
+             let mid = x_min +. x_max in
+             let dif = x_max -. x_min in
+             (mid -. w *. dif) /. 2.0,
+             (mid +. w *. dif) /. 2.0
+           in
+           let z_min, z_max =
+             let mid = z_min +. z_max in
+             let dif = z_max -. z_min in
+             (mid -. h *. dif) /. 2.0,
+             (mid +. h *. dif) /. 2.0
+           in
            let v1 = [| x_min; y_max; z_min|] in
            let v2 = [| x_max; y_max; z_min|] in
            let v3 = [| x_max; y_max; z_max|] in
@@ -270,15 +293,17 @@ module Histogram = struct
            let v6 = [| x_max; y_min; z_max|] in
            let v7 = [| x_max; y_min; z_min|] in
            let v8 = [| x_min; y_min; z_min|] in
+           let extrude v = List.map (Array.map2 (+.) v) in
            Array.concat [
-             v1;v2;v3;v3;v4;v1;
-             v5;v6;v7;v7;v8;v5;
-             v2;v7;v6;v6;v3;v2;
-             v1;v4;v5;v5;v8;v1;
-             v3;v6;v5;v5;v4;v3;
-             v1;v8;v7;v7;v2;v1;
+              v1;v2;v3;v3;v4;v1;
+              v5;v6;v7;v7;v8;v5;
+              v2;v7;v6;v6;v3;v2;
+              v1;v4;v5;v5;v8;v1;
+              v3;v6;v5;v5;v4;v3;
+              v1;v8;v7;v7;v2;v1;
            ])
     in
+    let triangles = triangles_boxes get_w get_h in
     let normals =
       flatten (6 * 2 * 3 * 3) (n-1) (m-1)
         (fun _ _ ->
@@ -303,15 +328,56 @@ module Histogram = struct
              front; front; front;
            ])
     in
+    let shrink_directions =
+      flatten (6 * 2 * 3 * 3) (n-1) (m-1)
+        (fun _ _ ->
+           let left_front = [| -1.; 0.; -1.|] in
+           let right_front = [| 1.; 0.; -1.|] in
+           let right_back = [| 1.; 0.; 1.|] in
+           let left_back = [| -1.; 0.; 1.|] in
+
+           let top_front = [| 0.; 1.; -1.|] in
+           let bot_front = [| 0.; -1.; -1.|] in
+           let top_back = [| 0.; 1.; 1.|] in
+           let bot_back = [| 0.; -1.; 1.|] in
+
+           let left_top = [| -1.; 1.; 0.|] in
+           let right_top = [| 1.; 1.; 0.|] in
+           let right_bot = [| 1.; -1.; 0.|] in
+           let left_bot = [| -1.; -1.; 0.|] in
+
+           Array.concat [
+             left_front; right_front; right_back; right_back; left_back; left_front;
+             left_back; right_back; right_front; right_front; left_front; left_back;
+             top_front; bot_front; bot_back; bot_back; top_back; top_front;
+             top_front; top_back; bot_back; bot_back; bot_front; top_front;
+             right_top; right_bot; left_bot; left_bot; left_top; right_top;
+             left_top; left_bot; right_bot; right_bot; right_top; left_top;
+           ])
+    in
+
     let wireframe =
       flatten (6 * 2 * 4 * 3) (n-1) (m-1)
         (fun i j ->
+           let w = get_w i j *. 1.01 in
            let y_max = ys.(i * (m - 1) + j) in
            let y_min = 0.0 in
            let x_min = xs.(i) in
            let x_max = xs.(i+1) in
            let z_min = zs.(j) in
            let z_max = zs.(j+1) in
+           let x_min, x_max =
+             let mid = x_min +. x_max in
+             let dif = x_max -. x_min in
+             (mid -. w *. dif) /. 2.0,
+             (mid +. w *. dif) /. 2.0
+           in
+           let z_min, z_max =
+             let mid = z_min +. z_max in
+             let dif = z_max -. z_min in
+             (mid -. w *. dif) /. 2.0,
+             (mid +. w *. dif) /. 2.0
+           in
            let v1 = [| x_min; y_max; z_min|] in
            let v2 = [| x_max; y_max; z_min|] in
            let v3 = [| x_max; y_max; z_max|] in
@@ -352,6 +418,7 @@ module Histogram = struct
       normals;
       wireframe;
       normals_wireframe;
+      shrink_directions
     }
 
 

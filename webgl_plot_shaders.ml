@@ -173,10 +173,14 @@ module Basic = struct
   let vertex_shader = {gsl|
   attribute vec3 a_position;
   attribute vec3 a_normal;
+  attribute vec3 a_shrink_direction;
   attribute vec3 a_color;
 
   uniform mat4 u_world_matrix;
   uniform mat4 u_object_matrix;
+
+  uniform vec3 u_shrink;
+  uniform float u_explode;
 
   varying mediump vec3 v_position;
   varying mediump vec3 v_normal;
@@ -184,7 +188,7 @@ module Basic = struct
 
   void main() {
 
-    vec4 pos = u_world_matrix * u_object_matrix * vec4(a_position,1);
+    vec4 pos = u_world_matrix * u_object_matrix * vec4(a_position + u_shrink * a_shrink_direction + u_explode * a_normal,1);
     vec4 norm = u_world_matrix * u_object_matrix * vec4(a_normal,1);
 
     v_position = pos.xyz;
@@ -215,9 +219,12 @@ module Basic = struct
 
   class type shader = object
     method use : unit
+    method switch : unit
     method id : int
 
     method set_alpha: float -> unit
+    method set_explode: float -> unit
+    method set_shrink: float * float * float -> unit
     method set_ambient_light: float -> float -> float -> unit
     method set_light_position: float -> float -> float -> unit
     method set_object_matrix: Float32Array.t -> unit
@@ -226,6 +233,7 @@ module Basic = struct
     method set_positions: attrib_array -> unit
     method set_colors: attrib_array -> unit
     method set_normals: attrib_array -> unit
+    method set_shrink_directions: attrib_array -> unit
 
     method draw_arrays: mode -> ?first:int -> int -> unit
     method draw_elements: mode -> element_array -> unit
@@ -238,11 +246,14 @@ module Basic = struct
     let position_location = get_vertex_attrib_array_location gl program "a_position" in
     let normal_location = get_vertex_attrib_array_location gl program "a_normal" in
     let color_location = get_vertex_attrib_array_location gl program "a_color" in
+    let shrink_direction_location = get_vertex_attrib_array_location gl program "a_shrink_direction" in
     let world_matrix = get_uniform_location gl program "u_world_matrix" in
     let object_matrix = get_uniform_location gl program "u_object_matrix" in
     let ambient_light = get_uniform_location gl program "u_ambientLight" in
     let light_position = get_uniform_location gl program "u_lightPos" in
     let alpha = get_uniform_location gl program "u_alpha" in
+    let shrink = get_uniform_location gl program "u_shrink" in
+    let explode = get_uniform_location gl program "u_explode" in
     (object
       val id = !id_generator
       method id = id
@@ -250,7 +261,14 @@ module Basic = struct
         use_program gl program;
         enable_vertex_attrib_array gl position_location;
         enable_vertex_attrib_array gl normal_location;
-        enable_vertex_attrib_array gl color_location
+        enable_vertex_attrib_array gl color_location;
+        enable_vertex_attrib_array gl shrink_direction_location
+
+      method switch =
+        disable_vertex_attrib_array gl position_location;
+        disable_vertex_attrib_array gl normal_location;
+        disable_vertex_attrib_array gl color_location;
+        disable_vertex_attrib_array gl shrink_direction_location
 
       method set_ambient_light r g b =
         uniform3f gl ambient_light r g b
@@ -258,6 +276,10 @@ module Basic = struct
         uniform3f gl light_position x y z
       method set_alpha a =
         uniform1f gl alpha a
+      method set_shrink (x,y,z) =
+        uniform3f gl shrink x y z
+      method set_explode a =
+        uniform1f gl explode a
       method set_object_matrix data =
         uniform_matrix4fv gl object_matrix false data
       method set_world_matrix data =
@@ -269,6 +291,8 @@ module Basic = struct
         a # plug color_location
       method set_normals a =
         a # plug normal_location
+      method set_shrink_directions a =
+        a # plug shrink_direction_location
 
       method draw_arrays mode ?(first = 0) count =
         Webgl.draw_arrays gl (constant_of_mode mode) first count
@@ -308,6 +332,7 @@ module Texture = struct
 
   class type shader = object
     method use : unit
+    method switch : unit
     method id : int
 
     method set_world_matrix: Float32Array.t -> unit
@@ -334,7 +359,11 @@ module Texture = struct
       method id = id
       method use =
         use_program gl program;
-        enable_vertex_attrib_array gl position_location
+        enable_vertex_attrib_array gl position_location;
+        enable_vertex_attrib_array gl texcoord_location
+      method switch =
+        disable_vertex_attrib_array gl position_location;
+        disable_vertex_attrib_array gl texcoord_location
 
       method set_world_matrix data =
         uniform_matrix4fv gl world_matrix false data
@@ -428,6 +457,7 @@ module Basic2d = struct
 
   class type shader = object
     method use : unit
+    method switch : unit
     method id : int
 
     method set_matrix: Float32Array.t -> unit
@@ -455,6 +485,10 @@ module Basic2d = struct
         use_program gl program;
         enable_vertex_attrib_array gl position_location;
         enable_vertex_attrib_array gl color_location
+
+      method switch =
+        disable_vertex_attrib_array gl position_location;
+        disable_vertex_attrib_array gl color_location
 
       method set_matrix data =
         uniform_matrix4fv gl world_matrix false data
@@ -527,6 +561,7 @@ module LightAndTexture = struct
 
   class type shader = object
     method use : unit
+    method switch : unit
     method id : int
 
     method set_ambient_light: float -> float -> float -> unit
@@ -561,6 +596,11 @@ module LightAndTexture = struct
         enable_vertex_attrib_array gl position_location;
         enable_vertex_attrib_array gl normal_location;
         enable_vertex_attrib_array gl texcoord_location
+
+      method switch =
+        disable_vertex_attrib_array gl position_location;
+        disable_vertex_attrib_array gl normal_location;
+        disable_vertex_attrib_array gl texcoord_location
 
       method set_ambient_light r g b =
         uniform3f gl ambient_light r g b
@@ -615,6 +655,7 @@ module Screen = struct
 
   class type shader = object
     method use : unit
+    method switch : unit
     method id : int
 
     method draw: unit
@@ -638,6 +679,9 @@ module Screen = struct
         use_program gl program;
         enable_vertex_attrib_array gl position_location;
         big_triangle # plug position_location
+
+      method switch =
+        disable_vertex_attrib_array gl position_location;
 
       method draw =
         Webgl.draw_arrays gl _TRIANGLES_ 0 3

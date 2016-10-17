@@ -312,6 +312,13 @@ let initialize gl texture_shader =
 
     val mutable changed = true
 
+    method x_axis_min = x_axis_min
+    method x_axis_max = x_axis_max
+    method y_axis_min = y_axis_min
+    method y_axis_max = y_axis_max
+    method z_axis_min = z_axis_min
+    method z_axis_max = z_axis_max
+
 
     method modify = changed <- true
 

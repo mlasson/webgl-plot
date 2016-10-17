@@ -9,7 +9,6 @@ module Histogram : sig
 
         widths: float array array option;
         colors: float array array array option;
-        wireframe: bool option;
       } [@js "uniform"]
 
     | Parametric of {
@@ -21,7 +20,6 @@ module Histogram : sig
 
         widths: float array array option;
         colors: float array array array option;
-        wireframe: bool option;
       } [@js "parametric"]
 
     | Unknown of Ojs.t [@js.default]

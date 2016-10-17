@@ -56,11 +56,11 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
   let a_positions = create_attrib_array gl 3 vertices in
   let a_params =
     if parametric then
-      let n = Float32Array.length xs in 
-      let m = Float32Array.length zs in 
+      let n = Float32Array.length xs in
+      let m = Float32Array.length zs in
       create_attrib_array gl 3 (FloatData.init3_matrix n m (fun i j ->
-         Float32Array.get xs i, 0.0, 
-         Float32Array.get zs j)) 
+         Float32Array.get xs i, 0.0,
+         Float32Array.get zs j))
     else
       a_positions
   in
@@ -145,10 +145,13 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
                && ((opaque && round = 0)
             || (not opaque && round = 2)) then begin
         shader_wireframe # set_alpha 1.0;
+        shader_wireframe # set_explode 0.0;
+        shader_wireframe # set_shrink (0.0, 0.0, 0.0);
         shader_wireframe # set_object_matrix identity_matrix;
         shader_wireframe # set_positions a_positions;
         shader_wireframe # set_colors a_colors_wireframe;
         shader_wireframe # set_normals a_normals;
+        shader_wireframe # set_shrink_directions a_normals;
         shader_wireframe # draw_elements Shaders.Lines e_wireframe
       end
 

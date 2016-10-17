@@ -57,37 +57,37 @@ let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio
         option_iter bounds (repere # set_z_axis_bounds));
 
     List.iter (function
-        | Histogram Uniform {name; x; z; y; widths; colors; wireframe;} ->
+        | Histogram Uniform {name; x; z; y; widths; colors; } ->
           let widths = option_map flatten_array_array widths in
           let colors = option_map flatten_array_array_array colors in
           let x = float32_array x in
           let z = float32_array z in
           let y = flatten_array_array y in
-          scene # add_uniform_histogram ?widths ?colors ?wireframe ?name x z y
+          scene # add_uniform_histogram ?widths ?colors ?name x z y
 
-        | Histogram Parametric {name; a; b; p; widths; colors; wireframe;} ->
+        | Histogram Parametric {name; a; b; p; widths; colors;} ->
           let widths = option_map flatten_array_array widths in
           let colors = option_map flatten_array_array_array colors in
           let a = float32_array a in
           let b = float32_array b in
           let p = flatten_array_array_array p in
-          scene # add_parametric_histogram ?widths ?colors ?wireframe ?name a b p
+          scene # add_parametric_histogram ?widths ?colors ?name a b p
 
-        | Scatter Uniform {name; x; z; y; widths; colors; wireframe;} ->
+        | Scatter Uniform {name; x; z; y; widths; colors; } ->
           let widths = option_map flatten_array_array widths in
           let colors = option_map flatten_array_array_array colors in
           let x = float32_array x in
           let z = float32_array z in
           let y = flatten_array_array y in
-          scene # add_uniform_scatter ?widths ?colors ?wireframe ?name x z y
+          scene # add_uniform_scatter ?widths ?colors ?name x z y
 
-        | Scatter Parametric {name; a; b; p; widths; colors; wireframe; } ->
+        | Scatter Parametric {name; a; b; p; widths; colors; } ->
           let widths = option_map flatten_array_array widths in
           let colors = option_map flatten_array_array_array colors in
           let a = float32_array a in
           let b = float32_array b in
           let p = flatten_array_array_array p in
-          scene # add_parametric_scatter ?widths ?colors ?wireframe ?name a b p
+          scene # add_parametric_scatter ?widths ?colors ?name a b p
 
         | Surface Uniform {name; x; z; y; colors; wireframe; alpha} ->
           let colors = option_map flatten_array_array_array colors in
