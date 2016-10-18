@@ -125,7 +125,6 @@ let prepare_scene gl component =
     val mutable angle = (0., 0., 0.)
     val mutable move = (0., 0., 0.)
     val mutable pointer = (0., 0.)
-    val mutable ratio = (1.0, 1.0, 1.0)
     val mutable height = 100
     val mutable width = 100
     val mutable magnetic = false
@@ -143,18 +142,17 @@ let prepare_scene gl component =
     method set_height h = height <- max h 1
     method set_width w = width <- max w 1
     method set_pointer_kind k = pointer_kind <- k
-    method set_ratio r = ratio <- r
     method set_magnetic b = magnetic <- b
     method set_clock c = clock <- c
 
     method repere = repere
 
-    method x_min = repere # x_axis_min
-    method x_max = repere # x_axis_max
-    method y_min = repere # y_axis_min
-    method y_max = repere # y_axis_max
-    method z_min = repere # z_axis_min
-    method z_max = repere # z_axis_max
+    method scale =
+      let x_ratio, y_ratio, z_ratio = repere # ratio in
+      let {Geometry.x_max;x_min;y_max;y_min;z_max;z_min} = repere # box in
+      (x_max -. x_min) /. x_ratio,
+      (y_max -. y_min) /. y_ratio,
+      (z_max -. z_min) /. z_ratio
 
     method add_uniform_histogram ?widths ?depths ?colors ?name ?border x z y =
       let obj = Histogram.create gl basic_shader ?name ?widths ?depths ?colors ?border ~parametric:false x z y in

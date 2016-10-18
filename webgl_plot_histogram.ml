@@ -40,10 +40,12 @@ let create gl (shader : Shaders.Basic.shader) ?(name = "") ?widths ?depths ?colo
     method draw (ctx : context) shader_id round =
       if shader_id = shader # id && round = 0 then begin
 
-        let x_border = -. border *. (ctx # x_max -. ctx # x_min) in
-        let y_border = -. border *. (ctx # y_max -. ctx # y_min) in
-        let z_border = -. border *. (ctx # z_max -. ctx # z_min) in
-
+        let x_border, y_border, z_border =
+          let x_scale, y_scale, z_scale = ctx # scale in
+          -. border *. x_scale,
+          -. border *. y_scale,
+          -. border *. z_scale
+        in
         shader # set_alpha alpha;
         shader # set_object_matrix
           (float32_array (Vector.to_array

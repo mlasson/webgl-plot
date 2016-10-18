@@ -83,7 +83,7 @@ let draw_axis gl texture_shader
     lazy (Textures.create_ticks_texture y_ratio y_axis_label
             (coerce y_axis_ticks));
     lazy (Textures.create_ticks_texture z_ratio z_axis_label
-            (coerce y_axis_ticks));
+            (coerce z_axis_ticks));
   |] in
   let memo_table = Hashtbl.create 20 in
   let draw_face (front_facing, flip, a, u, v, texture_id) =
@@ -297,7 +297,6 @@ let draw_axis gl texture_shader
 
 let initialize gl texture_shader =
   object(this)
-    val mutable frame = None
     val mutable ticks = None
     val mutable cube = None
 
@@ -327,6 +326,7 @@ let initialize gl texture_shader =
     method y_axis_max = y_axis_max
     method z_axis_min = z_axis_min
     method z_axis_max = z_axis_max
+
     method box = {
       x_min = x_axis_min;
       x_max = x_axis_max;
@@ -336,13 +336,12 @@ let initialize gl texture_shader =
       z_max = z_axis_max;
     }
 
-
     method modify = changed <- true
 
-    method frame = frame
-
     method set_ratio r =
-      this # modify; ratio <- r
+      this # modify;
+      ratio <- r
+
     method ratio = ratio
 
     method set_x_axis_label s =

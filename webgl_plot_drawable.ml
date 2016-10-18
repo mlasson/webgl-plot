@@ -3,12 +3,7 @@ open Webgl_plot_math
 class type context =
   object
     method pointer : float * float
-    method x_min: float
-    method x_max: float
-    method y_min: float
-    method y_max: float
-    method z_min: float
-    method z_max: float
+    method scale: float * float * float (* How distances in object coordinates should be multiplied to appear the same on screen. *)
   end
 
 class type drawable =

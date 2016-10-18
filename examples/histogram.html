@@ -55,6 +55,7 @@ html, body {
         data : { 
           name : "wave",
           representation: "uniform",
+	  border: 0.005,
           x : x,
           z : z,
           y : histo3d(function(x,z) { return data[Math.floor(x * n)][1];}, x, z),
