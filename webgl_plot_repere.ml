@@ -68,7 +68,6 @@ let build_cube gl texture_shader {x_min; x_max; y_min; y_max; z_min; z_max} =
 let draw_axis gl texture_shader
     {x_min; x_max; y_min; y_max; z_max; z_min} (x_ratio, y_ratio, z_ratio)
     x_axis_label y_axis_label z_axis_label =
-  Printf.printf "%f, %f, %f\n%!" x_ratio y_ratio z_ratio;
   let face_textures = [|
     lazy (Textures.create_ticks_texture x_ratio x_axis_label
       (Textures.uniform_ticks 10 x_min x_max));
