@@ -155,11 +155,12 @@ let prepare_scene gl component =
       (z_max -. z_min) /. z_ratio
 
     method add_uniform_histogram ?widths ?depths ?colors ?name ?border x z y =
-      let obj = Histogram.create gl basic_shader ?name ?widths ?depths ?colors ?border ~parametric:false x z y in
+      let obj = Histogram.create gl basic_shader ?name ?widths ?depths ?colors ?border (`Grid (x, z, y)) in
       objects <- (obj :> drawable) :: objects
 
-    method add_parametric_histogram ?widths ?depths ?colors ?name ?border x z y =
-      ignore (x, z, y, widths, colors, name, depths, border)
+    method add_list_histogram ?widths ?depths ?colors ?name ?border centers =
+      let obj = Histogram.create gl basic_shader ?name ?widths ?depths ?colors ?border (`List centers) in
+      objects <- (obj :> drawable) :: objects
 
     method add_uniform_scatter ?radius ?colors ?name x z y =
       ignore (x, z, y, colors, radius, name)

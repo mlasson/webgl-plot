@@ -14,19 +14,16 @@ module Histogram : sig
         colors: float array array array option;
       } [@js "uniform"]
 
-    | Parametric of {
+    | List of {
         name: string option;
-
-        a: float array;
-        b: float array;
-        p: float array array array;
 
         border: float option;
 
-        widths: float array array option;
-        depths: float array array option;
-        colors: float array array array option;
-      } [@js "parametric"]
+        centers: float array array;
+        widths: float array option;
+        depths: float array option;
+        colors: float array array option;
+      } [@js "list"]
 
     | Unknown of Ojs.t [@js.default]
   [@@js.sum "representation"]

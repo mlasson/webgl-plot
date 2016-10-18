@@ -244,63 +244,112 @@ module Histogram = struct
         let a = f i j in
         assert (Array.length a = dim);
         Array.iteri (fun k x ->
-          Float32Array.set points (!pos + k) x) a;
+            Float32Array.set points (!pos + k) x) a;
         pos := !pos + dim;
       done
     done;
     points
 
-  let create ?widths ?depths ?colors xs zs ys =
-    let n, m = Float32Array.length xs, Float32Array.length zs in
-    assert (Float32Array.length ys = (n - 1) * (m - 1));
+  let create ?widths ?depths ?colors input =
+    let n, m =
+      match input with
+      | `Grid (xs, zs, ys) ->
+        let n, m = Float32Array.length xs - 1, Float32Array.length zs - 1 in
+        assert (Float32Array.length ys = n * m);
+        n, m
+      | `List centers -> Float32Array.length centers / 3, 1
+    in
     let get_w = match widths with
       | None -> fun _ _ -> 1.0
-      | Some w -> fun i j -> Float32Array.get w (i * (m - 1) + j)
+      | Some w -> fun i j -> Float32Array.get w (i * m + j)
     in
     let get_h = match depths with
       | None -> fun _ _ -> 1.0
-      | Some h -> fun i j -> Float32Array.get h (i * (m - 1) + j)
+      | Some h -> fun i j -> Float32Array.get h (i * m + j)
+    in
+    let get_box =
+      match input with
+      | `List (centers) ->
+        fun i j ->
+          let pos = 3 * (i * m + j) in
+          let x = Float32Array.get centers pos in
+          let y = Float32Array.get centers (pos + 1) in
+          let z = Float32Array.get centers (pos + 2) in
+          let w = get_w i j in
+          let h = get_h i j in
+          let x_min = x -. 0.5 *. w in
+          let x_max = x +. 0.5 *. w in
+          let z_min = z -. 0.5 *. h in
+          let z_max = z +. 0.5 *. h in
+          let y_min = 0.0 in
+          let y_max = y in
+          {x_min; x_max; z_min; z_max; y_min;y_max}
+      | `Grid (xs,zs,ys) ->
+        fun i j ->
+          let y_max = Float32Array.get ys (i * m + j) in
+          let y_min = 0.0 in
+          let x_min = Float32Array.get xs i in
+          let x_max = Float32Array.get xs (i+1) in
+          let z_min = Float32Array.get zs j in
+          let z_max = Float32Array.get zs (j+1) in
+          let w = get_w i j in
+          let h = get_h i j in
+          let x_min, x_max =
+            let mid = x_min +. x_max in
+            let dif = x_max -. x_min in
+            (mid -. w *. dif) /. 2.0,
+            (mid +. w *. dif) /. 2.0
+          in
+          let z_min, z_max =
+            let mid = z_min +. z_max in
+            let dif = z_max -. z_min in
+            (mid -. h *. dif) /. 2.0,
+            (mid +. h *. dif) /. 2.0
+          in
+          {x_min; x_max; z_min; z_max; y_min;y_max}
     in
     let get_color = match colors with
       | None ->
-        let min, max = match FloatData.min_max ys with Some c -> c | None -> 0.0, 1.0 in
+        let min, max, get_y =
+          match input with
+          | `List centers ->
+            let get_y i _ =
+              Float32Array.get centers (3 * i + 1)
+            in
+            if Float32Array.length centers > 1 then begin
+              let min = ref (Float32Array.get centers 1) in
+              let max = ref !min in
+              for k = 1 to (Float32Array.length centers) / 3 - 1 do
+                let y = Float32Array.get centers (3 * k + 1) in
+                if y < !min then min := y;
+                if y > !max then max := y;
+              done;
+              (!min, !max, get_y)
+            end else (0.0, 1.0, get_y)
+          | `Grid (_,_,ys) ->
+            let get_y i j =
+              Float32Array.get ys (i * m + j)
+            in
+            match FloatData.min_max ys with Some (min, max) -> (min, max, get_y) | None -> 0.0, 1.0, get_y
+        in
         let range = max -. min in
         fun i j ->
-          let y = Float32Array.get ys (i * (m - 1) + j) in
+          let y = get_y i j in
           let x, y, z = Color.white_cold_to_hot ((y -. min) /. range) in
           [|x;y;z|]
 
       | Some color -> fun i j ->
-          let pos = i * (m - 1) + j in
-          let x = Float32Array.get color pos in
-          let y = Float32Array.get color (pos + 1) in
-          let z = Float32Array.get color (pos + 2) in
-          [|x;y;z|]
+        let pos = i * m + j in
+        let x = Float32Array.get color pos in
+        let y = Float32Array.get color (pos + 1) in
+        let z = Float32Array.get color (pos + 2) in
+        [|x;y;z|]
     in
     let dim = 6 * 2 * 3 * 3 in
-    let triangles_boxes w h =
-      flatten dim (n-1) (m-1)
+    let triangles =
+      flatten dim n m
         (fun i j ->
-           let w = w i j in
-           let h = h i j in
-           let y_max = Float32Array.get ys (i * (m - 1) + j) in
-           let y_min = 0.0 in
-           let x_min = Float32Array.get xs i in
-           let x_max = Float32Array.get xs (i+1) in
-           let z_min = Float32Array.get zs j in
-           let z_max = Float32Array.get zs (j+1) in
-           let x_min, x_max =
-             let mid = x_min +. x_max in
-             let dif = x_max -. x_min in
-             (mid -. w *. dif) /. 2.0,
-             (mid +. w *. dif) /. 2.0
-           in
-           let z_min, z_max =
-             let mid = z_min +. z_max in
-             let dif = z_max -. z_min in
-             (mid -. h *. dif) /. 2.0,
-             (mid +. h *. dif) /. 2.0
-           in
+           let {x_min; x_max; z_min; z_max; y_min;y_max} = get_box i j in
            let v1 = [| x_min; y_max; z_min|] in
            let v2 = [| x_max; y_max; z_min|] in
            let v3 = [| x_max; y_max; z_max|] in
@@ -310,17 +359,16 @@ module Histogram = struct
            let v7 = [| x_max; y_min; z_min|] in
            let v8 = [| x_min; y_min; z_min|] in
            Array.concat [
-              v1;v2;v3;v3;v4;v1;
-              v5;v6;v7;v7;v8;v5;
-              v2;v7;v6;v6;v3;v2;
-              v1;v4;v5;v5;v8;v1;
-              v3;v6;v5;v5;v4;v3;
-              v1;v8;v7;v7;v2;v1;
+             v1;v2;v3;v3;v4;v1;
+             v5;v6;v7;v7;v8;v5;
+             v2;v7;v6;v6;v3;v2;
+             v1;v4;v5;v5;v8;v1;
+             v3;v6;v5;v5;v4;v3;
+             v1;v8;v7;v7;v2;v1;
            ])
     in
-    let triangles = triangles_boxes get_w get_h in
     let normals =
-      flatten dim (n-1) (m-1)
+      flatten dim n m
         (fun _ _ ->
            let top = [| 0.; 1.; 0.|] in
            let bot = [| 0.; -1.; 0.|] in
@@ -344,7 +392,7 @@ module Histogram = struct
            ])
     in
     let colors =
-      flatten dim (n-1) (m-1)
+      flatten dim n m
         (fun i j ->
            let a = get_color i j in
            let r = Array.create_float dim in
@@ -354,7 +402,7 @@ module Histogram = struct
            r)
     in
     let shrink_directions =
-      flatten dim (n-1) (m-1)
+      flatten dim n m
         (fun _ _ ->
            let left_front = [| -1.; 0.; -1.|] in
            let right_front = [| 1.; 0.; -1.|] in

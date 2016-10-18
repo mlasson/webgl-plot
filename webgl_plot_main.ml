@@ -66,13 +66,12 @@ let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio
           let y = flatten_array_array y in
           scene # add_uniform_histogram ?widths ?colors ?depths ?name ?border x z y
 
-        | Histogram Parametric {name; a; b; p; widths; depths; colors; border} ->
-          let widths = option_map flatten_array_array widths in
-          let colors = option_map flatten_array_array_array colors in
-          let a = float32_array a in
-          let b = float32_array b in
-          let p = flatten_array_array_array p in
-          scene # add_parametric_histogram ?widths ?colors ?depths ?name ?border a b p
+        | Histogram List {name; centers; widths; depths; colors; border} ->
+          let widths = option_map float32_array widths in
+          let depths = option_map float32_array depths in
+          let colors = option_map flatten_array_array colors in
+          let centers = flatten_array_array centers in
+          scene # add_list_histogram ?widths ?colors ?depths ?name ?border centers
 
         | Scatter Uniform {name; x; z; y; radius; colors; } ->
           let radius = option_map flatten_array_array radius in

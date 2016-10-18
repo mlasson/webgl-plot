@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Test</title>
+<script src="main.js"></script> 
+<meta charset="utf-8"/>
+<style>
+
+html, body {
+  font-family: Menlo, Consolas, monospace;
+  height: 100%;
+}
+
+</style>
+</head>
+<body>
+  <script>
+
+  window.onload = function() {
+    var n = 100;
+
+    var centers = [];
+
+    var spiral = function(k) {
+       var theta = 2 * Math.PI * k / (n - 1);
+       var r = (1 - k / (n - 1)) * 0.5;
+       var x = 0.5 + r * Math.sin(theta);
+       var z = 0.5 + r * Math.cos(theta);
+       var y = k / (n - 1);
+       return [x,y,z];
+    }
+    
+    for (var k = 0; k < n; k ++) {
+       centers.push(spiral(k));
+    }
+
+    var widths = centers.map(function() { return 1 / n; });
+
+    var series = [
+       { 
+        kind : "histogram",
+        data : { 
+          name : "wave",
+          representation: "list",
+	  wireframe: true,
+          centers : centers,
+	  widths: widths,
+	  depths: widths,
+        }
+      } 
+    ];
+
+    var graph = { series : series};
+
+    var plot = WebglPlot.create(graph);
+
+    document.getElementById("main").appendChild(plot);
+
+  };
+
+  </script>
+  <div id="main" style="height:95%">
+    <!-- HERE GOES THE RESULTS -->
+  </div>
+</body>
+</html>

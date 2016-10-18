@@ -7,13 +7,12 @@ module Geometry = Webgl_plot_geometry
 module Shaders = Webgl_plot_shaders
 module Intersection = Webgl_plot_intersection
 
-let create gl (shader : Shaders.Basic.shader) ?(name = "") ?widths ?depths ?colors ?(border = 0.001) ~parametric xs zs ys =
+let create gl (shader : Shaders.Basic.shader) ?(name = "") ?widths ?depths ?colors ?(border = 0.001) input =
   let open Shaders in
   let open Geometry in
   let {Histogram.triangles; normals; shrink_directions; colors} =
-    Histogram.create ?widths ?depths ?colors xs zs ys
+    Histogram.create ?widths ?depths ?colors input
   in
-  ignore(parametric);
   let a_triangles = create_attrib_array gl 3 triangles in
   let a_normals = create_attrib_array gl 3 normals in
   let a_shrink_directions = create_attrib_array gl 3 shrink_directions in
