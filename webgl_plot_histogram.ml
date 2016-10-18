@@ -10,25 +10,14 @@ module Intersection = Webgl_plot_intersection
 let create gl (shader : Shaders.Basic.shader) ?(name = "") ?widths ?depths ?colors ?(border = 0.001) ~parametric xs zs ys =
   let open Shaders in
   let open Geometry in
-  let min, max = match FloatData.min_max ys with Some c -> c | None -> 0.0, 1.0 in
-  let range = max -. min in
-  ignore colors;
-  ignore parametric;
-  let rainbow y =
-      Color.white_cold_to_hot ((y -. min) /. range)
+  let {Histogram.triangles; normals; shrink_directions; colors} =
+    Histogram.create ?widths ?depths ?colors xs zs ys
   in
-  let xs = array_of_float32 xs in
-  let ys = array_of_float32 ys in
-  let zs = array_of_float32 zs in
-  let {Histogram.triangles; normals; shrink_directions} =
-    Histogram.create ?widths ?depths xs zs ys in
+  ignore(parametric);
   let a_triangles = create_attrib_array gl 3 triangles in
   let a_normals = create_attrib_array gl 3 normals in
   let a_shrink_directions = create_attrib_array gl 3 shrink_directions in
-  let a_colors = create_attrib_array gl 3 (* rainbow *)
-    (FloatData.init3 (Float32Array.length triangles) (fun k ->
-        rainbow (Float32Array.get triangles (3 * k + 1))))
-  in
+  let a_colors = create_attrib_array gl 3 colors in
   let a_border_colors = create_attrib_array gl 3
     (FloatData.init3 (Float32Array.length triangles) (fun _ -> 0.0, 0.0, 0.0))
   in
@@ -68,7 +57,7 @@ let create gl (shader : Shaders.Basic.shader) ?(name = "") ?widths ?depths ?colo
         shader # set_explode 0.0;
         shader # draw_arrays Shaders.Triangles (a_triangles # count);
         shader # set_shrink (x_border, y_border, z_border);
-        shader # set_explode 0.00001;
+        shader # set_explode 0.0001;
         shader # set_colors a_colors;
         shader # draw_arrays Shaders.Triangles (a_triangles # count);
       end

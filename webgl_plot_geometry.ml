@@ -231,6 +231,7 @@ module Histogram = struct
   type t = {
     normals: Float32Array.t;
     triangles: Float32Array.t;
+    colors: Float32Array.t;
     shrink_directions: Float32Array.t;
   }
 
@@ -249,28 +250,45 @@ module Histogram = struct
     done;
     points
 
-  let create ?widths ?depths xs zs ys =
-    let n, m = Array.length xs, Array.length zs in
-    assert (Array.length ys = (n - 1) * (m - 1));
+  let create ?widths ?depths ?colors xs zs ys =
+    let n, m = Float32Array.length xs, Float32Array.length zs in
+    assert (Float32Array.length ys = (n - 1) * (m - 1));
     let get_w = match widths with
       | None -> fun _ _ -> 1.0
       | Some w -> fun i j -> Float32Array.get w (i * (m - 1) + j)
     in
-    let get_h = match ignore(depths); widths with
+    let get_h = match depths with
       | None -> fun _ _ -> 1.0
       | Some h -> fun i j -> Float32Array.get h (i * (m - 1) + j)
     in
+    let get_color = match colors with
+      | None ->
+        let min, max = match FloatData.min_max ys with Some c -> c | None -> 0.0, 1.0 in
+        let range = max -. min in
+        fun i j ->
+          let y = Float32Array.get ys (i * (m - 1) + j) in
+          let x, y, z = Color.white_cold_to_hot ((y -. min) /. range) in
+          [|x;y;z|]
+
+      | Some color -> fun i j ->
+          let pos = i * (m - 1) + j in
+          let x = Float32Array.get color pos in
+          let y = Float32Array.get color (pos + 1) in
+          let z = Float32Array.get color (pos + 2) in
+          [|x;y;z|]
+    in
+    let dim = 6 * 2 * 3 * 3 in
     let triangles_boxes w h =
-      flatten (6 * 2 * 3 * 3) (n-1) (m-1)
+      flatten dim (n-1) (m-1)
         (fun i j ->
            let w = w i j in
            let h = h i j in
-           let y_max = ys.(i * (m - 1) + j) in
+           let y_max = Float32Array.get ys (i * (m - 1) + j) in
            let y_min = 0.0 in
-           let x_min = xs.(i) in
-           let x_max = xs.(i+1) in
-           let z_min = zs.(j) in
-           let z_max = zs.(j+1) in
+           let x_min = Float32Array.get xs i in
+           let x_max = Float32Array.get xs (i+1) in
+           let z_min = Float32Array.get zs j in
+           let z_max = Float32Array.get zs (j+1) in
            let x_min, x_max =
              let mid = x_min +. x_max in
              let dif = x_max -. x_min in
@@ -291,7 +309,6 @@ module Histogram = struct
            let v6 = [| x_max; y_min; z_max|] in
            let v7 = [| x_max; y_min; z_min|] in
            let v8 = [| x_min; y_min; z_min|] in
-           let extrude v = List.map (Array.map2 (+.) v) in
            Array.concat [
               v1;v2;v3;v3;v4;v1;
               v5;v6;v7;v7;v8;v5;
@@ -303,7 +320,7 @@ module Histogram = struct
     in
     let triangles = triangles_boxes get_w get_h in
     let normals =
-      flatten (6 * 2 * 3 * 3) (n-1) (m-1)
+      flatten dim (n-1) (m-1)
         (fun _ _ ->
            let top = [| 0.; 1.; 0.|] in
            let bot = [| 0.; -1.; 0.|] in
@@ -326,8 +343,18 @@ module Histogram = struct
              front; front; front;
            ])
     in
+    let colors =
+      flatten dim (n-1) (m-1)
+        (fun i j ->
+           let a = get_color i j in
+           let r = Array.create_float dim in
+           for k = 0 to dim-1 do
+             r.(k) <- a.(k mod 3);
+           done;
+           r)
+    in
     let shrink_directions =
-      flatten (6 * 2 * 3 * 3) (n-1) (m-1)
+      flatten dim (n-1) (m-1)
         (fun _ _ ->
            let left_front = [| -1.; 0.; -1.|] in
            let right_front = [| 1.; 0.; -1.|] in
@@ -356,7 +383,8 @@ module Histogram = struct
     {
       triangles;
       normals;
-      shrink_directions
+      shrink_directions;
+      colors
     }
 
 

@@ -59,6 +59,7 @@ let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio
     List.iter (function
         | Histogram Uniform {name; x; z; y; widths; depths; colors; border} ->
           let widths = option_map flatten_array_array widths in
+          let depths = option_map flatten_array_array depths in
           let colors = option_map flatten_array_array_array colors in
           let x = float32_array x in
           let z = float32_array z in
