@@ -318,22 +318,19 @@ let initialize gl texture_shader =
     method y_axis_max = y_axis_max
     method z_axis_min = z_axis_min
     method z_axis_max = z_axis_max
+    method box = {
+      x_min = x_axis_min;
+      x_max = x_axis_max;
+      y_min = y_axis_min;
+      y_max = y_axis_max;
+      z_min = z_axis_min;
+      z_max = z_axis_max;
+    }
 
 
     method modify = changed <- true
 
     method frame = frame
-
-    method set_frame =
-      this # modify;
-      frame <- Some {
-          x_min = x_axis_min;
-          x_max = x_axis_max;
-          y_min = y_axis_min;
-          y_max = y_axis_max;
-          z_min = z_axis_min;
-          z_max = z_axis_max;
-        }
 
     method set_ratio r =
       this # modify; ratio <- r
@@ -344,32 +341,28 @@ let initialize gl texture_shader =
     method set_x_axis_ticks l =
       this # modify; x_axis_ticks <- l
     method set_x_axis_bounds (x_min, x_max) =
-      this # modify; x_axis_min <- x_min; x_axis_max <- x_max; this # set_frame
+      this # modify; x_axis_min <- x_min; x_axis_max <- x_max
 
     method set_y_axis_label s =
       this # modify; y_axis_label <- s
     method set_y_axis_ticks l =
       this # modify; y_axis_ticks <- l
     method set_y_axis_bounds (y_min, y_max) =
-      this # modify; y_axis_min <- y_min; y_axis_max <- y_max; this # set_frame
+      this # modify; y_axis_min <- y_min; y_axis_max <- y_max
 
     method set_z_axis_label s =
       this # modify; z_axis_label <- s
     method set_z_axis_ticks l =
       this # modify; z_axis_ticks <- l
     method set_z_axis_bounds (z_min, z_max) =
-      this # modify; z_axis_min <- z_min; z_axis_max <- z_max; this # set_frame
+      this # modify; z_axis_min <- z_min; z_axis_max <- z_max
 
     method compute =
-      if changed then begin
-        changed <- false;
-        match frame with
-        | Some box ->
-          delay (fun () ->
-              cube <- Some (build_cube gl texture_shader box);
-              ticks <- Some (draw_axis gl texture_shader box x_axis_label y_axis_label z_axis_label))
-        | _ -> this # set_frame
-      end
+      delay (fun () ->
+          let box = this # box in
+          cube <- Some (build_cube gl texture_shader box);
+          ticks <- Some (draw_axis gl texture_shader box x_axis_label y_axis_label z_axis_label);
+          changed <- false)
 
     method draw angle_x angle_y =
       if changed then this # compute;

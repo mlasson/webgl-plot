@@ -184,129 +184,127 @@ let prepare_scene gl component =
       objects <- (obj :> drawable) :: objects
 
     method render =
-      match repere # frame with
-      | None -> repere # set_frame
-      | Some frame ->
+      let frame = repere # box in
+      begin
+        let context = (this :> context) in
+        let open Webgl in
+        let open Constant in
+        let _proportion, matrix, matrix' = world_matrix aspect frame angle move (repere # ratio) in
+        let flat_matrix = float32_array (Vector.to_array matrix) in
+
+        depth_mask gl true;
+        disable gl _BLEND_;
+        enable gl _DEPTH_TEST_;
+        color_mask gl true true true true;
+        clear gl (_DEPTH_BUFFER_BIT_ lor _COLOR_BUFFER_BIT_);
+
+        repere_shader # use;
+        repere_shader # set_world_matrix flat_matrix;
         begin
-          let context = (this :> context) in
-          let open Webgl in
-          let open Constant in
-          let _proportion, matrix, matrix' = world_matrix aspect frame angle move (repere # ratio) in
-          let flat_matrix = float32_array (Vector.to_array matrix) in
+          let angle_x, angle_y, _ = angle in
+          repere # draw angle_x angle_y
+        end;
 
-          depth_mask gl true;
-          disable gl _BLEND_;
-          enable gl _DEPTH_TEST_;
-          color_mask gl true true true true;
-          clear gl (_DEPTH_BUFFER_BIT_ lor _COLOR_BUFFER_BIT_);
+        repere_shader # switch;
 
-          repere_shader # use;
-          repere_shader # set_world_matrix flat_matrix;
-          begin
-            let angle_x, angle_y, _ = angle in
-            repere # draw angle_x angle_y
+        (* round :
+         * 0 - all opaque things
+         * ----- in framebuffer
+         * 1 - redraw opaque, only depth
+         * 2 - draw all transparent things with blending
+         *
+         * At the end we display the framebuffer on the screen shader
+         * *)
+
+        let max_round = if List.for_all (fun x -> x # opaque) objects then 0 else 2 in
+
+        for round = 0 to max_round do
+
+          if round = 0 then begin
+            basic2d_shader # use;
+            List.iter (fun o -> o # draw context (basic2d_shader # id) round) objects;
+            basic2d_shader # switch;
+            bind_framebuffer gl _FRAMEBUFFER_ None;
+            viewport gl 0 0 width height;
           end;
 
-          repere_shader # switch;
+          if round = 1 then begin
+            composite_layer # resize width height;
+            composite_layer # bind;
+            clear_color gl 0.0 0.0 0.0 0.0;
+            clear gl (_DEPTH_BUFFER_BIT_ lor _COLOR_BUFFER_BIT_);
+            depth_mask gl true;
+            color_mask gl false false false false;
+          end;
 
-          (* round :
-           * 0 - all opaque things
-           * ----- in framebuffer
-           * 1 - redraw opaque, only depth
-           * 2 - draw all transparent things with blending
-           *
-           * At the end we display the framebuffer on the screen shader
-           * *)
+          if round = 2 then begin
+            depth_mask gl false;
+            color_mask gl true true true true;
+            enable gl _BLEND_;
+            blend_func gl _SRC_ALPHA_ _ONE_MINUS_DST_ALPHA_;
+            clear_color gl 0.0 0.0 0.0 0.0;
+            clear gl _COLOR_BUFFER_BIT_
+          end;
 
-          let max_round = if List.for_all (fun x -> x # opaque) objects then 0 else 2 in
-
-          for round = 0 to max_round do
-
-            if round = 0 then begin
-              basic2d_shader # use;
-              List.iter (fun o -> o # draw context (basic2d_shader # id) round) objects;
-              basic2d_shader # switch;
-              bind_framebuffer gl _FRAMEBUFFER_ None;
-              viewport gl 0 0 width height;
-            end;
-
-            if round = 1 then begin
-              composite_layer # resize width height;
-              composite_layer # bind;
-              clear_color gl 0.0 0.0 0.0 0.0;
-              clear gl (_DEPTH_BUFFER_BIT_ lor _COLOR_BUFFER_BIT_);
-              depth_mask gl true;
-              color_mask gl false false false false;
-            end;
-
-            if round = 2 then begin
-              depth_mask gl false;
-              color_mask gl true true true true;
-              enable gl _BLEND_;
-              blend_func gl _SRC_ALPHA_ _ONE_MINUS_DST_ALPHA_;
-              clear_color gl 0.0 0.0 0.0 0.0;
-              clear gl _COLOR_BUFFER_BIT_
-            end;
-
-            light_texture_shader # use;
-            light_texture_shader # set_world_matrix flat_matrix;
-            light_texture_shader # set_ambient_light 1.0 1.0 1.0;
-            light_texture_shader # set_light_position 1.0 1.0 (-2.0);
-            List.iter (fun o -> o # draw context (light_texture_shader # id) round) objects;
-            light_texture_shader # switch;
-
-            basic_shader # use;
-            basic_shader # set_world_matrix flat_matrix;
-            basic_shader # set_ambient_light 1.0 1.0 1.0;
-            basic_shader # set_light_position 1.0 1.0 (-2.0);
-            List.iter (fun o -> o # draw context (basic_shader # id) round) objects;
-            basic_shader # switch;
-          done;
-
-          bind_framebuffer gl _FRAMEBUFFER_ None;
-          viewport gl 0 0 width height;
-          enable gl _DEPTH_TEST_;
-          depth_mask gl true;
+          light_texture_shader # use;
+          light_texture_shader # set_world_matrix flat_matrix;
+          light_texture_shader # set_ambient_light 1.0 1.0 1.0;
+          light_texture_shader # set_light_position 1.0 1.0 (-2.0);
+          List.iter (fun o -> o # draw context (light_texture_shader # id) round) objects;
+          light_texture_shader # switch;
 
           basic_shader # use;
-          let x,y = pointer in
-          begin
-            let open Math.Vector in
-            let o =
-              four_to_three
-                (multiply_vector matrix' (Vector.of_four (x,y,1.0,1.0)))
-            in
-            let e =
-              four_to_three
-                (multiply_vector matrix' (Vector.of_four (x,y,-1.0,1.0)))
-            in
-            match List.choose (fun x -> x # ray o e) objects with
-            | [] -> begin
-                textbox # set_text "";
-                component # set_cursor_visibility true;
-              end
-            | p :: _ -> begin
-                textbox # set_position pointer;
-                component # set_cursor_visibility false;
-                let (x,y,z) as p = Vector.to_three p in
-                textbox # set_text (Printf.sprintf "%.2f, %.2f, %.2f" x y z);
-                sphere_pointer # set_position p;
-                sphere_pointer # draw context (basic_shader # id) 0
-              end
-          end;
+          basic_shader # set_world_matrix flat_matrix;
+          basic_shader # set_ambient_light 1.0 1.0 1.0;
+          basic_shader # set_light_position 1.0 1.0 (-2.0);
+          List.iter (fun o -> o # draw context (basic_shader # id) round) objects;
           basic_shader # switch;
+        done;
 
-          if max_round = 2 then begin
-            screen_shader # use;
-            bind_texture gl _TEXTURE_2D_ (Some (composite_layer # texture));
-            disable gl _DEPTH_TEST_;
-            enable gl _BLEND_;
-            blend_func gl _ONE_ _ONE_MINUS_SRC_ALPHA_;
-            screen_shader # draw;
-            screen_shader # switch;
-          end
+        bind_framebuffer gl _FRAMEBUFFER_ None;
+        viewport gl 0 0 width height;
+        enable gl _DEPTH_TEST_;
+        depth_mask gl true;
 
+        basic_shader # use;
+        let x,y = pointer in
+        begin
+          let open Math.Vector in
+          let o =
+            four_to_three
+              (multiply_vector matrix' (Vector.of_four (x,y,1.0,1.0)))
+          in
+          let e =
+            four_to_three
+              (multiply_vector matrix' (Vector.of_four (x,y,-1.0,1.0)))
+          in
+          match List.choose (fun x -> x # ray o e) objects with
+          | [] -> begin
+              textbox # set_text "";
+              component # set_cursor_visibility true;
+            end
+          | p :: _ -> begin
+              textbox # set_position pointer;
+              component # set_cursor_visibility false;
+              let (x,y,z) as p = Vector.to_three p in
+              textbox # set_text (Printf.sprintf "%.2f, %.2f, %.2f" x y z);
+              sphere_pointer # set_position p;
+              sphere_pointer # draw context (basic_shader # id) 0
+            end
+        end;
+        basic_shader # switch;
+
+        if max_round = 2 then begin
+          screen_shader # use;
+          bind_texture gl _TEXTURE_2D_ (Some (composite_layer # texture));
+          disable gl _DEPTH_TEST_;
+          enable gl _BLEND_;
+          blend_func gl _ONE_ _ONE_MINUS_SRC_ALPHA_;
+          screen_shader # draw;
+          screen_shader # switch;
         end
+
+      end
 
     initializer
       let open Webgl in
