@@ -113,8 +113,8 @@ let create_ticks_texture ratio label {values; texts} =
         else
           values.(k) *. size_y, texts.(k)
       in
-      push context (`Translate (0.0, values.(k) *. size_y));
-      draw_tick context texts.(k);
+      push context (`Translate (0.0, y));
+      draw_tick context s;
       pop context;
     done;
     close_path context;
