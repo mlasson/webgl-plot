@@ -4,8 +4,8 @@ open Canvas
 module Math = Webgl_plot_math
 
 type ticks = {
-  number : int;
-  text: int -> string
+  values: float array;
+  texts: string array;
 }
 
 let format_from_range r =
@@ -19,11 +19,14 @@ let format_from_range r =
   else
     Printf.sprintf "%6.0f"
 
-let uniform_ticks number x_min x_max = {
-  number;
-  text = (fun k ->
-     format_from_range (x_max -. x_min) (x_min +. (float k) *. (x_max -. x_min) /. (float number)));
-}
+let uniform_ticks number x_min x_max =
+  let values =
+    Array.init number (fun k -> (x_min +. (float k) *. (x_max -. x_min) /. (float (number - 1))))
+  in
+  {
+    values;
+    texts = Array.init number (fun k -> format_from_range (x_max -. x_min) values.(k));
+  }
 
 (*
             2 × real_size
@@ -38,25 +41,26 @@ let uniform_ticks number x_min x_max = {
         ----------------------
 *)
 
-let stack : [`Translate of float * float | `Rotate of float] Stack.t = Stack.create ()
+let stack : [`Translate of float * float | `Scale of float * float | `Rotate of float] Stack.t = Stack.create ()
 
 let push context t =
  Stack.push t stack;
  match t with
  | `Translate (x,y) -> translate context x y
+ | `Scale (x,y) -> scale context x y
  | `Rotate rho -> rotate context rho
 
 let pop context =
  match Stack.pop stack with
  | `Translate (x,y) -> translate context (-. x) (-. y)
+ | `Scale (x,y) -> scale context (1. /. x) (1. /. y)
  | `Rotate rho -> rotate context (-. rho)
 
 let tick_height = 0.03
-let real_size = 512
+let real_size = 1024
 let inner_size = 0.9 *. (float real_size)
 let line_width = float real_size /. 256.0
 let font_size = 10.0 *. line_width
-let font = Printf.sprintf "%.0fpx Arial" font_size
 
 let create_face_texture () =
   let canvas = Document.create_element document "canvas" in
@@ -82,8 +86,9 @@ let draw_tick context text =
   fill_text context text (-. tick_size -. line_width -. text_width) (0.5 *. (font_size -. line_width));
   fill_text context text (tick_size +. line_width) (0.5 *. (font_size -. line_width))
 
-let create_ticks_texture label {number; text} =
+let create_ticks_texture ratio label {values; texts} =
   let canvas = Document.create_element document "canvas" in
+  let number = Array.length values in
   Element.set_attribute canvas "width" (string_of_int real_size);
   Element.set_attribute canvas "height" (string_of_int real_size);
   let context =
@@ -95,32 +100,38 @@ let create_ticks_texture label {number; text} =
   clear_rect context 0.0 0.0 size size;
   set_fill_style context (`Color "black");
   set_line_width context line_width;
-  set_font context font;
+  set_font context (Printf.sprintf "%.0fpx Arial" font_size);
   let padding = 0.5 *. (size -. inner_size) in
-  let space = inner_size /. (float (number)) in
-  let draw_ticks text =
+  let size_y = inner_size *. ratio in
+  let draw_ticks reverse =
     begin_path context;
-    for k = 1 to number-1 do
-      push context (`Translate (0.0, space));
-      draw_tick context (text k);
+    for k = 0 to number-1 do
+      let y, s =
+        if reverse then
+          let k = number - 1 - k in
+          (1.0 -. values.(k)) *. size_y, texts.(k)
+        else
+          values.(k) *. size_y, texts.(k)
+      in
+      push context (`Translate (0.0, values.(k) *. size_y));
+      draw_tick context texts.(k);
+      pop context;
     done;
     close_path context;
     stroke context;
-    for _ = 1 to number-1 do
-      pop context;
-    done;
-    in
+  in
   let text_width = TextMetrics.width (measure_text context label) in
-  push context (`Translate (0.25 *. size, padding));
-  draw_ticks text;
+  push context (`Scale (1.0, 1.0 /. ratio));
+  push context (`Translate (0.25 *. size, padding *. ratio));
+  draw_ticks false;
   begin
-    push context (`Translate (-. 0.25 *. size +. 0.5 *. font_size, 0.5 *. (size -. text_width)));
+    push context (`Translate (-. 0.25 *. size +. 0.5 *. font_size, 0.5 *. (size -. text_width) *. ratio));
     push context (`Rotate (0.5 *. Math.pi));
       fill_text context label 0.0 0.0;
     pop context;
     pop context;
 
-    push context (`Translate (0.25 *. size -. 0.5 *. font_size, 0.5 *. (size +. text_width)));
+    push context (`Translate (0.25 *. size -. 0.5 *. font_size, 0.5 *. (size +. text_width) *. ratio));
     push context (`Rotate (-0.5 *. Math.pi));
       fill_text context label 0.0 0.0;
     pop context;
@@ -130,21 +141,22 @@ let create_ticks_texture label {number; text} =
 
   pop context;
 
-  push context (`Translate (0.75 *. size, padding));
-  draw_ticks (fun k-> text (number - k));
+  push context (`Translate (0.75 *. size, padding *. ratio));
+  draw_ticks true;
   begin
-    push context (`Translate (-. 0.25 *. size +. 0.5 *. font_size, 0.5 *. (size -. text_width)));
+    push context (`Translate (-. 0.25 *. size +. 0.5 *. font_size, 0.5 *. (size -. text_width) *. ratio));
     push context (`Rotate (0.5 *. Math.pi));
     fill_text context label 0.0 0.0;
     pop context;
     pop context;
-    push context (`Translate (0.25 *. size -. 0.5 *. font_size, 0.5 *. (size +. text_width)));
+    push context (`Translate (0.25 *. size -. 0.5 *. font_size, 0.5 *. (size +. text_width) *.ratio));
     push context (`Rotate (-0.5 *. Math.pi));
     fill_text context label 0.0 0.0;
     pop context;
     pop context;
   end;
 
+  pop context;
   pop context;
   assert (Stack.is_empty stack);
   if false then

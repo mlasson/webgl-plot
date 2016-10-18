@@ -66,14 +66,15 @@ let build_cube gl texture_shader {x_min; x_max; y_min; y_max; z_min; z_max} =
   cube
 
 let draw_axis gl texture_shader
-    {x_min; x_max; y_min; y_max; z_max; z_min}
+    {x_min; x_max; y_min; y_max; z_max; z_min} (x_ratio, y_ratio, z_ratio)
     x_axis_label y_axis_label z_axis_label =
+  Printf.printf "%f, %f, %f\n%!" x_ratio y_ratio z_ratio;
   let face_textures = [|
-    lazy (Textures.create_ticks_texture x_axis_label
+    lazy (Textures.create_ticks_texture x_ratio x_axis_label
       (Textures.uniform_ticks 10 x_min x_max));
-    lazy (Textures.create_ticks_texture y_axis_label
+    lazy (Textures.create_ticks_texture y_ratio y_axis_label
       (Textures.uniform_ticks 10 y_min y_max));
-    lazy (Textures.create_ticks_texture z_axis_label
+    lazy (Textures.create_ticks_texture z_ratio z_axis_label
       (Textures.uniform_ticks 10 z_min z_max));
   |] in
   let memo_table = Hashtbl.create 20 in
@@ -145,49 +146,49 @@ let draw_axis gl texture_shader
     | `Back, `Left ->
       draw_face front_facing false
         (x_min, y_min', z_max)
-        (-. 0.25 *. x_range, 0.0, 0.0)
+        (-. 0.25 *. x_range /. x_ratio, 0.0, 0.0)
         (0.0, y_range *. texture_padding, 0.0)
         1
     | `Back, `Right ->
       draw_face front_facing false
         (x_max, y_min', z_max)
-        (0.25 *. x_range, 0.0, 0.0)
+        (0.25 *. x_range /. x_ratio, 0.0, 0.0)
         (0.0, y_range *. texture_padding, 0.0)
         1
     | `Front, `Left ->
       draw_face front_facing false
         (x_max, y_min', z_min)
-        (0.25 *. x_range, 0.0, 0.0)
+        (0.25 *. x_range /. x_ratio, 0.0, 0.0)
         (0.0, y_range *. texture_padding, 0.0)
         1
     | `Front, `Right ->
       draw_face front_facing false
         (x_min, y_min', z_min)
-        (-. 0.25 *. x_range, 0.0, 0.0)
+        (-. 0.25 *. x_range /. x_ratio, 0.0, 0.0)
         (0.0, y_range *. texture_padding, 0.0)
         1
     | `Left, `Left ->
       draw_face front_facing false
         (x_min, y_min', z_min)
-        (0.0, 0.0, -. 0.25 *. z_range)
+        (0.0, 0.0, -. 0.25 *. z_range /. z_ratio)
         (0.0, y_range *. texture_padding, 0.0)
         1
     | `Left, `Right ->
       draw_face front_facing false
         (x_min, y_min', z_max)
-        (0.0, 0.0, 0.25 *. z_range)
+        (0.0, 0.0, 0.25 *. z_range /. z_ratio)
         (0.0, y_range *. texture_padding, 0.0)
         1
     | `Right, `Left ->
       draw_face front_facing false
         (x_max, y_min', z_max)
-        (0.0, 0.0, 0.25 *. z_range)
+        (0.0, 0.0, 0.25 *. z_range /. z_ratio)
         (0.0, y_range *. texture_padding, 0.0)
         1
     | `Right, `Right ->
       draw_face front_facing false
         (x_max, y_min', z_min)
-        (0.0, 0.0, -. 0.25 *. z_range)
+        (0.0, 0.0, -. 0.25 *. z_range /. z_ratio)
         (0.0, y_range *. texture_padding, 0.0)
         1
   in
@@ -195,25 +196,25 @@ let draw_axis gl texture_shader
     | `Bottom, `Bottom ->
       draw_face true flip
         (x_min', y_min, z_min)
-        (0.0, 0.0, -. 0.25 *. z_range)
+        (0.0, 0.0, -. 0.25 *. z_range /. z_ratio)
         (x_range *. texture_padding, 0.0, 0.0)
         0
     | `Bottom, `Top ->
       draw_face false flip
         (x_min', y_min, z_max)
-        (0.0, 0.0, 0.25 *. z_range)
+        (0.0, 0.0, 0.25 *. z_range /. z_ratio)
         (x_range *. texture_padding, 0.0, 0.0)
         0
     | `Top, `Bottom ->
       draw_face false flip
         (x_min', y_max, z_min)
-        (0.0, 0.0, -. 0.25 *. z_range)
+        (0.0, 0.0, -. 0.25 *. z_range /. z_ratio)
         (x_range *. texture_padding, 0.0, 0.0)
         0
     | `Top, `Top ->
       draw_face true flip
         (x_min', y_max, z_max)
-        (0.0, 0.0, 0.25 *. z_range)
+        (0.0, 0.0, 0.25 *. z_range /. z_ratio)
         (x_range *. texture_padding, 0.0, 0.0)
         0
   in
@@ -221,25 +222,25 @@ let draw_axis gl texture_shader
     | `Bottom, `Left ->
       draw_face false flip
         (x_min, y_min, z_min')
-        (-. 0.25 *. x_range, 0.0, 0.0)
+        (-. 0.25 *. x_range /. x_ratio, 0.0, 0.0)
         (0.0, 0.0, z_range *. texture_padding)
         2
     | `Bottom, `Right ->
       draw_face true flip
         (x_max, y_min, z_min')
-        (0.25 *. x_range, 0.0, 0.0)
+        (0.25 *. x_range /. x_ratio, 0.0, 0.0)
         (0.0, 0.0, z_range *. texture_padding)
         2
     | `Top, `Left ->
       draw_face true flip
         (x_min, y_max, z_min')
-        (-. 0.25 *. x_range, 0.0, 0.0)
+        (-. 0.25 *. x_range /. x_ratio, 0.0, 0.0)
         (0.0, 0.0, z_range *. texture_padding)
         2
     | `Top, `Right ->
       draw_face false flip
         (x_max, y_max, z_min')
-        (0.25 *. x_range, 0.0, 0.0)
+        (0.25 *. x_range /. x_ratio, 0.0, 0.0)
         (0.0, 0.0, z_range *. texture_padding)
         2
   in
@@ -361,7 +362,7 @@ let initialize gl texture_shader =
       delay (fun () ->
           let box = this # box in
           cube <- Some (build_cube gl texture_shader box);
-          ticks <- Some (draw_axis gl texture_shader box x_axis_label y_axis_label z_axis_label);
+          ticks <- Some (draw_axis gl texture_shader box ratio x_axis_label y_axis_label z_axis_label);
           changed <- false)
 
     method draw angle_x angle_y =

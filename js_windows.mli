@@ -265,6 +265,7 @@ module Canvas : sig
   val measure_text: context -> string -> TextMetrics.t
   val rotate: context -> float -> unit
   val translate: context -> float -> float -> unit
+  val scale: context -> float -> float -> unit
   val clear_rect: context -> float -> float -> float -> float -> unit
 end
 
