@@ -58,6 +58,8 @@ html, body {
           x : x,
           z : z,
           y : histo3d(function(x,z) { return data[Math.floor(x * n)][1];}, x, z),
+          widths: histo3d(function(x,z) { return 0.5 }, x, z),
+          depths: histo3d(function(x,z) { return 0.25 }, x, z),
         }
       }, 
     ];
