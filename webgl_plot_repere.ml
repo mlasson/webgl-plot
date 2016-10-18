@@ -6,6 +6,7 @@ open Webgl_plot_geometry
 module Math = Webgl_plot_math
 module Shaders = Webgl_plot_shaders
 module Textures = Webgl_plot_textures
+module Export = Webgl_plot_export
 
 let delay f =
   let open Js_windows in
@@ -65,16 +66,24 @@ let build_cube gl texture_shader {x_min; x_max; y_min; y_max; z_min; z_max} =
   delay (fun () -> cube # set_texture (Textures.create_face_texture ()));
   cube
 
+let coerce l =
+  let l = Array.of_list l in
+  Array.sort (fun ({value = x; _} : Export.tick) {value = y; _} -> compare x y) l;
+  let values = Array.map (fun {Export.value; _} -> value) l in
+  let texts = Array.map (fun ({label; _} : Export.tick) -> label) l in
+  {Textures.values; texts}
+
+
 let draw_axis gl texture_shader
     {x_min; x_max; y_min; y_max; z_max; z_min} (x_ratio, y_ratio, z_ratio)
-    x_axis_label y_axis_label z_axis_label =
+    x_axis_label x_axis_ticks y_axis_label y_axis_ticks z_axis_label z_axis_ticks =
   let face_textures = [|
     lazy (Textures.create_ticks_texture x_ratio x_axis_label
-      (Textures.uniform_ticks 10 x_min x_max));
+      (coerce x_axis_ticks));
     lazy (Textures.create_ticks_texture y_ratio y_axis_label
-      (Textures.uniform_ticks 10 y_min y_max));
+            (coerce y_axis_ticks));
     lazy (Textures.create_ticks_texture z_ratio z_axis_label
-      (Textures.uniform_ticks 10 z_min z_max));
+            (coerce y_axis_ticks));
   |] in
   let memo_table = Hashtbl.create 20 in
   let draw_face (front_facing, flip, a, u, v, texture_id) =
@@ -361,7 +370,7 @@ let initialize gl texture_shader =
       delay (fun () ->
           let box = this # box in
           cube <- Some (build_cube gl texture_shader box);
-          ticks <- Some (draw_axis gl texture_shader box ratio x_axis_label y_axis_label z_axis_label);
+          ticks <- Some (draw_axis gl texture_shader box ratio x_axis_label x_axis_ticks y_axis_label y_axis_ticks z_axis_label z_axis_ticks);
           changed <- false)
 
     method draw angle_x angle_y =
