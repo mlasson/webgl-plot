@@ -162,13 +162,5 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
       last_intersection <- r;
       r
 
-    initializer
-      let open Webgl in
-      let open Webgl.Constant in
-      bind_texture gl _TEXTURE_2D_ (Some (framebuffer # texture));
-      tex_parameteri gl _TEXTURE_2D_ _TEXTURE_WRAP_S_ _REPEAT_;
-      tex_parameteri gl _TEXTURE_2D_ _TEXTURE_WRAP_T_ _REPEAT_;
-      bind_texture gl _TEXTURE_2D_ None
-
   end
 
