@@ -51,18 +51,18 @@ html, body {
     var blue = graph3d(function(x,z) { return [0,0,1]}, x, z);
 
     var torus = function(xc,yc,zc,r,R,flip) {
-	    return graph3d(function(s,t) {
-		  var theta = 2.0 * Math.PI * s; 
-		  var phi = 2.0 * Math.PI * t;
+            return graph3d(function(s,t) {
+                  var theta = 2.0 * Math.PI * s; 
+                  var phi = 2.0 * Math.PI * t;
 
-		  var x = xc + (R + r * Math.cos(theta)) * Math.cos(phi);
-		  var y = zc + r * Math.sin(theta);
-		  var z = yc + (R + r * Math.cos(theta)) * Math.sin(phi);
-		  if (flip) {
-   		    return [x,y,z];
-		  } else {
+                  var x = xc + (R + r * Math.cos(theta)) * Math.cos(phi);
+                  var y = zc + r * Math.sin(theta);
+                  var z = yc + (R + r * Math.cos(theta)) * Math.sin(phi);
+                  if (flip) {
+                       return [x,y,z];
+                  } else {
                     return [x,z,y];
-		  }}, x, z);};
+                  }}, x, z);};
 
     var series = [
       { 
