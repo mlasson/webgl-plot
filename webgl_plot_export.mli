@@ -71,6 +71,8 @@ module Surface : sig
         colors: float array array array option;
         alpha: float option;
         wireframe: bool option;
+        magnetic: bool option;
+
       }[@js "uniform"]
 
     | Parametric of {
@@ -83,6 +85,7 @@ module Surface : sig
         colors: float array array array option;
         alpha: float option;
         wireframe: bool option;
+        magnetic: bool option;
       }[@js "parametric"]
 
     | Unknown of Ojs.t [@js.default]
@@ -123,8 +126,6 @@ type chart = {
   series: series list;
 
   pointer_kind: pointer_kind option;
-
-  magnetic: bool option;
 
   ratio: (float * float * float) option;
 }

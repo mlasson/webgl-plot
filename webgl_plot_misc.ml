@@ -39,8 +39,6 @@ let option_map f o =
   | None -> None
   | Some x -> Some (f x)
 
-
-
 module Index = struct
 
   type t =
@@ -83,6 +81,38 @@ let float32_array a =
   Float32Array.new_float32_array (`Data a)
 
 module FloatData = struct
+
+  let closest_point dim dist a =
+    let buffer = Array.create_float dim in
+    let result = Array.create_float dim in
+    let n = Float32Array.length a in
+    let fill_buffer p =
+      for k = 0 to dim - 1 do
+        buffer.(k) <- Float32Array.get a (p + k)
+      done
+    in
+    let swap () =
+      for k = 0 to dim - 1 do
+        result.(k) <- buffer.(k)
+      done
+    in
+    assert (n mod dim = 0);
+    if n = 0 then
+      None
+    else begin
+      fill_buffer 0;
+      swap ();
+      let current = ref (dist buffer) in
+      for k = 1 to (n / dim) - 1 do
+        fill_buffer (dim * k);
+        let d = dist buffer in
+        if d < !current then begin
+          swap ();
+          current := d;
+        end
+      done;
+      Some result
+    end
 
   let init size f =
     let result = Float32Array.new_float32_array (`Size size) in

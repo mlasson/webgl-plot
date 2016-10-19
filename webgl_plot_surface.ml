@@ -3,13 +3,14 @@ open Webgl_plot_misc
 open Webgl_plot_math
 open Webgl_plot_drawable
 
+module Math = Webgl_plot_math
 module Geometry = Webgl_plot_geometry
 module Shaders = Webgl_plot_shaders
 module Intersection = Webgl_plot_intersection
 
 
 let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shaders.Basic2d.shader) (shader_wireframe : Shaders.Basic.shader)
-              ?(name = "") ?(wireframe = false) ?colors ?alpha ~parametric xs zs ys =
+              ?(name = "") ?(wireframe = false) ?(magnetic = false) ?colors ?alpha ~parametric xs zs ys =
   let open Shaders in
   let min, max = match FloatData.min_max ys with Some c -> c | None -> 0.0, 1.0 in
   let {Geometry.Surface.vertices; triangles; wireframe = wireframe_vertices; normals; bounds; texcoords} =
@@ -77,21 +78,21 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
   let e_wireframe = create_element_array gl wireframe_vertices in
   let a_grid = new attrib_array gl 3 in
   let a_grid_colors = create_attrib_array gl 3 (FloatData.init3 12 (fun _ -> 0.0, 0.0, 0.0)) in
-  let framebuffer = new fbo gl 512 512 in
+  let texture_resolution = 1024 in
+  let framebuffer = new fbo gl 1024 1024 in
   object
     val name = name
     val wireframe = wireframe
     val alpha = alpha
     val opaque = opaque
-    val texture_resolution = 512
 
-
+    val mutable magnetic = magnetic
     val mutable last_intersection = None
-    val mutable grid_width = 0.005
+    val mutable grid_width = 0.003
 
     method opaque = opaque
 
-    method draw (_ctx : context) id round =
+    method draw (ctx : context) id round =
       let open Webgl in
       let open Constant in
       if round = 0 && id = shader_texture # id then begin
@@ -103,35 +104,33 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
           shader_texture # set_colors a_colors;
           shader_texture # set_positions a_params;
           shader_texture # draw_elements Shaders.Triangles e_triangles;
-        end;
 
-        begin match last_intersection with
-        | Some p when round = 0 ->
-          let x,_,z = Vector.to_three p in
-          let x = -1. +. 2.0 *. (x -. bounds.x_min) /. (bounds.x_max -. bounds.x_min) in
-          let z = -1. +. 2.0 *. (z -. bounds.z_min) /. (bounds.z_max -. bounds.z_min) in
+          if ctx # projection_valid && not parametric then begin
+            let x,_,z = ctx # pointer_projection in
+            let x = -1. +. 2.0 *. (x -. bounds.x_min) /. (bounds.x_max -. bounds.x_min) in
+            let z = -1. +. 2.0 *. (z -. bounds.z_min) /. (bounds.z_max -. bounds.z_min) in
 
-          a_grid # fill (Float32Array.new_float32_array (`Data [|
-              x -. grid_width;-1.0; 1.0;
-              x +. grid_width;-1.0; 1.0;
-              x -. grid_width; 1.0; 1.0;
-              x +. grid_width;-1.0; 1.0;
-              x +. grid_width; 1.0; 1.0;
-              x -. grid_width; 1.0; 1.0;
-              -1.0;z -. grid_width; 1.0;
-              -1.0;z +. grid_width; 1.0;
-               1.0;z -. grid_width; 1.0;
-              -1.0;z +. grid_width; 1.0;
-               1.0;z +. grid_width; 1.0;
-               1.0;z -. grid_width; 1.0;
-            |]));
+            a_grid # fill (Float32Array.new_float32_array (`Data [|
+                x -. grid_width;-1.0; 1.0;
+                x +. grid_width;-1.0; 1.0;
+                x -. grid_width; 1.0; 1.0;
+                x +. grid_width;-1.0; 1.0;
+                x +. grid_width; 1.0; 1.0;
+                x -. grid_width; 1.0; 1.0;
+                -1.0;z -. grid_width; 1.0;
+                -1.0;z +. grid_width; 1.0;
+                1.0;z -. grid_width; 1.0;
+                -1.0;z +. grid_width; 1.0;
+                1.0;z +. grid_width; 1.0;
+                1.0;z -. grid_width; 1.0;
+              |]));
 
-          shader_texture # set_matrix identity_matrix;
-          shader_texture # set_colors a_grid_colors;
-          shader_texture # set_positions a_grid;
-          shader_texture # set_alpha 1.0;
-          shader_texture # draw_arrays Shaders.Triangles (a_grid # count);
-        | _ -> ()
+            shader_texture # set_matrix identity_matrix;
+            shader_texture # set_colors a_grid_colors;
+            shader_texture # set_positions a_grid;
+            shader_texture # set_alpha 1.0;
+            shader_texture # draw_arrays Shaders.Triangles (a_grid # count);
+          end
         end
       end else if (id = shader # id) && ((opaque && round < 2) || (not opaque && round = 2)) then begin
         shader # set_object_matrix identity_matrix;
@@ -163,6 +162,15 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
       in
       last_intersection <- r;
       r
+
+    method magnetize ((x,y,z) as p) =
+      if magnetic then
+        match
+          FloatData.closest_point 3 (fun a -> Math.sq (a.(0) -. x) +. Math.sq (a.(1) -. y) +. Math.sq (a.(2) -. z)) vertices
+        with Some r -> r.(0), r.(1), r.(2)
+           | None -> x,y,z
+      else p
+
 
   end
 

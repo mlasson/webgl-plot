@@ -62,6 +62,7 @@ html, body {
           x : x,
           z : z,
           y : graph3d(function(x,z) { return (0.5 * (sq(Math.cos(x)) + sq (Math.sin(z))))}, x, z),
+          magnetic: true,
         }
       }, 
       { 
@@ -78,12 +79,13 @@ html, body {
       },
       { 
         kind : "surface",
+        magnetic: true,
         data : { 
           name : "constant",
           representation: "uniform",
           x : x,
           z : z,
-          y : graph3d(function(x,z) { return x}, x, z),
+          y : graph3d(function(x,z) { return (x / Math.PI)}, x, z),
           alpha:0.5,
           colors: blue,
         }

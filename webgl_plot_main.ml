@@ -10,15 +10,13 @@ module Math = Webgl_plot_math
 module Helper = Webgl_plot_dom_helper
 module Export = Webgl_plot_export
 
-let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio} =
+let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; ratio} =
   let open Export in
   let main = Helper.element_of_id "main" in
   let renderer gl textbox_factory =
     let open Scene in
     let scene = prepare_scene gl textbox_factory in
     let repere = scene # repere in
-
-    option_iter magnetic (scene # set_magnetic);
 
     option_iter ratio (repere # set_ratio);
     option_iter pointer_kind (function
@@ -112,7 +110,7 @@ let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio
 
           scene # add_parametric_scatter ?radius ?colors ?name a b p
 
-        | Surface Uniform {name; x; z; y; colors; wireframe; alpha} ->
+        | Surface Uniform {name; x; z; y; colors; wireframe; alpha; magnetic} ->
           let colors = option_map flatten_array_array_array colors in
           let x = float32_array x in
           let z = float32_array z in
@@ -122,9 +120,9 @@ let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio
           update_min_max z_min z_max z 1 0;
           update_min_max y_min y_max y 1 0;
 
-          scene # add_uniform_surface ?colors ?wireframe ?name ?alpha x z y
+          scene # add_uniform_surface ?colors ?wireframe ?name ?alpha ?magnetic x z y
 
-        | Surface Parametric {name; a; b; p; colors; wireframe; alpha} ->
+        | Surface Parametric {name; a; b; p; colors; wireframe; alpha; magnetic} ->
           let colors = option_map flatten_array_array_array colors in
           let a = float32_array a in
           let b = float32_array b in
@@ -134,7 +132,7 @@ let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio
           update_min_max y_min y_max p 3 1;
           update_min_max z_min z_max p 3 2;
 
-          scene # add_parametric_surface ?colors ?wireframe ?name ?alpha a b p
+          scene # add_parametric_surface ?colors ?wireframe ?name ?alpha ?magnetic a b p
         | _ -> (* TODO *) assert false) series;
 
     let automatic_bounds axis =

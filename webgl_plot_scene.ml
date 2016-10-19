@@ -115,7 +115,6 @@ let prepare_scene gl component =
   let sphere_factory = colored_sphere gl basic_shader in
   let textbox = component # new_textbox in
   let sphere_pointer = sphere_factory (0.0, 0.0, 0.0) in
-  let () = sphere_pointer # set_scale (0.005, 0.005, 0.005) in
 
   let composite_layer = new Shaders.fbo gl 1024 1024 in
   object(this)
@@ -125,13 +124,20 @@ let prepare_scene gl component =
     val mutable pointer = (0., 0.)
     val mutable height = 100
     val mutable width = 100
-    val mutable magnetic = false
     val mutable clock = 0.0
     val mutable pointer_kind = Cross
 
+    val mutable pointer_projection = (0., 0., 0.)
+    val mutable selected_object : #drawable option = None
+    val mutable pointer_magnetic = (0., 0., 0.)
+
     val mutable objects : #drawable list = []
 
+    val sphere_size = 0.01
+
     method pointer = pointer
+    method pointer_projection = pointer_projection
+    method projection_valid = selected_object <> None
 
     method set_aspect x = aspect <- x
     method set_angle x = angle <- x
@@ -140,7 +146,6 @@ let prepare_scene gl component =
     method set_height h = height <- max h 1
     method set_width w = width <- max w 1
     method set_pointer_kind k = pointer_kind <- k
-    method set_magnetic b = magnetic <- b
     method set_clock c = clock <- c
 
     method repere = repere
@@ -161,12 +166,12 @@ let prepare_scene gl component =
     method add_parametric_scatter ?radius ?colors ?name x z y =
       ignore (x, z, y, colors, radius, name)
 
-    method add_uniform_surface ?colors ?wireframe ?name ?alpha x z y =
-      let obj = Surface.create gl light_texture_shader basic2d_shader basic_shader ?name ?colors ?wireframe ?alpha ~parametric:false x z y in
+    method add_uniform_surface ?colors ?wireframe ?name ?alpha ?magnetic x z y =
+      let obj = Surface.create gl light_texture_shader basic2d_shader basic_shader ?name ?colors ?wireframe ?alpha ?magnetic ~parametric:false x z y in
       objects <- (obj :> drawable) :: objects
 
-    method add_parametric_surface ?colors ?wireframe ?name ?alpha x z y =
-      let obj = Surface.create gl light_texture_shader basic2d_shader basic_shader ?name ?colors ?wireframe ?alpha ~parametric:true x z y in
+    method add_parametric_surface ?colors ?wireframe ?name ?alpha ?magnetic x z y =
+      let obj = Surface.create gl light_texture_shader basic2d_shader basic_shader ?name ?colors ?wireframe ?alpha ?magnetic ~parametric:true x z y in
       objects <- (obj :> drawable) :: objects
 
     method add_sphere position scale color =
@@ -181,7 +186,6 @@ let prepare_scene gl component =
         let context = (this :> context) in
         let open Webgl in
         let open Constant in
-        Printf.printf "x_min = %g, x_max = %g\n%!" frame.x_min frame.x_max;
         let matrix, matrix' = world_matrix aspect frame angle move (repere # ratio) in
         let flat_matrix = float32_array (Vector.to_array matrix) in
 
@@ -251,6 +255,12 @@ let prepare_scene gl component =
           basic_shader # set_ambient_light 1.0 1.0 1.0;
           basic_shader # set_light_position 1.0 1.0 (-2.0);
           List.iter (fun o -> o # draw context (basic_shader # id) round) objects;
+          if selected_object <> None then begin
+            let x_scale, y_scale, z_scale = repere # scale in
+            sphere_pointer # set_scale (sphere_size *. x_scale, sphere_size *.y_scale, sphere_size *. z_scale);
+            sphere_pointer # set_position pointer_magnetic;
+            sphere_pointer # draw context (basic_shader # id) 0;
+          end;
           basic_shader # switch;
         done;
 
@@ -259,7 +269,6 @@ let prepare_scene gl component =
         enable gl _DEPTH_TEST_;
         depth_mask gl true;
 
-        basic_shader # use;
         let x,y = pointer in
         begin
           let open Math.Vector in
@@ -271,21 +280,31 @@ let prepare_scene gl component =
             four_to_three
               (multiply_vector matrix' (Vector.of_four (x,y,-1.0,1.0)))
           in
-          match List.choose (fun x -> x # ray o e) objects with
+          match List.choose (fun obj ->
+             match obj # ray o e with
+             | Some p ->
+               let x,y,z = Vector.to_three p in
+               let q =
+                 multiply_vector matrix (Vector.of_four (x,y,z, 1.0))
+               in
+               let _,_,d,w = Vector.to_four q in
+               Some (d /. w, p, obj)
+             | None -> None) objects |> List.sort (fun (d, _, _) (d', _, _) -> compare d d') with
           | [] -> begin
+              selected_object <- None;
               textbox # set_text "";
               component # set_cursor_visibility true;
             end
-          | p :: _ -> begin
+          | (_, p, obj) :: _ -> begin
               textbox # set_position pointer;
               component # set_cursor_visibility false;
-              let (x,y,z) as p = Vector.to_three p in
+              pointer_projection <- Vector.to_three p;
+              pointer_magnetic <- obj # magnetize pointer_projection;
+              let (x,y,z) = pointer_magnetic in
               textbox # set_text (Printf.sprintf "%.2f, %.2f, %.2f" x y z);
-              sphere_pointer # set_position p;
-              sphere_pointer # draw context (basic_shader # id) 0
+              selected_object <- Some obj;
             end
         end;
-        basic_shader # switch;
 
         if max_round = 2 then begin
           screen_shader # use;
