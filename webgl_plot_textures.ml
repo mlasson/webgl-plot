@@ -8,26 +8,6 @@ type ticks = {
   texts: string array;
 }
 
-let format_from_range r =
-  if r < 1e-4 || r > 1e7 then
-    Printf.sprintf "%.3g"
-  else if r < 10.0 then
-    let d = - int_of_float (log10 r) + 2 in
-    Printf.sprintf "%.*f" d
-  else if r < 1000.0 then
-    Printf.sprintf "%.2f"
-  else
-    Printf.sprintf "%6.0f"
-
-let uniform_ticks number x_min x_max =
-  let values =
-    Array.init number (fun k -> (x_min +. (float k) *. (x_max -. x_min) /. (float (number - 1))))
-  in
-  {
-    values;
-    texts = Array.init number (fun k -> format_from_range (x_max -. x_min) values.(k));
-  }
-
 (*
             2 × real_size
         ----------------------

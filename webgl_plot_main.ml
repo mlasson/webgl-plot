@@ -1,5 +1,6 @@
 open Js_windows
 open Webgl_plot_misc
+open Js_array
 open FloatData
 
 module Geometry = Webgl_plot_geometry
@@ -56,14 +57,39 @@ let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio
         option_iter ticks (repere # set_z_axis_ticks);
         option_iter bounds (repere # set_z_axis_bounds));
 
+    let update_min_max min_ref max_ref a d s =
+      let n = Float32Array.length a in
+      assert (n mod d = 0);
+      for k = 0 to n / d - 1 do
+        let x = Float32Array.get a ((d * k) + s) in
+        if x < !min_ref then min_ref := x;
+        if x > !max_ref then max_ref := x;
+      done
+    in
+
+    let x_min = ref max_float in
+    let x_max = ref min_float in
+    let y_min = ref max_float in
+    let y_max = ref min_float in
+    let z_min = ref max_float in
+    let z_max = ref min_float in
+
     List.iter (function
         | Histogram Uniform {name; x; z; y; widths; depths; colors; border} ->
           let widths = option_map flatten_array_array widths in
           let depths = option_map flatten_array_array depths in
           let colors = option_map flatten_array_array_array colors in
+
           let x = float32_array x in
           let z = float32_array z in
           let y = flatten_array_array y in
+
+          update_min_max x_min x_max x 1 0;
+          update_min_max z_min z_max z 1 0;
+          y_min := min !y_min 0.0;
+          update_min_max y_min y_max y 1 0;
+
+
           scene # add_uniform_histogram ?widths ?colors ?depths ?name ?border x z y
 
         | Histogram List {name; centers; widths; depths; colors; border} ->
@@ -71,6 +97,12 @@ let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio
           let depths = option_map float32_array depths in
           let colors = option_map flatten_array_array colors in
           let centers = flatten_array_array centers in
+
+          update_min_max x_min x_max centers 3 0;
+          y_min := min !y_min 0.0;
+          update_min_max y_min y_max centers 3 1;
+          update_min_max z_min z_max centers 3 2;
+
           scene # add_list_histogram ?widths ?colors ?depths ?name ?border centers
 
         | Scatter Uniform {name; x; z; y; radius; colors; } ->
@@ -79,6 +111,10 @@ let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio
           let x = float32_array x in
           let z = float32_array z in
           let y = flatten_array_array y in
+
+          update_min_max x_min x_max x 1 0;
+          update_min_max z_min z_max z 1 0;
+          update_min_max y_min y_max y 1 0;
           scene # add_uniform_scatter ?radius ?colors ?name x z y
 
         | Scatter Parametric {name; a; b; p; radius; colors; } ->
@@ -87,6 +123,7 @@ let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio
           let a = float32_array a in
           let b = float32_array b in
           let p = flatten_array_array_array p in
+
           scene # add_parametric_scatter ?radius ?colors ?name a b p
 
         | Surface Uniform {name; x; z; y; colors; wireframe; alpha} ->
@@ -94,6 +131,11 @@ let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio
           let x = float32_array x in
           let z = float32_array z in
           let y = flatten_array_array y in
+
+          update_min_max x_min x_max x 1 0;
+          update_min_max z_min z_max z 1 0;
+          update_min_max y_min y_max y 1 0;
+
           scene # add_uniform_surface ?colors ?wireframe ?name ?alpha x z y
 
         | Surface Parametric {name; a; b; p; colors; wireframe; alpha} ->
@@ -101,8 +143,50 @@ let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio
           let a = float32_array a in
           let b = float32_array b in
           let p = flatten_array_array_array p in
+
+          update_min_max x_min x_max p 3 0;
+          update_min_max y_min y_max p 3 1;
+          update_min_max z_min z_max p 3 2;
+
           scene # add_parametric_surface ?colors ?wireframe ?name ?alpha a b p
         | _ -> (* TODO *) assert false) series;
+
+    let automatic_bounds axis =
+      match axis with Some { bounds = Some _; _} -> false | _ -> true
+    in
+
+    if automatic_bounds x_axis then
+      repere # set_x_axis_bounds (!x_min, !x_max);
+
+    if automatic_bounds y_axis then
+      repere # set_y_axis_bounds (!y_min, !y_max);
+
+    if automatic_bounds z_axis then
+      repere # set_z_axis_bounds (!z_min, !z_max);
+
+    let automatic_ticks axis =
+      match axis with Some { ticks = Some _; _} -> false | _ -> true
+    in
+    let uniform_ticks ?(skip_first = false) n min max =
+      let n = if n <= 2 then 2 else n in
+      let d = if skip_first then 1 else 0 in
+      let format = format_from_range (max -. min) in
+      Array.init (n - d) (fun k ->
+          let value = min +. (float (k + d)) *. (max -. min) /. (float (n - 1)) in
+          { value; label = format value })
+      |> Array.to_list
+    in
+    let number_of_ticks ratio =
+      int_of_float (10.0 *. ratio)
+    in
+    let x_ratio, y_ratio, z_ratio = repere # ratio in
+    if automatic_ticks x_axis then
+      repere # set_x_axis_ticks (uniform_ticks (number_of_ticks x_ratio) !x_min !x_max);
+    if automatic_ticks y_axis then
+      repere # set_y_axis_ticks (uniform_ticks ~skip_first:true (number_of_ticks y_ratio) !y_min !y_max);
+    if automatic_ticks z_axis then
+      repere # set_z_axis_ticks (uniform_ticks (number_of_ticks z_ratio) !z_min !z_max);
+
 
     fun clock {Component.aspect; angle; move; pointer; width; height; _} ->
       scene # set_clock clock;
@@ -123,30 +207,3 @@ let () =
   let o = Ojs.empty_obj () in
   Ojs.set Ojs.global "WebglPlot" o;
   Ojs.set o "create" ([%js.of: Export.chart -> Element.t] create)
-
-
-(*
-let () = Window.set_onload window (fun _ ->
-    let open Export in
-    let series = [
-      Histogram (Uniform {
-          name = Some "test";
-          x = [| 1.0 |];
-          z = [| 1.0 |];
-          y = [| [| 1.0 |] |];
-          widths = Some [| [| 1.0 |] |];
-          colors = Some [| [| [| 1.0; 1.0; 1.0; 1.0 |]|]|];
-          wireframe = Some true;
-        })
-    ] in
-    let text = JSON.stringify (chart_to_js {
-        x_axis = None;
-        y_axis = None;
-        z_axis = None;
-        series;
-        pointer_kind = None;
-        magnetic = None;
-        ratio = None;
-      })
-    in
-    Helper.create ~text ~parent:(Document.body document) "code" [] |> ignore) *)

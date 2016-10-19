@@ -28,9 +28,9 @@ let world_matrix aspect {Geometry.x_max; x_min; y_max; y_min; z_min; z_max} (ang
   let move_y = -. range_y /. 2.0 -. y_min in
   let move_z = -. range_z /. 2.0 -. z_min in
 
-  let scale_x = ratio_x in
-  let scale_y = ratio_y in
-  let scale_z = ratio_z in
+  let scale_x = ratio_x /. range_x in
+  let scale_y = ratio_y /. range_y in
+  let scale_z = ratio_z /. range_z in
 
   let near, far =
      max 0.1 (-1. +. trans_z), 2.0 +. trans_z
@@ -47,8 +47,6 @@ let world_matrix aspect {Geometry.x_max; x_min; y_max; y_min; z_min; z_max} (ang
     |> multiply (my_projection near far aspect)
   in
 
-  let proportions = of_three (1. /. ratio_x, 1. /. ratio_y, 1. /. ratio_z) in
-
   let matrix' =
     (my_inverse_projection near far aspect)
     |> multiply flip
@@ -56,11 +54,11 @@ let world_matrix aspect {Geometry.x_max; x_min; y_max; y_min; z_min; z_max} (ang
     |> multiply (x_rotation (-. angle_x))
     |> multiply (y_rotation (-. angle_y))
     |> multiply (z_rotation (-. angle_z))
-    |> multiply (scale proportions)
+    |> multiply (scale (of_three (1.0 /. scale_x, 1.0 /. scale_y, 1.0 /. scale_z)))
     |> multiply (translation
                    (of_three (-. move_x, -. move_y, -. move_z)))
   in
-  proportions, matrix, matrix'
+  matrix, matrix'
 
 let colored_sphere gl shader =
   let open Geometry in
@@ -147,12 +145,7 @@ let prepare_scene gl component =
 
     method repere = repere
 
-    method scale =
-      let x_ratio, y_ratio, z_ratio = repere # ratio in
-      let {Geometry.x_max;x_min;y_max;y_min;z_max;z_min} = repere # box in
-      (x_max -. x_min) /. x_ratio,
-      (y_max -. y_min) /. y_ratio,
-      (z_max -. z_min) /. z_ratio
+    method scale = repere # scale
 
     method add_uniform_histogram ?widths ?depths ?colors ?name ?border x z y =
       let obj = Histogram.create gl basic_shader ?name ?widths ?depths ?colors ?border (`Grid (x, z, y)) in
@@ -188,7 +181,8 @@ let prepare_scene gl component =
         let context = (this :> context) in
         let open Webgl in
         let open Constant in
-        let _proportion, matrix, matrix' = world_matrix aspect frame angle move (repere # ratio) in
+        Printf.printf "x_min = %g, x_max = %g\n%!" frame.x_min frame.x_max;
+        let matrix, matrix' = world_matrix aspect frame angle move (repere # ratio) in
         let flat_matrix = float32_array (Vector.to_array matrix) in
 
         depth_mask gl true;
