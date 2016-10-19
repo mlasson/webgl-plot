@@ -296,12 +296,16 @@ let prepare_scene gl component =
               component # set_cursor_visibility true;
             end
           | (_, p, obj) :: _ -> begin
-              textbox # set_position pointer;
               component # set_cursor_visibility false;
               pointer_projection <- Vector.to_three p;
               pointer_magnetic <- obj # magnetize pointer_projection;
               let (x,y,z) = pointer_magnetic in
               textbox # set_text (Printf.sprintf "%.2f, %.2f, %.2f" x y z);
+              let q =
+                multiply_vector matrix (Vector.of_four (x,y,z, 1.0))
+              in
+              let x,y, _ = Vector.to_three (Vector.four_to_three q) in
+              textbox # set_position (x,y);
               selected_object <- Some obj;
             end
         end;

@@ -3,6 +3,7 @@ open Webgl_plot_misc
 open Webgl_plot_math
 open Webgl_plot_drawable
 
+module Math = Webgl_plot_math
 module Geometry = Webgl_plot_geometry
 module Shaders = Webgl_plot_shaders
 module Intersection = Webgl_plot_intersection
@@ -13,6 +14,8 @@ let create gl (shader : Shaders.Basic.shader) ?(name = "") ?widths ?depths ?colo
   let {Histogram.triangles; normals; shrink_directions; colors} =
     Histogram.create ?widths ?depths ?colors input
   in
+  let indexes = Index.of_array (Array.init ((Float32Array.length triangles) / 3) (fun x -> x)) in
+  let table = if true then Intersection.build_ray_table triangles indexes else [] in
   let a_triangles = create_attrib_array gl 3 triangles in
   let a_normals = create_attrib_array gl 3 normals in
   let a_shrink_directions = create_attrib_array gl 3 shrink_directions in
@@ -21,7 +24,6 @@ let create gl (shader : Shaders.Basic.shader) ?(name = "") ?widths ?depths ?colo
     (FloatData.init3 (Float32Array.length triangles) (fun _ -> 0.0, 0.0, 0.0))
   in
   object
-    inherit dummy_ray
     val alpha = 0.7
     val mutable scale = (1., 1., 1.)
     val mutable position = (0., 0., 0.)
@@ -62,6 +64,20 @@ let create gl (shader : Shaders.Basic.shader) ?(name = "") ?widths ?depths ?colo
         shader # set_colors a_colors;
         shader # draw_arrays Shaders.Triangles (a_triangles # count);
       end
+
+    method ray o e = Intersection.ray_triangles triangles table o e
+
+    method magnetize ((x,_,z) as p) =
+      match
+        match input with
+        | `Grid (_, _, _) -> None(* TODO *)
+        | `List centers ->
+          FloatData.closest_point 3 (fun a -> Math.sq (a.(0) -. x) +. Math.sq (a.(2) -. z)) centers
+      with Some r -> r.(0), r.(1), r.(2)
+         | None -> p
+
+
+
   end
 
 

@@ -87,7 +87,6 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
     val opaque = opaque
 
     val mutable magnetic = magnetic
-    val mutable last_intersection = None
     val mutable grid_width = 0.003
 
     method opaque = opaque
@@ -156,12 +155,7 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
         shader_wireframe # draw_elements Shaders.Lines e_wireframe
       end
 
-    method ray o e =
-      let r =
-        Intersection.ray_triangles vertices table o e
-      in
-      last_intersection <- r;
-      r
+    method ray o e = Intersection.ray_triangles vertices table o e
 
     method magnetize ((x,y,z) as p) =
       if magnetic then
