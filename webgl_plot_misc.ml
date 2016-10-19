@@ -25,6 +25,22 @@ module List = struct
   let map f l = List.rev_map f l |> List.rev
 end
 
+let default_option x = function
+  | None -> x
+  | Some y -> y
+
+let option_iter o f =
+  match o with
+  | None -> ()
+  | Some x -> f x
+
+let option_map f o =
+  match o with
+  | None -> None
+  | Some x -> Some (f x)
+
+
+
 module Index = struct
 
   type t =

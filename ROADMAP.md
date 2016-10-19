@@ -1,6 +1,6 @@
 Todos:
 
-* change of boundaries, 
+X change of boundaries, 
 * picking callback, magnetic, tuning
 * scatter plot
 

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Test</title>
+<script src="main.js"></script> 
+<meta charset="utf-8"/>
+<style>
+
+html, body {
+  font-family: Menlo, Consolas, monospace;
+  height: 100%;
+}
+
+</style>
+</head>
+<body>
+  <script>
+
+  window.onload = function() {
+    var res_x = 100;
+    var res_z = 100;
+
+    var new_unit_range = function(res) {
+      var a = new Array(res);
+      for (var i = 0;i < res; i++) {
+        a[i] = i / (res - 1);
+      }
+      return a;
+    };
+
+    var a = new_unit_range(res_x).map(function(x){return Math.PI * 2 * x; });
+
+    var graph3d = function (f, x, z) {
+      var res_x = x.length;
+      var res_z = z.length;
+
+      var y = new Array(res_x);
+      for (var i = 0;i < res_x; i++) {
+        var row = new Array(res_z);
+        y[i] = row;
+        for (var j = 0;j < res_z; j++) {
+          row[j] = f(x[i],z[j]);
+        }
+      }
+      return y;
+    }
+
+    var equation = graph3d(function(a,b) {
+	  var x = Math.cos(b) * (6 - (5/4 + Math.sin(3 * a)) * Math.sin(a - 3 * b));
+	  var z = (6 - (5/4 + Math.sin(3*a)) * Math.sin(a - 3 * b)) * Math.sin(b);
+	  var y = - Math.cos(a - 3 * b) * (5/4 + Math.sin(3 * a));
+	  return [x,y,z];
+    }, a, a);
+
+    var series = [
+      { 
+        kind : "surface",
+        data : { 
+          name : "constant",
+          representation: "parametric",
+          a : a,
+          b : a,
+          p : equation,
+          wireframe: true
+        }
+      }, 
+    ];
+
+    var graph = { series : series};
+
+    var plot = WebglPlot.create(graph);
+
+    document.getElementById("main").appendChild(plot);
+
+  };
+
+  </script>
+  <div id="main" style="height:95%">
+    <!-- HERE GOES THE RESULTS -->
+  </div>
+</body>
+</html>

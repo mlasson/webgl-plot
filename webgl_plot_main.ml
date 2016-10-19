@@ -10,20 +10,6 @@ module Math = Webgl_plot_math
 module Helper = Webgl_plot_dom_helper
 module Export = Webgl_plot_export
 
-let default_option x = function
-  | None -> x
-  | Some y -> y
-
-let option_iter o f =
-  match o with
-  | None -> ()
-  | Some x -> f x
-
-let option_map f o =
-  match o with
-  | None -> None
-  | Some x -> Some (f x)
-
 let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio} =
   let open Export in
   let main = Helper.element_of_id "main" in
@@ -168,7 +154,7 @@ let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio
       match axis with Some { ticks = Some _; _} -> false | _ -> true
     in
     let uniform_ticks ?(skip_first = false) n min max =
-      let n = if n <= 2 then 2 else n in
+      let n = if n <= 3 then 3 else n in
       let d = if skip_first then 1 else 0 in
       let format = format_from_range (max -. min) in
       Array.init (n - d) (fun k ->
@@ -176,8 +162,12 @@ let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio
           { value; label = format value })
       |> Array.to_list
     in
+
+    if ratio = None then
+      repere # set_ratio (1.0, (!y_max -. !y_min) /. (!x_max -. !x_min), (!z_max -. !z_min) /. (!x_max -. !x_min));
+
     let number_of_ticks ratio =
-      int_of_float (10.0 *. ratio)
+      int_of_float (15.0 *. ratio)
     in
     let x_ratio, y_ratio, z_ratio = repere # ratio in
     if automatic_ticks x_axis then
@@ -186,6 +176,7 @@ let create {Export.x_axis; y_axis; z_axis; series; pointer_kind; magnetic; ratio
       repere # set_y_axis_ticks (uniform_ticks ~skip_first:true (number_of_ticks y_ratio) !y_min !y_max);
     if automatic_ticks z_axis then
       repere # set_z_axis_ticks (uniform_ticks (number_of_ticks z_ratio) !z_min !z_max);
+
 
 
     fun clock {Component.aspect; angle; move; pointer; width; height; _} ->

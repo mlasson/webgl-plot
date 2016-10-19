@@ -29,12 +29,14 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
     | Some colors -> colors
   in
   let texture_matrix =
+    let x_min, x_max = default_option (0.0, 1.0) (FloatData.min_max xs) in
+    let z_min, z_max = default_option (0.0, 1.0) (FloatData.min_max zs) in
     let scale_x, scale_z =
-      2.0 /. (bounds.x_max -. bounds.x_min), 2.0 /. (bounds.z_max -. bounds.z_min)
+      2.0 /. (x_max -. x_min), 2.0 /. (z_max -. z_min)
     in
     let shift_x, shift_z =
-      -1.0 -. 2.0 *. bounds.x_min /. (bounds.x_max -. bounds.x_min),
-      -1.0 -. 2.0 *. bounds.z_min /. (bounds.z_max -. bounds.z_min)
+      -1.0 -. 2.0 *. x_min /. (x_max -. x_min),
+      -1.0 -. 2.0 *. z_min /. (z_max -. z_min)
     in
     (* Projects (x,_,z) into [-1,1] × [-1,1] × {1} *)
     Float32Array.new_float32_array (`Data [|
