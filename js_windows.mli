@@ -27,6 +27,8 @@ module Event : sig
 
   val buttons: t -> int  (* mouse *)
 
+  val alt_key: t -> bool (* key *)
+
   val delta_y: t -> float (* wheel *)
 end
 
@@ -83,7 +85,7 @@ module Element : sig
   val last_child: t -> t (* May return Element.null *)
   val next_sibling: t (* T *) -> t (* May return Element.null *)
   val has_child_nodes: t (* T *) -> bool
-  val add_event_listener: t (* T *) -> string -> (Event.t -> bool) -> bool -> unit
+  val add_event_listener: t (* T *) -> string -> (Event.t -> unit) -> bool -> unit
 
   val has_attribute: t -> string -> bool
   val get_attribute: t -> string -> string

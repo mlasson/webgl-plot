@@ -137,7 +137,7 @@ let create_webgl_canvas renderer =
 
   (* Disable context menu on right click: *)
   Element.add_event_listener canvas "contextmenu"
-    (fun t -> Event.prevent_default t; false) true;
+    (fun t -> Event.prevent_default t) true;
 
   begin (* Mouse move event: *)
     let open Event in
@@ -167,8 +167,7 @@ let create_webgl_canvas renderer =
           state.dragging <- true;
         end else
           state.dragging <- false;
-        state.pointer <- (x,y);
-        true) true;
+        state.pointer <- (x,y);) true;
     (* Wheel event *)
     Element.add_event_listener canvas "wheel" (fun evt ->
         prevent_default evt;
@@ -180,15 +179,29 @@ let create_webgl_canvas renderer =
           if 0.8 < tz' && tz' < 3.0 then
             tz' else tz
         in
-        state.move <- tx, ty, tz;
-        true) true;
+        state.move <- tx, ty, tz;) true;
   end;
 
   let gl = setup_webgl_context canvas in
 
+  let alt_down = ref false in
+
+  Element.add_event_listener (Document.body document) "keydown" (fun evt ->
+      if Event.alt_key evt then begin
+        Event.prevent_default evt;
+        alt_down := true;
+      end) true;
+
+  Element.add_event_listener (Document.body document) "keyup" (fun evt ->
+      if not (Event.alt_key evt) then begin
+        Event.prevent_default evt;
+        alt_down := false;
+      end) true;
+
   let next_frame = renderer gl
       (object
         method new_textbox = new_textbox ()
+        method alt_down = !alt_down
         method set_cursor_visibility b =
           let style = Element.style canvas in
           Style.set_cursor style (if b then "auto" else "none")
