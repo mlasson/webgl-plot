@@ -1,13 +1,7 @@
-Todos:
-
-X change of boundaries, 
 * picking callback, magnetic, tuning
-* scatter plot
-
-
-
 Future:
 
+* Scatter plot (0.5d)
 * Javascript "dynamic" interface (0.5d)
 * Ocaml interface (0.5d)
 * Intersection shader (0.5d)

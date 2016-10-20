@@ -356,9 +356,10 @@ let initialize gl texture_shader =
 
     method modify = changed <- true
 
-    method set_ratio r =
+    method set_ratio (x,y,z) =
       this # modify;
-      ratio <- r
+      let m = max (max x y) z in
+      ratio <- (x /. m, y /. m, z /. m)
 
     method ratio = ratio
 
