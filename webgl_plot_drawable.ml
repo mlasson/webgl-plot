@@ -1,25 +1,25 @@
 open Webgl_plot_math
 
-class type context =
+class identified =
+  let next_id = ref 0 in
   object
-    method pointer : float * float
-    method pointer_projection: float * float * float
-    method projection_valid : bool
-    method scale: float * float * float (* How distances in object coordinates should be multiplied to appear the same on screen. *)
+    val id = !next_id
+    method id = id
+    initializer
+      incr next_id
   end
 
-class type drawable =
+class type object3d =
   object
-    method draw : context -> int -> int -> unit
+    method id : int
+    method draw : int -> int -> unit
     method opaque : bool
-    method ray: three Vector.vector -> three Vector.vector -> three Vector.vector option
     method magnetize: float * float * float -> float * float * float
+    method ray: three Vector.vector -> three Vector.vector -> three Vector.vector option
   end
 
-class dummy_ray =
+class not_intersectable =
   object
     method ray (_ : three Vector.vector) (_ : three Vector.vector) = (None : three Vector.vector option)
     method magnetize (x : float * float * float) = x
   end
-
-

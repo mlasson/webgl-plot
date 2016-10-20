@@ -100,13 +100,6 @@ type series =
   | Unknown of Ojs.t [@js.default]
 [@@js.sum]
 
-type pointer_kind =
-  | Cross[@js "cross"]
-  | Sphere[@js "sphere"]
-  | None[@js "none"]
-  | Unknown of Ojs.t [@js.default]
-[@@js.sum]
-
 type tick = {
   value: float;
   label: string;
@@ -125,9 +118,8 @@ type chart = {
 
   series: series list;
 
-  pointer_kind: pointer_kind option;
-
   ratio: (float * float * float) option;
 }
+
 val chart_to_js: chart -> Ojs.t
 val chart_of_js: Ojs.t -> chart

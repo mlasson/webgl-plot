@@ -8,9 +8,11 @@ module Geometry = Webgl_plot_geometry
 module Shaders = Webgl_plot_shaders
 module Intersection = Webgl_plot_intersection
 
-let create gl (shader : Shaders.Basic.shader) ?(name = "") ?widths ?depths ?colors ?(border = 0.001) input =
+let create (scene : Webgl_plot_scene.scene) ?(name = "") ?widths ?depths ?colors ?(border = 0.001) input =
   let open Shaders in
   let open Geometry in
+  let gl = scene # gl in
+  let shader = scene # basic_shader in
   let {Histogram.triangles; normals; shrink_directions; colors} =
     Histogram.create ?widths ?depths ?colors input
   in
@@ -23,7 +25,9 @@ let create gl (shader : Shaders.Basic.shader) ?(name = "") ?widths ?depths ?colo
   let a_border_colors = create_attrib_array gl 3
     (FloatData.init3 (Float32Array.length triangles) (fun _ -> 0.0, 0.0, 0.0))
   in
-  object
+  object(this)
+    inherit identified
+
     val alpha = 0.7
     val mutable scale = (1., 1., 1.)
     val mutable position = (0., 0., 0.)
@@ -38,11 +42,11 @@ let create gl (shader : Shaders.Basic.shader) ?(name = "") ?widths ?depths ?colo
     method set_position x =
       position <- x
 
-    method draw (ctx : context) shader_id round =
+    method draw shader_id round =
       if shader_id = shader # id && round = 0 then begin
 
         let x_border, y_border, z_border =
-          let x_scale, y_scale, z_scale = ctx # scale in
+          let x_scale, y_scale, z_scale = scene # scale in
           -. border *. x_scale,
           -. border *. y_scale,
           -. border *. z_scale
@@ -95,8 +99,5 @@ let create gl (shader : Shaders.Basic.shader) ?(name = "") ?widths ?depths ?colo
       with Some r -> r.(0), r.(1), r.(2)
          | None -> p
 
-
-
+    initializer scene # add (this :> object3d)
   end
-
-

@@ -7,9 +7,6 @@ module Math = Webgl_plot_math
 module Geometry = Webgl_plot_geometry
 module Shaders = Webgl_plot_shaders
 module Intersection = Webgl_plot_intersection
-module Repere = Webgl_plot_repere
-module Surface = Webgl_plot_surface
-module Histogram = Webgl_plot_histogram
 
 let my_projection near far aspect =
   Vector.Const.projection ~fov:(pi /. 4.0) ~near ~far ~aspect
@@ -75,13 +72,15 @@ let colored_sphere gl shader =
       (FloatData.init3 (Float32Array.length mesh.vertices) (fun _ -> color));
     in
     object
-      inherit dummy_ray
+      inherit not_intersectable
+      inherit identified
+
       val mutable scale = (1., 1., 1.)
       val mutable position = (0., 0., 0.)
       method opaque = true
       method set_scale x = scale <- x
       method set_position x = position <- x
-      method draw (_ : context) id round =
+      method draw id round =
         if id = shader # id && round = 0 then begin
           shader # set_object_matrix
             (float32_array (Vector.to_array
@@ -97,20 +96,44 @@ let colored_sphere gl shader =
 
     end
 
-type pointer_kind =
-  | Cross
-  | Sphere
-  | None
+class type scene =
+  object
+    method add : Webgl_plot_drawable.object3d -> unit
+    method angle : float * float * float
+    method basic2d_shader : Shaders.Basic2d.shader
+    method basic_shader : Shaders.Basic.shader
+    method frame : Geometry.box
+    method gl : Webgl.context
+    method light_texture_shader : Shaders.LightAndTexture.shader
+    method move : float * float * float
+    method pointer : float * float
+    method pointer_magnetic : float * float * float
+    method pointer_projection : float * float * float
+    method projection_valid : bool
+    method ratio : float * float * float
+    method render : unit
+    method repere_shader : Shaders.Texture.shader
+    method scale : float * float * float
+    method screen_shader : Shaders.Screen.shader
+    method selected : Webgl_plot_drawable.object3d option
+    method set_angle : float * float * float -> unit
+    method set_aspect : float -> unit
+    method set_clock : float -> unit
+    method set_frame : Geometry.box -> unit
+    method set_height : int -> unit
+    method set_move : float * float * float -> unit
+    method set_pointer : float * float -> unit
+    method set_ratio : float * float * float -> unit
+    method set_width : int -> unit
+  end
 
-let prepare_scene gl component =
-
+let prepare_scene gl component : scene =
   let screen_shader = Shaders.Screen.init gl in
   let basic_shader = Shaders.Basic.init gl in
   let basic2d_shader = Shaders.Basic2d.init gl in
   let repere_shader = Shaders.Texture.init gl in
   let light_texture_shader = Shaders.LightAndTexture.init gl in
 
-  let repere = Repere.initialize gl repere_shader in
 
   let sphere_factory = colored_sphere gl basic_shader in
   let textbox = component # new_textbox in
@@ -118,212 +141,212 @@ let prepare_scene gl component =
 
   let composite_layer = new Shaders.fbo gl 1024 1024 in
   object(this)
+    (* Gl and Shaders *)
+    method gl = gl
+    method repere_shader = repere_shader
+    method basic_shader = basic_shader
+    method basic2d_shader = basic2d_shader
+    method light_texture_shader = light_texture_shader
+    method screen_shader = screen_shader
+
+    (* Time *)
+    val mutable clock = 0.0
+    method set_clock c = clock <- c
+
+    (* Screen *)
     val mutable aspect = 1.0
-    val mutable angle = (0., 0., 0.)
-    val mutable move = (0., 0., 0.)
-    val mutable pointer = (0., 0.)
     val mutable height = 100
     val mutable width = 100
-    val mutable clock = 0.0
-    val mutable pointer_kind = Cross
 
+    method set_height h = height <- max h 1
+    method set_width w = width <- max w 1
+    method set_aspect x = aspect <- x
+
+    (* View *)
+    val mutable angle = (0., 0., 0.)
+    val mutable move = (0., 0., 0.)
+    val mutable frame = {Geometry.x_min = 0.0; x_max = 0.0; y_min = 0.0; y_max = 0.0; z_min = 0.0; z_max = 0.0}
+    val mutable ratio = (1.0, 1.0, 1.0)
+
+    method angle = angle
+    method move = move
+    method frame = frame
+    method ratio = ratio
+
+    method scale =
+      let {Geometry.x_min; x_max; y_min; y_max; z_min; z_max} = this # frame in
+      let x_ratio, y_ratio, z_ratio = ratio in
+      (x_max -. x_min) /. x_ratio,
+      (y_max -. y_min) /. y_ratio,
+      (z_max -. z_min) /. z_ratio
+
+    method set_angle x = angle <- x
+    method set_move x = move <- x
+    method set_ratio r = ratio <- r
+    method set_frame f = frame <- f
+
+    (* Selection *)
+    val mutable selected_object : #object3d option = None
+    method selected = selected_object
+
+    (* Pointer (mouse) *)
+    val mutable pointer = (0., 0.)
+    val pointer_size = 0.01
     val mutable pointer_projection = (0., 0., 0.)
-    val mutable selected_object : #drawable option = None
     val mutable pointer_magnetic = (0., 0., 0.)
-
-    val mutable objects : #drawable list = []
-
-    val sphere_size = 0.01
 
     method pointer = pointer
     method pointer_projection = pointer_projection
+    method pointer_magnetic = pointer_magnetic
     method projection_valid = selected_object <> None
 
-    method set_aspect x = aspect <- x
-    method set_angle x = angle <- x
-    method set_move x = move <- x
     method set_pointer p = pointer <- p
-    method set_height h = height <- max h 1
-    method set_width w = width <- max w 1
-    method set_pointer_kind k = pointer_kind <- k
-    method set_clock c = clock <- c
 
-    method repere = repere
+    (* Object *)
+    val mutable objects : object3d list = []
+    method add (obj : object3d) = objects <- obj :: objects
 
-    method scale = repere # scale
-
-    method add_uniform_histogram ?widths ?depths ?colors ?name ?border x z y =
-      let obj = Histogram.create gl basic_shader ?name ?widths ?depths ?colors ?border (`Grid (x, z, y)) in
-      objects <- (obj :> drawable) :: objects
-
-    method add_list_histogram ?widths ?depths ?colors ?name ?border centers =
-      let obj = Histogram.create gl basic_shader ?name ?widths ?depths ?colors ?border (`List centers) in
-      objects <- (obj :> drawable) :: objects
-
-    method add_uniform_scatter ?radius ?colors ?name x z y =
-      ignore (x, z, y, colors, radius, name)
-
-    method add_parametric_scatter ?radius ?colors ?name x z y =
-      ignore (x, z, y, colors, radius, name)
-
-    method add_uniform_surface ?colors ?wireframe ?name ?alpha ?magnetic x z y =
-      let obj = Surface.create gl light_texture_shader basic2d_shader basic_shader ?name ?colors ?wireframe ?alpha ?magnetic ~parametric:false x z y in
-      objects <- (obj :> drawable) :: objects
-
-    method add_parametric_surface ?colors ?wireframe ?name ?alpha ?magnetic x z y =
-      let obj = Surface.create gl light_texture_shader basic2d_shader basic_shader ?name ?colors ?wireframe ?alpha ?magnetic ~parametric:true x z y in
-      objects <- (obj :> drawable) :: objects
-
-    method add_sphere position scale color =
+    method private add_sphere position scale color =
       let obj = sphere_factory color in
       obj # set_position position;
       obj # set_scale scale;
-      objects <- (obj :> drawable) :: objects
+      objects <- (obj :> object3d) :: objects
 
     method render =
-      let frame = repere # box in
-      begin
-        let context = (this :> context) in
-        let open Webgl in
-        let open Constant in
-        let matrix, matrix' = world_matrix aspect frame angle move (repere # ratio) in
-        let flat_matrix = float32_array (Vector.to_array matrix) in
+      let open Webgl in
+      let open Constant in
+      let matrix, matrix' = world_matrix aspect frame angle move ratio in
+      let flat_matrix = float32_array (Vector.to_array matrix) in
 
-        depth_mask gl true;
-        disable gl _BLEND_;
-        enable gl _DEPTH_TEST_;
-        color_mask gl true true true true;
-        clear gl (_DEPTH_BUFFER_BIT_ lor _COLOR_BUFFER_BIT_);
+      depth_mask gl true;
+      disable gl _BLEND_;
+      enable gl _DEPTH_TEST_;
+      color_mask gl true true true true;
+      clear gl (_DEPTH_BUFFER_BIT_ lor _COLOR_BUFFER_BIT_);
 
-        repere_shader # use;
-        repere_shader # set_world_matrix flat_matrix;
-        begin
-          let angle_x, angle_y, _ = angle in
-          repere # draw angle_x angle_y
+      (* round :
+       * 0 - all opaque things
+       * ----- in framebuffer
+       * 1 - redraw opaque, only depth
+       * 2 - draw all transparent things with blending
+       *
+       * At the end we display the framebuffer on the screen shader
+       * *)
+
+      let max_round = if List.for_all (fun x -> x # opaque) objects then 0 else 2 in
+
+      for round = 0 to max_round do
+
+        if round = 0 then begin
+          repere_shader # use;
+          repere_shader # set_world_matrix flat_matrix;
+          List.iter (fun o -> o # draw (repere_shader # id) round) objects;
+          repere_shader # switch;
+
+          basic2d_shader # use;
+          List.iter (fun o -> o # draw (basic2d_shader # id) round) objects;
+          basic2d_shader # switch;
+          bind_framebuffer gl _FRAMEBUFFER_ None;
+          viewport gl 0 0 width height;
         end;
 
-        repere_shader # switch;
+        if round = 1 then begin
+          composite_layer # resize width height;
+          composite_layer # bind;
+          clear_color gl 0.0 0.0 0.0 0.0;
+          clear gl (_DEPTH_BUFFER_BIT_ lor _COLOR_BUFFER_BIT_);
+          depth_mask gl true;
+          color_mask gl false false false false;
+        end;
 
-        (* round :
-         * 0 - all opaque things
-         * ----- in framebuffer
-         * 1 - redraw opaque, only depth
-         * 2 - draw all transparent things with blending
-         *
-         * At the end we display the framebuffer on the screen shader
-         * *)
+        if round = 2 then begin
+          depth_mask gl false;
+          color_mask gl true true true true;
+          enable gl _BLEND_;
+          blend_func gl _SRC_ALPHA_ _ONE_MINUS_DST_ALPHA_;
+          clear_color gl 0.0 0.0 0.0 0.0;
+          clear gl _COLOR_BUFFER_BIT_
+        end;
 
-        let max_round = if List.for_all (fun x -> x # opaque) objects then 0 else 2 in
+        light_texture_shader # use;
+        light_texture_shader # set_world_matrix flat_matrix;
+        light_texture_shader # set_ambient_light 1.0 1.0 1.0;
+        light_texture_shader # set_light_position 1.0 1.0 (-2.0);
+        List.iter (fun o -> o # draw (light_texture_shader # id) round) objects;
+        light_texture_shader # switch;
 
-        for round = 0 to max_round do
+        basic_shader # use;
+        basic_shader # set_world_matrix flat_matrix;
+        basic_shader # set_ambient_light 1.0 1.0 1.0;
+        basic_shader # set_light_position 1.0 1.0 (-2.0);
+        List.iter (fun o -> o # draw (basic_shader # id) round) objects;
+        if selected_object <> None then begin
+          let x_scale, y_scale, z_scale = this # scale in
+          sphere_pointer # set_scale (pointer_size *. x_scale, pointer_size *.y_scale, pointer_size *. z_scale);
+          sphere_pointer # set_position pointer_magnetic;
+          sphere_pointer # draw (basic_shader # id) 0;
+        end;
+        basic_shader # switch;
+      done;
 
-          if round = 0 then begin
-            basic2d_shader # use;
-            List.iter (fun o -> o # draw context (basic2d_shader # id) round) objects;
-            basic2d_shader # switch;
-            bind_framebuffer gl _FRAMEBUFFER_ None;
-            viewport gl 0 0 width height;
-          end;
+      bind_framebuffer gl _FRAMEBUFFER_ None;
+      viewport gl 0 0 width height;
+      enable gl _DEPTH_TEST_;
+      depth_mask gl true;
 
-          if round = 1 then begin
-            composite_layer # resize width height;
-            composite_layer # bind;
-            clear_color gl 0.0 0.0 0.0 0.0;
-            clear gl (_DEPTH_BUFFER_BIT_ lor _COLOR_BUFFER_BIT_);
-            depth_mask gl true;
-            color_mask gl false false false false;
-          end;
-
-          if round = 2 then begin
-            depth_mask gl false;
-            color_mask gl true true true true;
-            enable gl _BLEND_;
-            blend_func gl _SRC_ALPHA_ _ONE_MINUS_DST_ALPHA_;
-            clear_color gl 0.0 0.0 0.0 0.0;
-            clear gl _COLOR_BUFFER_BIT_
-          end;
-
-          light_texture_shader # use;
-          light_texture_shader # set_world_matrix flat_matrix;
-          light_texture_shader # set_ambient_light 1.0 1.0 1.0;
-          light_texture_shader # set_light_position 1.0 1.0 (-2.0);
-          List.iter (fun o -> o # draw context (light_texture_shader # id) round) objects;
-          light_texture_shader # switch;
-
-          basic_shader # use;
-          basic_shader # set_world_matrix flat_matrix;
-          basic_shader # set_ambient_light 1.0 1.0 1.0;
-          basic_shader # set_light_position 1.0 1.0 (-2.0);
-          List.iter (fun o -> o # draw context (basic_shader # id) round) objects;
-          if selected_object <> None then begin
-            let x_scale, y_scale, z_scale = repere # scale in
-            sphere_pointer # set_scale (sphere_size *. x_scale, sphere_size *.y_scale, sphere_size *. z_scale);
-            sphere_pointer # set_position pointer_magnetic;
-            sphere_pointer # draw context (basic_shader # id) 0;
-          end;
-          basic_shader # switch;
-        done;
-
-        bind_framebuffer gl _FRAMEBUFFER_ None;
-        viewport gl 0 0 width height;
-        enable gl _DEPTH_TEST_;
-        depth_mask gl true;
-
-        let x,y = pointer in
-        begin
-          let open Math.Vector in
-          let o =
-            four_to_three
-              (multiply_vector matrix' (Vector.of_four (x,y,1.0,1.0)))
-          in
-          let e =
-            four_to_three
-              (multiply_vector matrix' (Vector.of_four (x,y,-1.0,1.0)))
-          in
-          match List.choose (fun obj ->
-             match obj # ray o e with
-             | Some p ->
-               let x,y,z = Vector.to_three p in
-               let q =
-                 multiply_vector matrix (Vector.of_four (x,y,z, 1.0))
-               in
-               let _,_,d,w = Vector.to_four q in
-               Some (d /. w, p, obj)
-             | None -> None) objects |> List.sort (fun (d, _, _) (d', _, _) -> compare d d') with
-          | [] -> begin
-              selected_object <- None;
-              textbox # set_text "";
-              component # set_cursor_visibility true;
-            end
-          | (_, p, obj) :: _ -> begin
-              pointer_projection <- Vector.to_three p;
-              if component # alt_down then
-                pointer_magnetic <- pointer_projection
-              else
-                pointer_magnetic <- obj # magnetize pointer_projection;
-              let (x,y,z) = pointer_magnetic in
-              textbox # set_text (Printf.sprintf "%.2f, %.2f, %.2f" x y z);
+      let x,y = pointer in
+      begin
+        let open Math.Vector in
+        let o =
+          four_to_three
+            (multiply_vector matrix' (Vector.of_four (x,y,1.0,1.0)))
+        in
+        let e =
+          four_to_three
+            (multiply_vector matrix' (Vector.of_four (x,y,-1.0,1.0)))
+        in
+        match List.choose (fun obj ->
+            match obj # ray o e with
+            | Some p ->
+              let x,y,z = Vector.to_three p in
               let q =
                 multiply_vector matrix (Vector.of_four (x,y,z, 1.0))
               in
-              let x,y, _ = Vector.to_three (Vector.four_to_three q) in
-              let x',y' = pointer in
-              component # set_cursor_visibility (Math.sq (x -. x') +. Math.sq (y -. y') > 0.001);
-              textbox # set_position (x,y);
-              selected_object <- Some obj;
-            end
-        end;
+              let _,_,d,w = Vector.to_four q in
+              Some (d /. w, p, obj)
+            | None -> None) objects |> List.sort (fun (d, _, _) (d', _, _) -> compare d d') with
+        | [] -> begin
+            selected_object <- None;
+            textbox # set_text "";
+            component # set_cursor_visibility true;
+          end
+        | (_, p, obj) :: _ -> begin
+            pointer_projection <- Vector.to_three p;
+            if component # alt_down then
+              pointer_magnetic <- pointer_projection
+            else
+              pointer_magnetic <- obj # magnetize pointer_projection;
+            let (x,y,z) = pointer_magnetic in
+            textbox # set_text (Printf.sprintf "%.2f, %.2f, %.2f" x y z);
+            let q =
+              multiply_vector matrix (Vector.of_four (x,y,z, 1.0))
+            in
+            selected_object <- Some obj;
+            let x,y, _ = Vector.to_three (Vector.four_to_three q) in
+            textbox # set_position (x,y);
+            let x',y' = pointer in
+            component # set_cursor_visibility (Math.sq (x -. x') +. Math.sq (y -. y') > 0.001);
+          end
+      end;
 
-        if max_round = 2 then begin
-          screen_shader # use;
-          bind_texture gl _TEXTURE_2D_ (Some (composite_layer # texture));
-          disable gl _DEPTH_TEST_;
-          enable gl _BLEND_;
-          blend_func gl _ONE_ _ONE_MINUS_SRC_ALPHA_;
-          screen_shader # draw;
-          screen_shader # switch;
-        end
-
+      if max_round = 2 then begin
+        screen_shader # use;
+        bind_texture gl _TEXTURE_2D_ (Some (composite_layer # texture));
+        disable gl _DEPTH_TEST_;
+        enable gl _BLEND_;
+        blend_func gl _ONE_ _ONE_MINUS_SRC_ALPHA_;
+        screen_shader # draw;
+        screen_shader # switch;
       end
 
     initializer
@@ -332,4 +355,3 @@ let prepare_scene gl component =
       depth_func gl _LEQUAL_
 
   end
-

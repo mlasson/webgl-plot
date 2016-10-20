@@ -9,18 +9,26 @@ module Shaders = Webgl_plot_shaders
 module Intersection = Webgl_plot_intersection
 
 
-let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shaders.Basic2d.shader) (shader_wireframe : Shaders.Basic.shader)
-              ?(name = "") ?(wireframe = false) ?(magnetic = false) ?colors ?alpha ~parametric xs zs ys =
+let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(magnetic = false) ?colors ?alpha ~parametric xs zs ys =
   let open Shaders in
+
+  let gl = scene # gl in
+  let shader = scene # light_texture_shader in
+  let shader_texture = scene # basic2d_shader in
+  let shader_wireframe = scene # basic_shader in
+
   let min, max = match FloatData.min_max ys with Some c -> c | None -> 0.0, 1.0 in
+
   let {Geometry.Surface.vertices; triangles; wireframe = wireframe_vertices; normals; bounds; texcoords} =
     Geometry.Surface.create parametric xs zs ys
   in
+
   let alpha, opaque =
     match alpha with
     | Some alpha -> alpha, false
     | None -> 1.0, true
   in
+
   let colors = match colors with
     | None ->
       let range = (max -. min) in
@@ -29,6 +37,7 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
            Color.cold_to_hot ((y -. min) /. range)))
     | Some colors -> colors
   in
+
   let texture_matrix =
     let x_min, x_max = default_option (0.0, 1.0) (FloatData.min_max xs) in
     let z_min, z_max = default_option (0.0, 1.0) (FloatData.min_max zs) in
@@ -80,7 +89,9 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
   let a_grid_colors = create_attrib_array gl 3 (FloatData.init3 12 (fun _ -> 0.0, 0.0, 0.0)) in
   let texture_resolution = 1024 in
   let framebuffer = new fbo gl 1024 1024 in
-  object
+  object(this)
+    inherit identified
+
     val name = name
     val wireframe = wireframe
     val alpha = alpha
@@ -91,10 +102,10 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
 
     method opaque = opaque
 
-    method draw (ctx : context) id round =
+    method draw shader_id round =
       let open Webgl in
       let open Constant in
-      if round = 0 && id = shader_texture # id then begin
+      if round = 0 && shader_id = shader_texture # id then begin
         framebuffer # bind;
 
         shader_texture # set_alpha alpha;
@@ -104,8 +115,8 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
           shader_texture # set_positions a_params;
           shader_texture # draw_elements Shaders.Triangles e_triangles;
 
-          if ctx # projection_valid && not parametric then begin
-            let x,_,z = ctx # pointer_projection in
+          if scene # projection_valid && not parametric && match scene # selected with Some obj -> obj # id = id | _ -> false then begin
+            let x,_,z = scene # pointer_magnetic in
             let x = -1. +. 2.0 *. (x -. bounds.x_min) /. (bounds.x_max -. bounds.x_min) in
             let z = -1. +. 2.0 *. (z -. bounds.z_min) /. (bounds.z_max -. bounds.z_min) in
 
@@ -131,7 +142,7 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
             shader_texture # draw_arrays Shaders.Triangles (a_grid # count);
           end
         end
-      end else if (id = shader # id) && ((opaque && round < 2) || (not opaque && round = 2)) then begin
+      end else if (shader_id = shader # id) && ((opaque && round < 2) || (not opaque && round = 2)) then begin
         shader # set_object_matrix identity_matrix;
         shader # set_texcoords a_texcoords;
         shader # set_normals a_normals;
@@ -141,7 +152,7 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
         shader # draw_elements Shaders.Triangles e_triangles;
         Webgl.bind_texture gl _TEXTURE_2D_ None
 
-      end else if (id = shader_wireframe # id) && wireframe
+      end else if (shader_id = shader_wireframe # id) && wireframe
                && ((opaque && round = 0)
             || (not opaque && round = 2)) then begin
         shader_wireframe # set_alpha 1.0;
@@ -165,6 +176,6 @@ let create gl (shader : Shaders.LightAndTexture.shader) (shader_texture : Shader
            | None -> x,y,z
       else p
 
+    initializer scene # add (this :> object3d)
 
   end
-

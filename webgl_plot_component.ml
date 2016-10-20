@@ -16,6 +16,16 @@ type state = {
   mutable height: float;
 }
 
+class type context =
+  object
+    method alt_down : bool
+    method new_textbox :
+      < element : Js_windows.Element.t;
+        set_position : float * float -> unit;
+        set_text : string -> unit >
+    method set_cursor_visibility : bool -> unit
+  end
+
 let generation = ref 0
 let loop f =
   incr generation;
@@ -202,7 +212,7 @@ let create_webgl_canvas renderer =
         alt_down := false;
       end) true;
 
-  let next_frame = renderer gl
+  let scene, next_frame = renderer gl
       (object
         method new_textbox = new_textbox ()
         method alt_down = !alt_down
@@ -241,5 +251,5 @@ let create_webgl_canvas renderer =
     end;
     next_frame clock state;
     );
-  main
+  main, state, scene
 

@@ -2,6 +2,7 @@ open Js_array
 
 open Webgl_plot_math
 open Webgl_plot_geometry
+open Webgl_plot_drawable
 
 module Math = Webgl_plot_math
 module Shaders = Webgl_plot_shaders
@@ -11,7 +12,6 @@ module Export = Webgl_plot_export
 let delay f =
   let open Js_windows in
   Window.set_timeout window f 0 |> ignore
-
 
 let build_cube gl texture_shader {x_min; x_max; y_min; y_max; z_min; z_max} =
   let triangles, texcoords =
@@ -78,7 +78,6 @@ let draw_axis gl texture_shader
     {x_min; x_max; y_min; y_max; z_max; z_min} (x_scale, y_scale, z_scale)
     x_axis_label x_axis_ticks y_axis_label y_axis_ticks z_axis_label z_axis_ticks =
 
-
   let x_range = x_max -. x_min in
   let y_range = y_max -. y_min in
   let z_range = z_max -. z_min in
@@ -86,11 +85,6 @@ let draw_axis gl texture_shader
   let x_ratio = x_range /. x_scale in
   let y_ratio = y_range /. y_scale in
   let z_ratio = z_range /. z_scale in
-
-
-  Printf.printf "x_range = %g, x_ratio = %g\n%!" x_range x_ratio;
-  Printf.printf "z_range = %g, y_ratio = %g\n%!" y_range y_ratio;
-  Printf.printf "z_range = %g, y_ratio = %g\n%!" z_range z_ratio;
 
   let face_textures = [|
     lazy (Textures.create_ticks_texture x_ratio x_axis_label
@@ -306,13 +300,16 @@ let draw_axis gl texture_shader
       assert false
   end
 
-
-let initialize gl texture_shader =
+let create (scene : Webgl_plot_scene.scene) : #object3d =
+  let gl = scene # gl in
+  let texture_shader = scene # repere_shader in
   object(this)
+    inherit identified
+    inherit not_intersectable
+
     val mutable ticks = None
     val mutable cube = None
 
-    val mutable ratio = (1., 1., 1.)
     val mutable x_min = 0.0
     val mutable x_max = 1.0
 
@@ -339,29 +336,7 @@ let initialize gl texture_shader =
     method z_axis_min = z_min
     method z_axis_max = z_max
 
-    method box = {
-      x_min;
-      x_max;
-      y_min;
-      y_max;
-      z_min;
-      z_max;
-    }
-
-    method scale =
-      let x_ratio, y_ratio, z_ratio = ratio in
-      (x_max -. x_min) /. x_ratio,
-      (y_max -. y_min) /. y_ratio,
-      (z_max -. z_min) /. z_ratio
-
-    method modify = changed <- true
-
-    method set_ratio (x,y,z) =
-      this # modify;
-      let m = max (max x y) z in
-      ratio <- (x /. m, y /. m, z /. m)
-
-    method ratio = ratio
+    method private modify = changed <- true
 
     method set_x_axis_label s =
       this # modify; x_axis_label <- s
@@ -384,16 +359,29 @@ let initialize gl texture_shader =
     method set_z_axis_bounds (min, max) =
       this # modify; z_min <- min; z_max <- max
 
-    method compute =
+    val mutable last_scale = (0.0, 0.0, 0.0)
+
+    method check_scale =
+      if scene # scale <> last_scale then
+        this # modify
+
+    method private compute =
       delay (fun () ->
-          let box = this # box in
+          let box = {x_min; x_max; y_min; y_max; z_min; z_max} in
           cube <- Some (build_cube gl texture_shader box);
-          ticks <- Some (draw_axis gl texture_shader box (this # scale) x_axis_label x_axis_ticks y_axis_label y_axis_ticks z_axis_label z_axis_ticks);
+          ticks <- Some (draw_axis gl texture_shader box (scene # scale) x_axis_label x_axis_ticks y_axis_label y_axis_ticks z_axis_label z_axis_ticks);
           changed <- false)
 
-    method draw angle_x angle_y =
-      if changed then this # compute;
-      (match cube with Some cube -> cube # draw | _ -> ());
-      (match ticks with Some ticks -> ticks angle_x angle_y | _ -> ())
+    method opaque = true
+
+    method draw shader_id round =
+      if shader_id = texture_shader # id && round = 0 then begin
+        let angle_x, angle_y, _ = scene # angle in
+        if changed then this # compute;
+        (match cube with Some cube -> cube # draw | _ -> ());
+        (match ticks with Some ticks -> ticks angle_x angle_y | _ -> ())
+      end
+
+    initializer scene # add (this :> object3d)
 
   end
