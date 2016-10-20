@@ -72,6 +72,7 @@ let create_webgl_canvas renderer =
     let style = {css|
       -webkit-user-select: none;
       -moz-user-select: none;
+      user-select: none;
       width: 100%;
       height: 100%;
     |css} in
@@ -119,6 +120,9 @@ let create_webgl_canvas renderer =
   in
   let new_textbox () =
     let style = {css|
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      user-select: none;
       position: absolute;
       text-shadow: -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white;
     |css} in

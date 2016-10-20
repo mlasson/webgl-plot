@@ -70,7 +70,26 @@ let create gl (shader : Shaders.Basic.shader) ?(name = "") ?widths ?depths ?colo
     method magnetize ((x,_,z) as p) =
       match
         match input with
-        | `Grid (_, _, _) -> None(* TODO *)
+        | `Grid (xs, zs, ys) ->
+           let n = Float32Array.length xs in
+           let m = Float32Array.length zs in
+
+           assert (n >= 1 && m >= 1);
+
+           let find xs x n =
+             let prev = ref (Float32Array.get xs 0) in
+             let i = ref 1 in
+             while !i < n &&
+                   let x' = Float32Array.get xs !i in
+                   x' < x && (prev := x'; true)
+             do incr i done;
+             !i - 1, (!prev +. Float32Array.get xs !i) /. 2.0
+           in
+           let i, x = find xs x n in
+           let j, z = find zs z m in
+           if i < n - 1 && j < m - 1 then
+             Some [|x; Float32Array.get ys (i * (m - 1) + j); z|]
+           else None
         | `List centers ->
           FloatData.closest_point 3 (fun a -> Math.sq (a.(0) -. x) +. Math.sq (a.(2) -. z)) centers
       with Some r -> r.(0), r.(1), r.(2)
