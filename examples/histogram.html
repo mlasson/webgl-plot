@@ -79,6 +79,20 @@ html, body {
 
     var plot = WebglPlot.create(graph);
 
+    plot.setPointerTextFormatter(function (element) {
+      if (plot.getSelectedObject()) {
+	var x = plot.getPointerMagnetic()[0];
+        var k = Math.floor(x * data.length);
+	if (0 <= k && k < data.length) {
+          element.textContent = data[k][0];
+	} else {
+          element.textContent = "";
+	}
+      } else {
+        element.textContent = "";
+      }
+    });
+
     plot.appendTo(document.getElementById("main"));
 
   };

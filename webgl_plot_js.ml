@@ -11,6 +11,11 @@ type javascript_interface = {
   get_pointer_magnetic: (unit -> float * float * float);
   get_selected_object: (unit -> string option);
 
+  set_on_double_click: ((unit -> unit) -> unit);
+  set_pointer_text_formatter: ((Js_windows.Element.t -> unit) -> unit);
+  update_pre_render_hook: (((unit -> unit) -> unit -> unit) -> unit);
+  update_post_render_hook: (((unit -> unit) -> unit -> unit) -> unit);
+
   set_x_axis_label: (string -> unit);
   set_y_axis_label: (string -> unit);
   set_z_axis_label: (string -> unit);
@@ -37,6 +42,11 @@ let javascript_interface initial_value =
     get_pointer_projection = (fun () -> pointer_projection plot);
     get_pointer_magnetic = (fun () -> pointer_magnetic plot);
     get_selected_object = (fun () -> selected_object plot);
+
+    set_on_double_click = on_double_click plot;
+    set_pointer_text_formatter = set_pointer_text_formatter plot;
+    update_pre_render_hook = update_pre_render_hook plot;
+    update_post_render_hook = update_post_render_hook plot;
 
     set_x_axis_label = set_x_axis_label plot;
     set_y_axis_label = set_y_axis_label plot;

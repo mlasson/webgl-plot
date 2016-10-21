@@ -29,6 +29,25 @@ val pointer_projection : plot -> float * float * float
 val pointer_magnetic : plot -> float * float * float
 (** The selected object may attract the pointer to some position close to current projection. *)
 
+val on_double_click: plot -> (unit -> unit) -> unit
+(** Register a callback called when a double click is performed by the user. *)
+
+val pointer_text_formatter: plot -> (Js_windows.Element.t -> unit)
+(** Return the callback used to format the text below the pointer.*)
+
+val set_pointer_text_formatter: plot -> (Js_windows.Element.t -> unit) -> unit
+(** Set the callback used to format the text below the pointer.*)
+
+val update_pre_render_hook: plot -> ((unit -> unit) -> unit -> unit) -> unit
+(** Update the callback called before rendering each frame (the argument's argument is the previous callback).
+
+    The default pre render hook does nothing. *)
+
+val update_post_render_hook: plot -> ((unit -> unit) -> unit -> unit) -> unit
+(** Update the callback called after rendering each frame (the argument's argument is the previous callback).
+
+    The default pre render hook does nothing. *)
+
 
 (** {6 Point of view} **)
 

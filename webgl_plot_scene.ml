@@ -132,6 +132,12 @@ class type scene =
     method set_pointer : float * float -> unit
     method set_ratio : float * float * float -> unit
     method set_width : int -> unit
+    method pointer_text_formatter : Js_windows.Element.t -> unit
+    method set_pointer_text_formatter : (Js_windows.Element.t -> unit) -> unit
+    method post_render_hook : (unit -> unit)
+    method pre_render_hook : (unit -> unit)
+    method set_post_render_hook : (unit -> unit) -> unit
+    method set_pre_render_hook : (unit -> unit) -> unit
   end
 
 let prepare_scene gl component : scene =
@@ -209,6 +215,20 @@ let prepare_scene gl component : scene =
 
     method set_pointer p = pointer <- p
 
+    (* Hooks *)
+
+    val mutable pointer_text_formatter = ignore
+    method pointer_text_formatter = pointer_text_formatter
+    method set_pointer_text_formatter f = pointer_text_formatter <- f
+
+    val mutable pre_render_hook = ignore
+    val mutable post_render_hook = ignore
+
+    method pre_render_hook = pre_render_hook
+    method post_render_hook = post_render_hook
+    method set_pre_render_hook f = pre_render_hook <- f
+    method set_post_render_hook f = post_render_hook <- f
+
     (* Object *)
     val mutable objects : object3d list = []
     method add (obj : object3d) = objects <- obj :: objects
@@ -222,6 +242,9 @@ let prepare_scene gl component : scene =
     method render =
       let open Webgl in
       let open Constant in
+
+      pre_render_hook ();
+
       let matrix, matrix' = world_matrix aspect frame angle move ratio in
       let flat_matrix = float32_array (Vector.to_array matrix) in
 
@@ -324,7 +347,6 @@ let prepare_scene gl component : scene =
             | None -> None) objects |> List.sort (fun (d, _, _) (d', _, _) -> compare d d') with
         | [] -> begin
             selected_object <- None;
-            textbox # set_text "";
             component # set_cursor_visibility true;
           end
         | (_, p, obj) :: _ -> begin
@@ -334,7 +356,6 @@ let prepare_scene gl component : scene =
             else
               pointer_magnetic <- obj # magnetize pointer_projection;
             let (x,y,z) = pointer_magnetic in
-            textbox # set_text (Printf.sprintf "%.2f, %.2f, %.2f" x y z);
             let q =
               multiply_vector matrix (Vector.of_four (x,y,z, 1.0))
             in
@@ -354,9 +375,22 @@ let prepare_scene gl component : scene =
         blend_func gl _ONE_ _ONE_MINUS_SRC_ALPHA_;
         screen_shader # draw;
         screen_shader # switch;
-      end
+      end;
+
+      pointer_text_formatter (textbox # element);
+      post_render_hook ()
 
     initializer
+
+      (* The pointer_text_formatter : *)
+      pointer_text_formatter <- begin fun element ->
+        let open Js_windows in
+        let x, y, z = this # pointer_magnetic in
+        if this # selected <> None then
+          Element.set_text_content element (Printf.sprintf "%.2f, %.2f, %.2f" x y z)
+        else
+          Element.set_text_content element ""
+      end;
       let open Webgl in
       let open Constant in
       depth_func gl _LEQUAL_

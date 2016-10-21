@@ -18,6 +18,8 @@ type state = {
   mutable pointer: float * float;
   mutable width: float;
   mutable height: float;
+
+  mutable on_double_click: (unit -> unit);
 }
 
 class type context =
@@ -130,6 +132,7 @@ let create_webgl_canvas renderer =
       pointer = (0., 0.);
       width = 0.0;
       height = 0.0;
+      on_double_click = ignore;
     }
   in
   let new_textbox () =
@@ -159,6 +162,11 @@ let create_webgl_canvas renderer =
 
   begin (* Mouse move event: *)
     let open Event in
+
+    Element.add_event_listener canvas "doubleclick" (fun evt ->
+        prevent_default evt;
+        state.on_double_click ()) true;
+
     Element.add_event_listener canvas "mousemove" (fun evt ->
         prevent_default evt;
         let x,y = position canvas evt in

@@ -213,8 +213,23 @@ let selected_object {scene; _} =
   | Some obj -> Some (obj # name)
   | None -> None
 
+let on_double_click {user_state; _} f =
+  user_state.on_double_click <- f
+
+let pointer_text_formatter {scene; _} =
+  scene # pointer_text_formatter
+
+let set_pointer_text_formatter {scene; _} f =
+  scene # set_pointer_text_formatter f
+
+let update_pre_render_hook {scene; _} f =
+  scene # set_pre_render_hook (f scene # pre_render_hook)
+
+let update_post_render_hook {scene; _} f =
+  scene # set_post_render_hook (f scene # post_render_hook)
 
 let angle {user_state; _} = user_state.angle
+
 let set_angle {user_state; _} angle =
   (* Note:scene's angle will be updated on next frame. *)
   user_state.angle <- angle

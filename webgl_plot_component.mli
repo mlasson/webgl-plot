@@ -10,6 +10,7 @@ type state = {
   mutable pointer : float * float;
   mutable width : float;
   mutable height : float;
+  mutable on_double_click: (unit -> unit);
 }
 
 class type context =
