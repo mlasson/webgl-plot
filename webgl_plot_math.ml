@@ -240,8 +240,6 @@ end = struct
         0.; 0.;  0.;  1.
       |]
 
-
-
     let projection ~fov ~aspect ~near ~far =
       let f = tan ((pi -. fov) /. 2.0 ) in
       let r = 1.0 /. (near -. far) in
@@ -288,7 +286,6 @@ module Color = struct
     in
     let m = v -. c in
     (r +. m, g +. m, b +. m)
-
 
   let gradient colors =
      let n = Array.length colors in

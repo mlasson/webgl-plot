@@ -264,5 +264,3 @@ module Canvas : sig
   val scale: context -> float -> float -> unit
   val clear_rect: context -> float -> float -> float -> float -> unit
 end
-
-
