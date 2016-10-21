@@ -1,3 +1,4 @@
 version = "1.0"
+requires = "gen_js_api"
 description = "A webgl 3d plotting library"
-archive(byte) = "webgl_plot.cma"
+archive(byte) = "webglplot.cma"
