@@ -5,9 +5,9 @@
 ### Javascript Bindings
 
 We use `gen_js_api` to generate javascript bindings automatically from these interfaces:
-* `webgl.mli`: Webgl bindings
-* `Js_windows.mli`: Browsers' bindings
-* `Js_array.mli`: Javascript typed arrays
+* `webgl.mli`: Webgl bindings,
+* `Js_windows.mli`: Browsers' bindings,
+* `Js_array.mli`: Javascript typed arrays.
 
 ### Modules
 
@@ -20,15 +20,15 @@ We use `gen_js_api` to generate javascript bindings automatically from these int
 
 * Webgl - scene:
   * `webgl_plot_shaders.ml`: Where all the available are defined, compiled and interfaced,
-  * `webgl_plot_drawable.ml`: Defined what is a generic object in our scene, 
+  * `webgl_plot_drawable.ml`: Define what is a generic object in our scene, 
   * `webgl_plot_scene.ml`: Instantiate shaders, handles the view state and draw objects.
   
-* 3D objects: 
+* 3D objects: A 3d object handles both the state and the drawing procedure of an object in our scene.
   * System of axes: 
     * `webgl_plot_textures.ml`: Generate textures using 2d canvas for the axes,
     * `webgl_plot_repere.ml`: The 3d object representing axes.
-  * `webgl_plot_surface.ml` : Drawing surfaces,
-  * `webgl_plot_histogram.ml`: Drawing histograms.
+  * `webgl_plot_surface.ml` : The surface object,
+  * `webgl_plot_histogram.ml`: The histogram object.
 
 * DOM :
   * `webgl_plot_dom_helper`: Some dom-related helper functions, 
