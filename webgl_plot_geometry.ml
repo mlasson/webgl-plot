@@ -1,3 +1,7 @@
+(* This file is released under the terms of an MIT-like license.     *)
+(* See the attached LICENSE file.                                    *)
+(* Copyright 2016 by LexiFi.                                         *)
+
 open Js_array
 open Webgl_plot_math
 open Webgl_plot_misc

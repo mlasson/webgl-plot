@@ -1,12 +1,6 @@
-(***************************************************************************)
-(*  Copyright (C) 2000-2016 LexiFi SAS. All rights reserved.               *)
-(*                                                                         *)
-(*  No part of this document may be reproduced or transmitted in any       *)
-(*  form or for any purpose without the express permission of LexiFi SAS.  *)
-(***************************************************************************)
-
-(* $Id: dom2.mfi 97856 2016-09-29 16:46:17Z mlasson $ *)
-
+(* This file is released under the terms of an MIT-like license.     *)
+(* See the attached LICENSE file.                                    *)
+(* Copyright 2016 by LexiFi.                                         *)
 
 module Event : sig
   type t
