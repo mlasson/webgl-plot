@@ -2,6 +2,9 @@
 (* See the attached LICENSE file.                                    *)
 (* Copyright 2016 by LexiFi.                                         *)
 
+(** Serializable description of plots. *)
+
+(** Description of histograms. *)
 module Histogram : sig
   type t =
     | Uniform of {
@@ -33,6 +36,7 @@ module Histogram : sig
   [@@js.sum "representation"]
 end
 
+(** Description of surfaces. *)
 module Surface : sig
   type t =
     | Uniform of {
@@ -77,8 +81,6 @@ type tick = {
   value: float;
   label: string;
 }
-val tick_to_js: tick -> Ojs.t
-val tick_of_js: Ojs.t -> tick
 
 type axis_option = {
   label: string option;
@@ -96,5 +98,9 @@ type chart = {
   ratio: (float * float * float) option;
 }
 
+(**/**)
 val chart_to_js: chart -> Ojs.t
 val chart_of_js: Ojs.t -> chart
+val tick_to_js: tick -> Ojs.t
+val tick_of_js: Ojs.t -> tick
+(**/**)

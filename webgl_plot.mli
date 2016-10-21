@@ -2,7 +2,7 @@
 (* See the attached LICENSE file.                                    *)
 (* Copyright 2016 by LexiFi.                                         *)
 
-(** Webgl-plot **)
+(** A webgl plotting library. *)
 
 type plot
 (** Representation of a plot scene. *)
@@ -13,10 +13,9 @@ module Export : module type of Webgl_plot_export
 
 val create : ?initial_value:Export.chart -> unit -> plot
 (** Creates a new plot.
- *
- * Note: The DOM element is not attached at initialization, you
- * need to manually append it to some parent.
- * *)
+
+  Note: The DOM element is not attached at initialization, you
+  need to manually append it to some parent. *)
 
 val element : plot -> Js_windows.Element.t
 (** Retunrs the DOM element carrying the plot. *)

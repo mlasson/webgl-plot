@@ -1,7 +1,3 @@
-OCAMLDEP=ocamlfind ocamldep
-OCAMLC=ocamlfind ocamlc
-OCAMLFLAGS=-w +a-4-29-30-40-41-42-44-45-48 -strict-sequence -strict-formats -bin-annot -package gen_js_api.ppx
-
 MODULES=js_windows js_array webgl webgl_plot_export webgl_plot_math webgl_plot_misc webgl_plot_dom_helper \
 	webgl_plot_geometry webgl_plot_intersection webgl_plot_shaders \
 	webgl_plot_drawable webgl_plot_histogram webgl_plot_surface \
@@ -15,14 +11,33 @@ GENERATED=webgl.ml js_windows.ml js_array.ml webgl_plot_export.ml
 
 NAME=webglplot
 
+PACKAGES=-package gen_js_api.ppx
+OCAMLFLAGS=-w +a-4-29-30-40-41-42-44-45-48 -strict-sequence -strict-formats -bin-annot $(PACKAGES)
+
+.PHONY: all lib js clean doc
+
+all: lib js doc
+
+lib: $(NAME).cma
+
+js: $(NAME).js
+
+doc: $(CMOS)
+	mkdir -p doc
+	ocamlfind ocamldoc $(PACKAGES) -d doc -html webgl_plot_export.mli webgl_plot.mli
+
+clean:
+	rm -f $(NAME).js $(NAME).byte *.cm* $(GENERATED)
+
+
 $(NAME).js: $(NAME).byte
 	js_of_ocaml --pretty -o $(NAME).js +gen_js_api/ojs_runtime.js $(NAME).byte
 
 $(NAME).byte: $(CMOS) $(JS_INTERFACE)
-	$(OCAMLC) $(OCAMLFLAGS) -no-check-prims -package lwt -package gen_js_api $(CMOS) $(JS_INTERFACE) -linkpkg -o $@
+	ocamlfind ocamlc $(OCAMLFLAGS) -no-check-prims -package lwt -package gen_js_api $(CMOS) $(JS_INTERFACE) -linkpkg -o $@
 
 $(NAME).cma: $(CMOS)
-	$(OCAMLC) $(OCAMLFLAGS) -no-check-prims -package lwt -package gen_js_api -a $(CMOS) -o $@
+	ocamlfind ocamlc $(OCAMLFLAGS) -no-check-prims -package lwt -package gen_js_api -a $(CMOS) -o $@
 
 .SUFFIXES: .ml .mli .cmo .cmi
 
@@ -39,28 +54,12 @@ webgl_plot_export.ml: webgl_plot_export.mli
 	ocamlfind gen_js_api/gen_js_api $<
 
 .ml.cmo:
-	$(OCAMLC) $(OCAMLFLAGS) -c $< -o $@
+	ocamlfind ocamlc $(OCAMLFLAGS) -c $< -o $@
 
 .mli.cmi:
-	$(OCAMLC) $(OCAMLFLAGS) -c $<
-
-.PHONY: all lib js
-lib: $(NAME).cma
-js: $(NAME).js
-all: lib js
-
-.PHONY: doc
-doc: $(CMOS)
-	mkdir -p doc
-	ocamldoc -d doc -html webgl_plot.mli
+	ocamlfind ocamlc $(OCAMLFLAGS) -c $<
 
 .depend: $(GENERATED) $(wildcard *.ml) $(wildcard *.mli)
-	$(OCAMLDEP) $(INCLUDES) *.mli *.ml > .depend
-
-.PHONY: clean
-
-clean:
-	rm -f $(NAME).js $(NAME).byte *.cm* $(GENERATED)
-
+	ocamlfind ocamldep $(INCLUDES) *.mli *.ml > .depend
 
 -include .depend

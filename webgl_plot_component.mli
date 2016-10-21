@@ -2,9 +2,6 @@
 (* See the attached LICENSE file.                                    *)
 (* Copyright 2016 by LexiFi.                                         *)
 
-module Math = Webgl_plot_math
-module Helper = Webgl_plot_dom_helper
-
 type state = {
   mutable aspect : float;
   mutable angle : float * float * float;
