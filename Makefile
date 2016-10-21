@@ -8,14 +8,21 @@ MODULES=js_windows js_array webgl webgl_plot_export webgl_plot_math webgl_plot_m
 	webgl_plot_textures webgl_plot_repere \
 	webgl_plot_scene webgl_plot_component webgl_plot
 
+JS_INTERFACE=webgl_plot_js.cmo
+
 CMOS=$(patsubst %,%.cmo,$(MODULES))
 GENERATED=webgl.ml js_windows.ml js_array.ml webgl_plot_export.ml
 
-main.js: main.byte
-	js_of_ocaml --pretty -o main.js +gen_js_api/ojs_runtime.js main.byte
+NAME=webglplot
 
-main.byte: $(CMOS)
-	$(OCAMLC) $(OCAMLFLAGS) -no-check-prims -package lwt -package gen_js_api $(CMOS) -linkpkg -o $@
+$(NAME).js: $(NAME).byte
+	js_of_ocaml --pretty -o $(NAME).js +gen_js_api/ojs_runtime.js $(NAME).byte
+
+$(NAME).byte: $(CMOS) $(JS_INTERFACE)
+	$(OCAMLC) $(OCAMLFLAGS) -no-check-prims -package lwt -package gen_js_api $(CMOS) $(JS_INTERFACE) -linkpkg -o $@
+
+$(NAME).cma: $(CMOS)
+	$(OCAMLC) $(OCAMLFLAGS) -no-check-prims -package lwt -package gen_js_api -a $(CMOS) -o $@
 
 .SUFFIXES: .ml .mli .cmo .cmi
 
@@ -37,6 +44,15 @@ webgl_plot_export.ml: webgl_plot_export.mli
 .mli.cmi:
 	$(OCAMLC) $(OCAMLFLAGS) -c $<
 
+.PHONY: all lib js
+lib: $(NAME).cma
+js: $(NAME).js
+all: lib js
+
+.PHONY: doc
+doc: $(CMOS)
+	mkdir -p doc
+	ocamldoc -d doc -html webgl_plot.mli
 
 .depend: $(GENERATED) $(wildcard *.ml) $(wildcard *.mli)
 	$(OCAMLDEP) $(INCLUDES) *.mli *.ml > .depend
@@ -44,7 +60,7 @@ webgl_plot_export.ml: webgl_plot_export.mli
 .PHONY: clean
 
 clean:
-	rm -f main.js main.byte *.cm* $(GENERATED)
+	rm -f $(NAME).js $(NAME).byte *.cm* $(GENERATED)
 
 
 -include .depend

@@ -1,0 +1,3 @@
+version = "1.0"
+description = "A webgl 3d plotting library"
+archive(byte) = "webgl_plot.cma"
