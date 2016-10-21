@@ -2,8 +2,6 @@
 (* See the attached LICENSE file.                                    *)
 (* Copyright 2016 by LexiFi.                                         *)
 
-let debug = false
-
 type four
 type three
 type two
