@@ -2,7 +2,7 @@
 <html>
 <head>
 <title>Test</title>
-<script src="webglplot.js"></script> 
+<script src="webgl-plot.js"></script>
 <meta charset="utf-8"/>
 <style>
 
@@ -29,7 +29,7 @@ html, body {
        var y = k / (n - 1);
        return [x,y,z];
     }
-    
+
     for (var k = 0; k < n; k ++) {
        centers.push(spiral(k));
     }
@@ -37,9 +37,9 @@ html, body {
     var widths = centers.map(function() { return 1 / n; });
 
     var series = [
-       { 
+       {
         kind : "histogram",
-        data : { 
+        data : {
           name : "wave",
           representation: "list",
           wireframe: true,
@@ -47,7 +47,7 @@ html, body {
           widths: widths,
           depths: widths,
         }
-      } 
+      }
     ];
 
     var graph = { series : series};

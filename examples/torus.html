@@ -2,7 +2,7 @@
 <html>
 <head>
 <title>Test</title>
-<script src="webglplot.js"></script> 
+<script src="webgl-plot.js"></script>
 <meta charset="utf-8"/>
 <style>
 
@@ -52,7 +52,7 @@ html, body {
 
     var torus = function(xc,yc,zc,r,R,flip) {
             return graph3d(function(s,t) {
-                  var theta = 2.0 * Math.PI * s; 
+                  var theta = 2.0 * Math.PI * s;
                   var phi = 2.0 * Math.PI * t;
 
                   var x = xc + (R + r * Math.cos(theta)) * Math.cos(phi);
@@ -65,9 +65,9 @@ html, body {
                   }}, x, z);};
 
     var series = [
-      { 
+      {
         kind : "surface",
-        data : { 
+        data : {
           name : "constant",
           representation: "parametric",
           a : x,
@@ -77,10 +77,10 @@ html, body {
           alpha: 0.5,
           wireframe: false
         }
-      }, 
-      { 
+      },
+      {
         kind : "surface",
-        data : { 
+        data : {
           name : "constant",
           representation: "parametric",
           a : x,
@@ -90,10 +90,10 @@ html, body {
           alpha: 0.5,
           wireframe: false
         }
-      }, 
-      { 
+      },
+      {
         kind : "surface",
-        data : { 
+        data : {
           name : "constant",
           representation: "parametric",
           a : x,
@@ -102,7 +102,7 @@ html, body {
           colors: green,
           wireframe: false
         }
-      }, 
+      },
     ];
 
     var graph = { series : series, ratio:[2.0, 1.0, 1.0]};

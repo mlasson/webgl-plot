@@ -2,7 +2,7 @@
 <html>
 <head>
 <title>Test</title>
-<script src="webglplot.js"></script> 
+<script src="webgl-plot.js"></script>
 <meta charset="utf-8"/>
 <style>
 html, body {
@@ -25,7 +25,7 @@ html, body {
           p -= 0.025;
        }
        return height;
-    } 
+    }
 
     var new_unit_range = function(res) {
       var a = new Array(res);
@@ -51,9 +51,9 @@ html, body {
     }
 
     var series = [
-       { 
+       {
         kind : "histogram",
-        data : { 
+        data : {
           name : "wave",
           representation: "uniform",
           x : x,
@@ -62,7 +62,7 @@ html, body {
           depths : histo3d(function(x,z) { return Math.random();}, x, z),
           y : histo3d(function(x,z) { return number_of_stairs();}, x, z),
         }
-      }, 
+      },
     ];
     var graph = { series : series, ratio : [1., 0.75, 1.]};
     var plot = WebglPlot.create(graph);

@@ -11,7 +11,7 @@ JS_INTERFACE=webgl_plot_js.cmo
 CMOS=$(patsubst %,%.cmo,$(MODULES))
 GENERATED=webgl.ml js_windows.ml js_array.ml webgl_plot_export.ml
 
-NAME=webglplot
+NAME=webgl-plot
 
 PACKAGES=-package gen_js_api.ppx
 OCAMLFLAGS=-w +a-4-29-30-40-41-42-44-45-48 -strict-sequence -strict-formats -bin-annot $(PACKAGES)

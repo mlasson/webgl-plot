@@ -2,7 +2,7 @@
 <html>
 <head>
 <title>Test</title>
-<script src="webglplot.js"></script> 
+<script src="webgl-plot.js"></script>
 <meta charset="utf-8"/>
 <style>
 
@@ -53,9 +53,9 @@ html, body {
     var blue = graph3d(function(x,z) { return [0,0,1]}, x, z);
 
     var series = [
-       { 
+       {
         kind : "surface",
-        data : { 
+        data : {
           name : "wave",
           representation: "uniform",
           wireframe: true,
@@ -64,10 +64,10 @@ html, body {
           y : graph3d(function(x,z) { return (0.5 * (sq(Math.cos(x)) + sq (Math.sin(z))))}, x, z),
           magnetic: true,
         }
-      }, 
-      { 
+      },
+      {
         kind : "surface",
-        data : { 
+        data : {
           name : "constant",
           representation: "uniform",
           x : x,
@@ -77,10 +77,10 @@ html, body {
           colors: red,
         }
       },
-      { 
+      {
         kind : "surface",
         magnetic: true,
-        data : { 
+        data : {
           name : "constant",
           representation: "uniform",
           x : x,
@@ -89,7 +89,7 @@ html, body {
           alpha:0.5,
           colors: blue,
         }
-      } 
+      }
     ];
 
     var graph = { series : series, ratio : [2.0, 1.0, 1.], xAxis : {label : "X"}, yAxis : {label: "Y"}, zAxis : {label: "Z"}};
