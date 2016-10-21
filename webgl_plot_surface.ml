@@ -140,7 +140,7 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
   let a_grid = new attrib_array gl 3 in
   let a_grid_colors = create_attrib_array gl 3 (FloatData.init3 12 (fun _ -> 0.0, 0.0, 0.0)) in
   let texture_resolution = 1024 in
-  let framebuffer = new fbo gl 1024 1024 in
+  let framebuffer = new fbo gl texture_resolution texture_resolution in
 
   object(this)
     inherit identified

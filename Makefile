@@ -1,6 +1,6 @@
 OCAMLDEP=ocamlfind ocamldep
 OCAMLC=ocamlfind ocamlc
-OCAMLFLAGS=-w +a-4-29-30-40-41-42-44-45-48-26 -strict-sequence -strict-formats -bin-annot -package gen_js_api.ppx
+OCAMLFLAGS=-w +a-4-29-30-40-41-42-44-45-48 -strict-sequence -strict-formats -bin-annot -package gen_js_api.ppx
 
 MODULES=js_windows js_array webgl webgl_plot_export webgl_plot_math webgl_plot_misc webgl_plot_dom_helper \
 	webgl_plot_geometry webgl_plot_intersection webgl_plot_shaders \
