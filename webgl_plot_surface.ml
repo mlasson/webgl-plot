@@ -141,6 +141,7 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
   let a_grid_colors = create_attrib_array gl 3 (FloatData.init3 12 (fun _ -> 0.0, 0.0, 0.0)) in
   let texture_resolution = 1024 in
   let framebuffer = new fbo gl 1024 1024 in
+
   object(this)
     inherit identified
 
@@ -152,6 +153,7 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
     val mutable magnetic = magnetic
     val mutable grid_width = 0.003
 
+    method name = name
     method opaque = opaque
 
     method draw shader_id round =
@@ -227,6 +229,74 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
         with Some r -> r.(0), r.(1), r.(2)
            | None -> x,y,z
       else p
+
+    method z_projection z =
+      if parametric then
+        None
+      else
+        let n = Float32Array.length xs in
+        let m = Float32Array.length zs in
+        let res = Float32Array.new_float32_array (`Size m) in
+        let j =
+           let j = ref 0 in
+           while
+             !j < m && Float32Array.get zs !j < z
+           do incr j done;
+           !j
+        in
+        if j = 0 || j = m then
+          None
+        else begin
+          let j' = j - 1 in
+          let t' =
+            let z' = Float32Array.get zs j' in
+            (z -. z') /. (Float32Array.get zs j -. z')
+          in
+          let t = 1.0 -. t' in
+          for i = 0 to n - 1 do
+            let v =
+              (Float32Array.get zs (i * m + j')) *. t'
+              +. (Float32Array.get zs (i * m + j)) *. t
+            in
+            Float32Array.set res i v
+          done;
+          Some (zs, res)
+        end
+
+
+
+    method x_projection x =
+      if parametric then
+        None
+      else
+        let n = Float32Array.length xs in
+        let m = Float32Array.length zs in
+        let res = Float32Array.new_float32_array (`Size m) in
+        let i =
+           let i = ref 0 in
+           while
+             !i < n && Float32Array.get xs !i < x
+           do incr i done;
+           !i
+        in
+        if i = 0 || i = n then
+          None
+        else begin
+          let i' = i - 1 in
+          let t' =
+            let x' = Float32Array.get xs i' in
+            (x -. x') /. (Float32Array.get xs i -. x')
+          in
+          let t = 1.0 -. t' in
+          for j = 0 to m - 1 do
+            let v =
+              (Float32Array.get zs (i' * m + j)) *. t'
+              +. (Float32Array.get zs (i * m + j)) *. t
+            in
+            Float32Array.set res j  v
+          done;
+          Some (xs, res)
+        end
 
     initializer scene # add (this :> object3d)
 

@@ -33,36 +33,6 @@ module Histogram : sig
   [@@js.sum "representation"]
 end
 
-module Scatter : sig
-  type t =
-    | Uniform of {
-        name: string option;
-
-        x: float array;
-        z: float array;
-        y: float array array;
-
-        radius: float array array option;
-        colors: float array array array option;
-      } [@js "uniform"]
-
-    | Parametric of {
-        name: string option;
-
-        a: float array;
-        b: float array;
-        p: float array array array;
-
-        radius: float array array option;
-        colors: float array array array option;
-      } [@js "parametric"]
-
-    | Unknown of Ojs.t [@js.default]
-  [@@js.sum "representation"]
-end
-
-
-
 module Surface : sig
   type t =
     | Uniform of {
@@ -99,7 +69,6 @@ end
 
 type series =
   | Histogram of Histogram.t [@js.arg "data"][@js "histogram"]
-  | Scatter of Scatter.t [@js.arg "data"][@js "scatter"]
   | Surface of Surface.t [@js.arg "data"][@js "surface"]
   | Unknown of Ojs.t [@js.default]
 [@@js.sum]
@@ -108,6 +77,8 @@ type tick = {
   value: float;
   label: string;
 }
+val tick_to_js: tick -> Ojs.t
+val tick_of_js: Ojs.t -> tick
 
 type axis_option = {
   label: string option;

@@ -241,12 +241,15 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?widths ?depths ?colors
   in
   object(this)
     inherit identified
+    inherit no_projections
 
     val alpha = 0.7
     val mutable scale = (1., 1., 1.)
     val mutable position = (0., 0., 0.)
     val mutable border = border
     val name = name
+
+    method name = name
 
     method opaque = true
 

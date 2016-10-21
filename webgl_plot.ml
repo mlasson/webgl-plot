@@ -16,7 +16,25 @@ module Export = Webgl_plot_export
 module Histogram = Webgl_plot_histogram
 module Surface = Webgl_plot_surface
 
-let create {Export.x_axis; y_axis; z_axis; series; ratio} =
+type plot = {
+  element: Element.t;
+  user_state : Component.state;
+  scene : Scene.scene;
+  repere : Repere.t;
+}
+
+let default_export =
+  let open Export in
+  {
+    x_axis = None;
+    y_axis = None;
+    z_axis = None;
+    ratio = None;
+    series = []
+  }
+
+let create ?(initial_value = default_export) () : plot =
+  let {Export.x_axis; y_axis; z_axis; series; ratio} = initial_value in
   let renderer gl textbox_factory =
     let open Scene in
     let scene = prepare_scene gl textbox_factory in
@@ -119,8 +137,6 @@ let create {Export.x_axis; y_axis; z_axis; series; ratio} =
     let z_min = !z_min in
     let z_max = !z_max in
 
-
-
     let automatic_bounds axis =
       match axis with Some { Export.bounds = Some _; _} -> false | _ -> true
     in
@@ -168,7 +184,7 @@ let create {Export.x_axis; y_axis; z_axis; series; ratio} =
     if automatic_ticks z_axis then
       repere # set_z_axis_ticks (uniform_ticks (number_of_ticks z_ratio) z_min z_max);
 
-    scene, fun clock {Component.aspect; angle; move; pointer; width; height; _} ->
+    (scene, repere), fun clock {Component.aspect; angle; move; pointer; width; height; _} ->
       scene # set_clock clock;
 
       scene # set_aspect aspect;
@@ -180,10 +196,110 @@ let create {Export.x_axis; y_axis; z_axis; series; ratio} =
       scene # set_height (int_of_float height);
       scene # render
   in
-  let element, _state, _scene = Component.create_webgl_canvas renderer in
+  let element, user_state, (scene, repere) = Component.create_webgl_canvas renderer in
+  { element; user_state; scene; repere}
+
+let element {element; _} =
   element
+
+let pointer_projection {scene; _} =
+  scene # pointer_projection
+
+let pointer_magnetic {scene; _} =
+  scene # pointer_magnetic
+
+let selected_object {scene; _} =
+  match scene # selected with
+  | Some obj -> Some (obj # name)
+  | None -> None
+
+
+let angle {user_state; _} = user_state.angle
+let set_angle {user_state; _} angle =
+  (* Note:scene's angle will be updated on next frame. *)
+  user_state.angle <- angle
+
+let move {user_state; _} = user_state.move
+let set_move {user_state; _} move =
+  (* Note:scene's move will be updated on next frame. *)
+  user_state.move <- move
+
+let set_x_axis_label {repere; _} label = repere # set_x_axis_label label
+
+let set_y_axis_label {repere; _} label = repere # set_y_axis_label label
+
+let set_z_axis_label {repere; _} label = repere # set_z_axis_label label
+
+let set_x_axis_bounds {repere; scene; _} ((x_min, x_max) as bounds) =
+  repere # set_x_axis_bounds bounds;
+  scene # set_frame { scene # frame with x_min; x_max}
+
+let set_y_axis_bounds {repere; scene; _} ((y_min, y_max) as bounds) =
+  repere # set_y_axis_bounds bounds;
+  scene # set_frame { scene # frame with y_min; y_max}
+
+let set_z_axis_bounds {repere; scene; _} ((z_min, z_max) as bounds) =
+  repere # set_z_axis_bounds bounds;
+  scene # set_frame { scene # frame with z_min; z_max}
+
+let set_x_axis_ticks {repere; _} ticks = repere # set_x_axis_ticks ticks
+let set_y_axis_ticks {repere; _} ticks = repere # set_y_axis_ticks ticks
+let set_z_axis_ticks {repere; _} ticks = repere # set_z_axis_ticks ticks
+
+
+type javascript_interface = {
+  append_to: Element.t -> unit;
+  get_element: (unit -> Element.t);
+  get_pointer_projection: (unit -> float * float * float);
+  get_pointer_magnetic: (unit -> float * float * float);
+  get_selected_object: (unit -> string option);
+
+  set_x_axis_label: (string -> unit);
+  set_y_axis_label: (string -> unit);
+  set_z_axis_label: (string -> unit);
+
+  set_x_axis_ticks: (Export.tick list -> unit);
+  set_y_axis_ticks: (Export.tick list -> unit);
+  set_z_axis_ticks: (Export.tick list -> unit);
+
+  set_x_axis_bounds: (float * float -> unit);
+  set_y_axis_bounds: (float * float -> unit);
+  set_z_axis_bounds: (float * float -> unit);
+
+  get_angle: (unit -> float * float * float);
+  set_angle: (float * float * float -> unit);
+  get_move: (unit -> float * float * float);
+  set_move: (float * float * float -> unit);
+} [@@js]
+
+let javascript_interface initial_value =
+  let plot = create ?initial_value () in
+  {
+    append_to = (fun parent -> Element.append_child parent plot.element);
+    get_element = (fun () -> element plot);
+    get_pointer_projection = (fun () -> pointer_projection plot);
+    get_pointer_magnetic = (fun () -> pointer_magnetic plot);
+    get_selected_object = (fun () -> selected_object plot);
+
+    set_x_axis_label = set_x_axis_label plot;
+    set_y_axis_label = set_y_axis_label plot;
+    set_z_axis_label = set_z_axis_label plot;
+
+    set_x_axis_ticks = set_x_axis_ticks plot;
+    set_y_axis_ticks = set_y_axis_ticks plot;
+    set_z_axis_ticks = set_z_axis_ticks plot;
+
+    set_x_axis_bounds = set_x_axis_bounds plot;
+    set_y_axis_bounds = set_y_axis_bounds plot;
+    set_z_axis_bounds = set_z_axis_bounds plot;
+
+    get_angle = (fun () -> angle plot);
+    set_angle = set_angle plot;
+    get_move = (fun () -> move plot);
+    set_move = set_move plot;
+  }
 
 let () =
   let o = Ojs.empty_obj () in
   Ojs.set Ojs.global "WebglPlot" o;
-  Ojs.set o "create" ([%js.of: Export.chart -> Element.t] create)
+  Ojs.set o "create" ([%js.of: Export.chart option -> javascript_interface] javascript_interface)

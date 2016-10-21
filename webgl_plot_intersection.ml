@@ -7,6 +7,7 @@ open Webgl_plot_misc
 module Math = Webgl_plot_math
 open Math
 
+let debug = false
 let epsilon = 1e-9
 
 let iter_triangles indexes f =

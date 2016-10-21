@@ -82,6 +82,8 @@ let colored_sphere gl shader =
 
       val mutable scale = (1., 1., 1.)
       val mutable position = (0., 0., 0.)
+
+      method name = "pointer"
       method opaque = true
       method set_scale x = scale <- x
       method set_position x = position <- x

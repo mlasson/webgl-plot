@@ -304,7 +304,22 @@ let draw_axis gl texture_shader
       assert false
   end
 
-let create (scene : Webgl_plot_scene.scene) : #object3d =
+class type t = object
+  inherit object3d
+  method set_x_axis_label : string -> unit
+  method set_x_axis_ticks : Export.tick list -> unit
+  method set_x_axis_bounds : float * float -> unit
+
+  method set_y_axis_label : string -> unit
+  method set_y_axis_ticks : Export.tick list -> unit
+  method set_y_axis_bounds : float * float -> unit
+
+  method set_z_axis_label : string -> unit
+  method set_z_axis_ticks : Export.tick list -> unit
+  method set_z_axis_bounds : float * float -> unit
+end
+
+let create (scene : Webgl_plot_scene.scene) : t =
   let gl = scene # gl in
   let texture_shader = scene # repere_shader in
   object(this)
@@ -333,12 +348,7 @@ let create (scene : Webgl_plot_scene.scene) : #object3d =
 
     val mutable changed = true
 
-    method x_axis_min = x_min
-    method x_axis_max = x_max
-    method y_axis_min = y_min
-    method y_axis_max = y_max
-    method z_axis_min = z_min
-    method z_axis_max = z_max
+    method name = "system of axes"
 
     method private modify = changed <- true
 
@@ -365,7 +375,7 @@ let create (scene : Webgl_plot_scene.scene) : #object3d =
 
     val mutable last_scale = (0.0, 0.0, 0.0)
 
-    method check_scale =
+    method private check_scale =
       if scene # scale <> last_scale then
         this # modify
 

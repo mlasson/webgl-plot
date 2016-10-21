@@ -1,9 +1,5 @@
-* picking callback, magnetic, tuning
 Future:
 
-* Scatter plot (0.5d)
-* Javascript "dynamic" interface (0.5d)
-* Ocaml interface (0.5d)
 * Intersection shader (0.5d)
   * Movies (1d) + interface (0.5d)
 * Going public (doc + com + fancy examples) (1d)
