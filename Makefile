@@ -6,7 +6,7 @@ MODULES=js_windows js_array webgl webgl_plot_export webgl_plot_math webgl_plot_m
 	webgl_plot_geometry webgl_plot_intersection webgl_plot_shaders \
 	webgl_plot_drawable webgl_plot_histogram webgl_plot_surface \
 	webgl_plot_textures webgl_plot_repere \
-	webgl_plot_scene webgl_plot_component webgl_plot_main
+	webgl_plot_scene webgl_plot_component webgl_plot
 
 CMOS=$(patsubst %,%.cmo,$(MODULES))
 GENERATED=webgl.ml js_windows.ml js_array.ml webgl_plot_export.ml
