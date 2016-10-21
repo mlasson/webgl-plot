@@ -9,6 +9,54 @@ module Shaders = Webgl_plot_shaders
 module Intersection = Webgl_plot_intersection
 
 
+module SurfaceGeometry = struct
+  open Geometry
+
+  type t = {
+    vertices: Float32Array.t;
+    normals: Float32Array.t;
+    wireframe : Index.t;
+    triangles: Index.t;
+    texcoords: Float32Array.t;
+    bounds: box;
+  }
+
+  let create parametric xs zs ys =
+    let n = Float32Array.length xs in
+    let m = Float32Array.length zs in
+    let vertices =
+      if parametric then
+        FloatData.init3_matrix n m
+          (fun i j ->
+             let pos = (i * m + j) * 3 in
+             Float32Array.get ys pos,
+             Float32Array.get ys (pos + 1),
+             Float32Array.get ys (pos + 2))
+      else
+        FloatData.init3_matrix n m
+          (fun i j ->
+             Float32Array.get xs i,
+             Float32Array.get ys (i * m +j),
+             Float32Array.get zs j)
+    in
+    let normals =
+      compute_normals n m vertices
+    in
+    let triangles = triangles_indexes_from_grid n m in
+    let wireframe = lines_indexes_from_grid n m in
+    let texcoords = texcoords_from_grid n m in
+    let bounds = bounding_box vertices in
+    {
+      triangles;
+      wireframe;
+      normals;
+      vertices;
+      texcoords;
+      bounds
+    }
+end
+
+
 let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(magnetic = false) ?colors ?alpha ~parametric xs zs ys =
   let open Shaders in
 
@@ -19,8 +67,8 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
 
   let min, max = match FloatData.min_max ys with Some c -> c | None -> 0.0, 1.0 in
 
-  let {Geometry.Surface.vertices; triangles; wireframe = wireframe_vertices; normals; bounds; texcoords} =
-    Geometry.Surface.create parametric xs zs ys
+  let {SurfaceGeometry.vertices; triangles; wireframe = wireframe_vertices; normals; bounds; texcoords} =
+    SurfaceGeometry.create parametric xs zs ys
   in
 
   let alpha, opaque =
