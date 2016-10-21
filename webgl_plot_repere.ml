@@ -4,6 +4,9 @@
 
 open Js_array
 
+open Webgl
+open Webgl.Constant
+
 open Webgl_plot_math
 open Webgl_plot_geometry
 open Webgl_plot_drawable
@@ -16,6 +19,55 @@ module Export = Webgl_plot_export
 let delay f =
   let open Js_windows in
   Window.set_timeout window f 0 |> ignore
+
+class face gl shader =
+  let texture = create_texture gl in
+  let triangles = create_buffer gl in
+  let texcoords = create_buffer gl in
+  let fill_float_buffer buffer data =
+    bind_buffer gl _ARRAY_BUFFER_ buffer;
+    buffer_data gl _ARRAY_BUFFER_ (Float32Array.t_to_js data) _STATIC_DRAW_;
+  in
+  object
+    val mutable size = 0
+
+    method set_triangles data =
+      size <- (Float32Array.length data) / 3;
+      fill_float_buffer triangles data
+
+    method set_texcoords data =
+      fill_float_buffer texcoords data
+
+    method set_texture canvas =
+      bind_texture gl _TEXTURE_2D_ (Some texture);
+      tex_image_2D gl _TEXTURE_2D_ 0 _RGBA_ _RGBA_ _UNSIGNED_BYTE_  (`Canvas canvas);
+      tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MAG_FILTER_ _LINEAR_;
+      tex_parameteri gl _TEXTURE_2D_ _TEXTURE_MIN_FILTER_ _LINEAR_MIPMAP_LINEAR_;
+      generate_mipmap gl _TEXTURE_2D_
+
+    method draw =
+      enable gl _CULL_FACE_;
+      enable gl _BLEND_;
+      depth_mask gl false;
+      blend_func gl _SRC_ALPHA_ _ONE_MINUS_SRC_ALPHA_;
+
+      shader # binds_triangles triangles;
+      shader # binds_texcoords texcoords;
+      shader # binds_texture texture;
+
+      draw_arrays gl _TRIANGLES_ 0 size;
+      depth_mask gl true;
+      disable gl _BLEND_;
+      disable gl _CULL_FACE_
+
+    initializer
+      (* Starts with a white pixel (really load the texture later) *)
+      bind_texture gl _TEXTURE_2D_ (Some texture);
+      let white = Uint8Array.new_uint8_array (`Data [| 255; 255; 255; 255|]) in
+      tex_image_2D_array gl _TEXTURE_2D_ 0 _RGBA_ 1 1 0 _RGBA_ _UNSIGNED_BYTE_ (Some (`Bytes white))
+  end
+
+
 
 let build_cube gl texture_shader {x_min; x_max; y_min; y_max; z_min; z_max} =
   let triangles, texcoords =
@@ -64,7 +116,7 @@ let build_cube gl texture_shader {x_min; x_max; y_min; y_max; z_min; z_max} =
     Float32Array.new_float32_array
       (`Data (Array.of_list (List.flatten (List.flatten l))))
   in
-  let cube = new Shaders.Texture.drawable gl texture_shader in
+  let cube = new face gl texture_shader in
   cube # set_triangles (flatten_array triangles);
   cube # set_texcoords (flatten_array texcoords);
   delay (fun () -> cube # set_texture (Textures.create_face_texture ()));
@@ -137,7 +189,7 @@ let draw_axis gl texture_shader
     in
     let triangles = Float32Array.new_float32_array (`Data (flatten triangles)) in
     let texcoords = Float32Array.new_float32_array (`Data (flatten texcoords)) in
-    let face = new Shaders.Texture.drawable gl texture_shader in
+    let face = new face gl texture_shader in
     face # set_triangles triangles;
     face # set_texcoords texcoords;
     delay (fun () -> face # set_texture (Lazy.force face_textures.(texture_id)));
