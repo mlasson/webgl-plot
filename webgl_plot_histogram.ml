@@ -52,7 +52,8 @@ module HistogramGeometry = struct
     in
     let get_h = match depths with
       | None -> fun _ _ -> 1.0
-      | Some h -> fun i j -> Float32Array.get h (i * m + j)
+      | Some h ->
+        fun i j -> Float32Array.get h (i * m + j)
     in
     let get_box =
       match input with

@@ -104,20 +104,36 @@ let create ?(initial_value = default_export) () : plot =
 
     option_iter ratio (scene # set_ratio);
 
+    let x_min, x_max = ref max_float, ref min_float in
+    let y_min, y_max = ref max_float, ref min_float in
+    let z_min, z_max = ref max_float, ref min_float in
+
     option_iter x_axis (function {label; ticks; bounds} ->
         option_iter label (repere # set_x_axis_label);
         option_iter ticks (repere # set_x_axis_ticks);
-        option_iter bounds (repere # set_x_axis_bounds));
+        option_iter bounds (fun (x_min', x_max') ->
+            repere # set_x_axis_bounds (x_min', x_max');
+            if x_min' < !x_min then x_min := x_min';
+            if x_max' > !x_max then x_max := x_max';
+           ));
 
     option_iter y_axis (function {label; ticks; bounds} ->
         option_iter label (repere # set_y_axis_label);
         option_iter ticks (repere # set_y_axis_ticks);
-        option_iter bounds (repere # set_y_axis_bounds));
+        option_iter bounds (fun (y_min', y_max') ->
+            repere # set_y_axis_bounds (y_min', y_max');
+            if y_min' < !y_min then y_min := y_min';
+            if y_max' > !y_max then y_max := y_max';
+           ));
 
     option_iter z_axis (function {label; ticks; bounds} ->
         option_iter label (repere # set_z_axis_label);
         option_iter ticks (repere # set_z_axis_ticks);
-        option_iter bounds (repere # set_z_axis_bounds));
+        option_iter bounds (fun (z_min', z_max') ->
+            repere # set_z_axis_bounds (z_min', z_max');
+            if z_min' < !z_min then z_min := z_min';
+            if z_max' > !z_max then z_max := z_max';
+           ));
 
     let open Histogram in
     let open Surface in
@@ -136,7 +152,12 @@ let create ?(initial_value = default_export) () : plot =
       match axis with Some { Export.bounds = Some _; _} -> false | _ -> true
     in
 
-    let {Geometry.x_min; x_max; y_min; y_max; z_min; z_max} = scene # bounds in
+    let {Geometry.x_min; x_max; y_min; y_max; z_min; z_max} =
+      Geometry.merge_box (scene # bounds)
+        {x_min = !x_min; x_max = !x_max;
+         y_min = !y_min; y_max = !y_max;
+         z_min = !z_min; z_max = !z_max} |> Geometry.correct_box
+    in
 
     if automatic_bounds x_axis then
       repere # set_x_axis_bounds (x_min, x_max);

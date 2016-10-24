@@ -54,7 +54,7 @@ html, body {
         kind : "histogram",
         data : {
           name : "wave",
-          representation: "uniform",
+          representation: "grid",
           border: 0.005,
           x : x,
           z : z,
@@ -74,7 +74,7 @@ html, body {
             series : series,
             ratio : [1, 0.5, 1 / 3],
             xAxis : {label: "", ticks: xTicks},
-            zAxis : {label: "", ticks: []}
+            zAxis : {label: "", ticks: [], bounds :[0.0, 1.0]}
     };
 
     var plot = WebglPlot.create(graph);

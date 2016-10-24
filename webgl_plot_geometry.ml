@@ -98,12 +98,12 @@ type box = {
 }
 
 let neutral_box = {
-  x_min = min_float;
-  x_max = max_float;
-  y_min = min_float;
-  y_max = max_float;
-  z_min = min_float;
-  z_max = max_float;
+  x_min = max_float;
+  x_max = min_float;
+  y_min = max_float;
+  y_max = min_float;
+  z_min = max_float;
+  z_max = min_float;
 }
 
 let merge_box b1 b2 = {
@@ -115,6 +115,23 @@ let merge_box b1 b2 = {
   z_max = max b1.z_max b2.z_max;
 }
 
+let correct_box {x_min; x_max; z_min; z_max; y_min; y_max} =
+  let x_min, x_max =
+    if x_max -. x_min > 1e-13 then x_min, x_max else
+      let d = (x_max +. x_min) /. 2.0 in
+      (d -. 1.0, d +. 1.0)
+  in
+  let y_min, y_max =
+    if y_max -. y_min > 1e-13 then y_min, y_max else
+      let d = (y_max +. y_min) /. 2.0 in
+      (d -. 1.0, d +. 1.0)
+  in
+  let z_min, z_max =
+    if z_max -. z_min > 1e-13 then z_min, z_max else
+      let d = (z_max +. z_min) /. 2.0 in
+      (d -. 1.0, d +. 1.0)
+  in
+  {x_min; x_max; z_min; z_max; y_min; y_max}
 
 let bounding_box points =
   if Float32Array.length points mod 3 <> 0 then
