@@ -82,24 +82,31 @@ let colored_sphere gl shader =
 
       val mutable scale = (1., 1., 1.)
       val mutable position = (0., 0., 0.)
+      val mutable wireframe = false
 
       method name = "pointer"
       method opaque = true
+
       method set_scale x = scale <- x
       method set_position x = position <- x
+      method set_wireframe b = wireframe <- b
+
       method bounds = Geometry.neutral_box
       method draw id round =
-        if id = shader # id && round = 0 then begin
+        if id = shader # id && round <= 1 then begin
           shader # set_object_matrix
             (float32_array (Vector.to_array
                (Vector.Const.scale_translation
                   (Vector.of_three scale) (Vector.of_three position))));
+          shader # set_alpha 1.0;
           shader # set_colors a_colors;
           shader # set_normals a_positions;
           shader # set_positions  a_positions;
           shader # draw_elements Shaders.Triangles e_triangles;
-          shader # set_colors a_colors_wireframe;
-          shader # draw_elements Shaders.Lines e_wireframe
+          if wireframe then begin
+            shader # set_colors a_colors_wireframe;
+            shader # draw_elements Shaders.Lines e_wireframe
+          end
         end
 
     end
@@ -319,7 +326,7 @@ let prepare_scene gl component : scene =
           let x_scale, y_scale, z_scale = this # scale in
           sphere_pointer # set_scale (pointer_size *. x_scale, pointer_size *.y_scale, pointer_size *. z_scale);
           sphere_pointer # set_position pointer_magnetic;
-          sphere_pointer # draw (basic_shader # id) 0;
+          sphere_pointer # draw (basic_shader # id) round;
         end;
         basic_shader # switch;
       done;
