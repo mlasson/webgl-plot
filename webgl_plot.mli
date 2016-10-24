@@ -52,83 +52,85 @@ val update_post_render_hook: plot -> ((unit -> unit) -> unit -> unit) -> unit
 (** {6 Histograms } **)
 
 
-type histogram
-(** The type of histograms. *)
+module Histogram : sig
 
-val add_grid_histogram :
-  plot ->
-  ?name:string ->
-  ?border:float ->
-  ?widths:float array array ->
-  ?depths:float array array ->
-  ?colors:(float * float * float) array array ->
-  x:float array ->
-  z:float array -> y:float array array -> unit -> histogram
-(** Adds a grid histogram of [(n - 1) * (m - 1)] boxes where [n] (resp. [m])
-    is the length of [x] (resp. [z]). The matrix [y] should have dimension [(n-1) * (m-1)].
-    The center of the [i,j] box is :
-      {C ([x]{_i} + [x]{_i+1})) / 2, [y]_{i,j}, ([z]{_i} + [z]{_i+1})) / 2 }
+  type t
+  (** The type of histograms. *)
 
-  - [border] is the size of the border (default: 1),
-  - [widths]{_i,j} (resp. [depths]{_i,j}) should be a number between 0 and 1 that control the width (resp. the depth of the box),
-  - [colors]{_i,j} id the RGB code (between 0.0 and 1.0) of each box. *)
+  val add_grid_histogram :
+    plot ->
+    ?name:string ->
+    ?border:float ->
+    ?widths:float array array ->
+    ?depths:float array array ->
+    ?colors:(float * float * float) array array ->
+    x:float array ->
+    z:float array -> y:float array array -> unit -> t
+    (** Adds a grid histogram of [(n - 1) * (m - 1)] boxes where [n] (resp. [m])
+        is the length of [x] (resp. [z]). The matrix [y] should have dimension [(n-1) * (m-1)].
+        The center of the [i,j] box is :
+          {C ([x]{_i} + [x]{_i+1})) / 2, [y]_{i,j}, ([z]{_i} + [z]{_i+1})) / 2 }
 
-val add_list_histogram :
-  plot ->
-  ?name:string ->
-  ?border:float ->
-  ?widths:float array ->
-  ?depths:float array ->
-  ?colors:(float * float * float) array -> (float * float * float) array -> histogram
-(** Adds an histrogram from an array of centers [x,y,z].
+        - [border] is the size of the border (default: 1),
+        - [widths]{_i,j} (resp. [depths]{_i,j}) should be a number between 0 and 1 that control the width (resp. the depth of the box),
+        - [colors]{_i,j} id the RGB code (between 0.0 and 1.0) of each box. *)
 
-  Each box is defined from the rectangle of corners:
-    {C ([x] - 0.5 * [width]_k, [y], [z] - 0.5 * [depth]_k) and  ([x] + 0.5 * [width]_k, [y], [z] + 0.5 * [depth]_k) }
+  val add_list_histogram :
+    plot ->
+    ?name:string ->
+    ?border:float ->
+    ?widths:float array ->
+    ?depths:float array ->
+    ?colors:(float * float * float) array -> (float * float * float) array -> t
+    (** Adds an histrogram from an array of centers [x,y,z].
 
-  - [border] is the size of the border (default: 1),
-  - [colors]{_k} id the RGB code (between 0.0 and 1.0) of each box. *)
+     Each box is defined from the rectangle of corners:
+     {C ([x] - 0.5 * [width]_k, [y], [z] - 0.5 * [depth]_k) and  ([x] + 0.5 * [width]_k, [y], [z] + 0.5 * [depth]_k) }
+
+     - [border] is the size of the border (default: 1),
+     - [colors]{_k} id the RGB code (between 0.0 and 1.0) of each box. *)
+end
 
 
 (** {6 Surfaces } **)
 
+module Surface : sig
+  type t
+  (** The type of surfaces. *)
 
-type surface
-(** The type of surfaces. *)
+  val add_surface :
+    plot ->
+    ?colors:(float * float * float) array array ->
+    ?wireframe:bool ->
+    ?name:string ->
+    ?alpha:float ->
+    ?magnetic:bool ->
+    x:float array ->
+    z:float array -> y:float array array -> unit -> t
+    (** Adds a surface specifed by the graph of a function, [y{_i,j} = f(x{_i},z{_j})].
 
-val add_surface :
-  plot ->
-  ?colors:(float * float * float) array array ->
-  ?wireframe:bool ->
-  ?name:string ->
-  ?alpha:float ->
-  ?magnetic:bool ->
-  x:float array ->
-  z:float array -> y:float array array -> unit -> surface
-(** Adds a surface specifed by the graph of a function, [y{_i,j} = f(x{_i},z{_j})].
-
-  - [alpha] when specified the surface will be transparent (and the value of alpha between 0 and 1 controls the opacity),
-  - [magnetic] when on the mouse will be attraced by the (x,y,z) provided,
-  - [wireframe] when on the wireframe will be displayed,
-  - [colors] is the RGB code at each points (the color between each point will be interpolated).
-*)
+      - [alpha] when specified the surface will be transparent (and the value of alpha between 0 and 1 controls the opacity),
+      - [magnetic] when on the mouse will be attraced by the (x,y,z) provided,
+      - [wireframe] when on the wireframe will be displayed,
+      - [colors] is the RGB code at each points (the color between each point will be interpolated). *)
 
 
-val add_parametric_surface :
-  plot ->
-  ?colors:(float * float * float) array array ->
-  ?wireframe:bool ->
-  ?name:string ->
-  ?alpha:float ->
-  ?magnetic:bool ->
-  a:float array ->
-  b:float array -> p:(float * float * float) array array -> unit -> surface
-(** Adds a surface specifed by a parametric surfaceo f, [(x,y,z) = (x{_i},f(x{_i},z{_j}), z{_j})].
+  val add_parametric_surface :
+    plot ->
+    ?colors:(float * float * float) array array ->
+    ?wireframe:bool ->
+    ?name:string ->
+    ?alpha:float ->
+    ?magnetic:bool ->
+    a:float array ->
+    b:float array -> p:(float * float * float) array array -> unit -> t
+    (** Adds a surface specifed by a parametric surfaceo f, [(x,y,z) = (x{_i},f(x{_i},z{_j}), z{_j})].
 
-  - [alpha] when specified the surface will be transparent (and the value of alpha between 0 and 1 controls the opacity),
-  - [magnetic] when on the mouse will be attraced by the (x,y,z) provided,
-  - [wireframe] when on the wireframe will be displayed,
-  - [colors] is the RGB code at each points (the color between each point will be interpolated).
-*)
+        - [alpha] when specified the surface will be transparent (and the value of alpha between 0 and 1 controls the opacity),
+        - [magnetic] when on the mouse will be attraced by the (x,y,z) provided,
+        - [wireframe] when on the wireframe will be displayed,
+        - [colors] is the RGB code at each points (the color between each point will be interpolated). *)
+end
 
 
 (** {6 Point of view} **)

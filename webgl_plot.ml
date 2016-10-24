@@ -12,8 +12,6 @@ module Component = Webgl_plot_component
 module Math = Webgl_plot_math
 module Helper = Webgl_plot_dom_helper
 module Export = Webgl_plot_export
-module Histogram = Webgl_plot_histogram
-module Surface = Webgl_plot_surface
 
 type plot = {
   element: Element.t;
@@ -32,42 +30,70 @@ let default_export =
     series = []
   }
 
-type histogram = Histogram.t
-type surface = Surface.t
 
-let create_grid_histogram scene ?name ?border ?widths ?depths ?colors ~x ~z ~y () =
-  let widths = option_map flatten_array_array widths in
-  let depths = option_map flatten_array_array depths in
-  let colors = option_map flatten_triple_array_array colors in
-  let x = float32_array x in
-  let z = float32_array z in
-  let y = flatten_array_array y in
-  Histogram.create scene ?widths ?colors ?depths ?name ?border (`Grid (x, z, y))
-let add_grid_histogram {scene; _} = create_grid_histogram scene
+module Histogram =
+struct
+  module Histogram = Webgl_plot_histogram
 
-let create_list_histogram scene ?name ?border ?widths ?depths ?colors centers =
-  let widths = option_map float32_array widths in
-  let depths = option_map float32_array depths in
-  let colors = option_map flatten_triple_array colors in
-  let centers = flatten_triple_array centers in
-  Histogram.create scene ?widths ?colors ?depths ?name ?border (`List centers)
-let add_list_histogram {scene; _} = create_list_histogram scene
+  type t = Histogram.t
 
-let create_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ~x ~z ~y () =
-  let colors = option_map flatten_triple_array_array colors in
-  let x = float32_array x in
-  let z = float32_array z in
-  let y = flatten_array_array y in
-  Surface.create scene ?colors ?wireframe ?name ?alpha ?magnetic ~parametric:false x z y
-let add_surface {scene; _} = create_surface scene
+  let set_alpha histogram x = histogram # set_alpha x
+  let set_wireframe histogram x = histogram # set_border x
 
-let create_parametric_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ~a ~b ~p () =
-  let colors = option_map flatten_triple_array_array colors in
-  let a = float32_array a in
-  let b = float32_array b in
-  let p = flatten_triple_array_array p in
-  Surface.create scene ?colors ?wireframe ?name ?alpha ?magnetic ~parametric:true a b p
-let add_parametric_surface {scene; _} = create_parametric_surface scene
+  let create_grid_histogram scene ?name ?border ?widths ?depths ?colors ~x ~z ~y () =
+    let widths = option_map flatten_array_array widths in
+    let depths = option_map flatten_array_array depths in
+    let colors = option_map flatten_triple_array_array colors in
+    let x = float32_array x in
+    let z = float32_array z in
+    let y = flatten_array_array y in
+    Histogram.create scene ?widths ?colors ?depths ?name ?border (`Grid (x, z, y))
+  let add_grid_histogram {scene; _} = create_grid_histogram scene
+
+  let create_list_histogram scene ?name ?border ?widths ?depths ?colors centers =
+    let widths = option_map float32_array widths in
+    let depths = option_map float32_array depths in
+    let colors = option_map flatten_triple_array colors in
+    let centers = flatten_triple_array centers in
+    Histogram.create scene ?widths ?colors ?depths ?name ?border (`List centers)
+  let add_list_histogram {scene; _} = create_list_histogram scene
+
+end
+
+module Surface =
+  struct
+    module Surface = Webgl_plot_surface
+
+    type t = Surface.t
+
+    let set_alpha surface x = surface # set_alpha x
+    let set_wireframe surface x = surface # set_wireframe x
+    let set_magnetic surface x = surface # set_magnetic x
+    let x_projection surface =
+     match surface # x_projection with
+       | None -> None
+       | Some (x,y) -> Some (array_of_float32 x, array_of_float32 y)
+    let z_projection surface =
+     match surface # z_projection with
+       | None -> None
+       | Some (z,y) -> Some (array_of_float32 z, array_of_float32 y)
+
+    let create_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ~x ~z ~y () =
+      let colors = option_map flatten_triple_array_array colors in
+      let x = float32_array x in
+      let z = float32_array z in
+      let y = flatten_array_array y in
+      Surface.create scene ?colors ?wireframe ?name ?alpha ?magnetic ~parametric:false x z y
+    let add_surface {scene; _} = create_surface scene
+
+    let create_parametric_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ~a ~b ~p () =
+      let colors = option_map flatten_triple_array_array colors in
+      let a = float32_array a in
+      let b = float32_array b in
+      let p = flatten_triple_array_array p in
+      Surface.create scene ?colors ?wireframe ?name ?alpha ?magnetic ~parametric:true a b p
+    let add_parametric_surface {scene; _} = create_parametric_surface scene
+  end
 
 let create ?(initial_value = default_export) () : plot =
   let {Export.x_axis; y_axis; z_axis; series; ratio} = initial_value in
@@ -93,6 +119,8 @@ let create ?(initial_value = default_export) () : plot =
         option_iter ticks (repere # set_z_axis_ticks);
         option_iter bounds (repere # set_z_axis_bounds));
 
+    let open Histogram in
+    let open Surface in
     List.iter (function
         | Export.Histogram Uniform {name; x; z; y; widths; depths; colors; border} ->
           ignore (create_grid_histogram scene ?name ?border ?widths ?depths ?colors ~x ~z ~y ())
