@@ -97,6 +97,25 @@ type box = {
   z_max : float;
 }
 
+let neutral_box = {
+  x_min = min_float;
+  x_max = max_float;
+  y_min = min_float;
+  y_max = max_float;
+  z_min = min_float;
+  z_max = max_float;
+}
+
+let merge_box b1 b2 = {
+  x_min = min b1.x_min b2.x_min;
+  x_max = max b1.x_max b2.x_max;
+  y_min = min b1.y_min b2.y_min;
+  y_max = max b1.y_max b2.y_max;
+  z_min = min b1.z_min b2.z_min;
+  z_max = max b1.z_max b2.z_max;
+}
+
+
 let bounding_box points =
   if Float32Array.length points mod 3 <> 0 then
     failwith "bounding_box: input should an array of length divisible by 3"
@@ -120,15 +139,6 @@ let bounding_box points =
         if !r_min > v then r_min := v;
         if !r_max < v then r_max := v;
       ) points;
-    let correct r_min r_max =
-      if !r_max -. !r_min < 1e-13 then begin
-        r_max := !r_max -. 1.0;
-        r_min := !r_min +. 1.0;
-      end
-    in
-    correct x_min x_max;
-    correct y_min y_max;
-    correct z_min z_max;
     {
       x_min = !x_min;
       x_max = !x_max;

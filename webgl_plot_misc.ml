@@ -74,9 +74,7 @@ module Index = struct
     else
       `Int (Uint32Array.new_uint32_array (`Data a))
 
-
 end
-
 
 let array_of_float32 a =
   Array.init (Float32Array.length a) (fun k -> Float32Array.get a k)
@@ -85,6 +83,15 @@ let float32_array a =
   Float32Array.new_float32_array (`Data a)
 
 module FloatData = struct
+
+  let update_min_max min_ref max_ref a d s =
+    let n = Float32Array.length a in
+    assert (n mod d = 0);
+    for k = 0 to n / d - 1 do
+      let x = Float32Array.get a ((d * k) + s) in
+      if x < !min_ref then min_ref := x;
+      if x > !max_ref then max_ref := x;
+    done
 
   let closest_point dim dist a =
     let buffer = Array.create_float dim in
@@ -172,6 +179,18 @@ module FloatData = struct
     done;
     res
 
+  let flatten_triple_array ta =
+    let size = Array.length ta * 3 in
+    let res = Float32Array.new_float32_array (`Size size) in
+    let pos = ref 0 in
+    for i = 0 to Array.length ta - 1 do
+      let x,y,z = ta.(i) in
+      Float32Array.set res !pos x; incr pos;
+      Float32Array.set res !pos y; incr pos;
+      Float32Array.set res !pos z; incr pos;
+    done;
+    res
+
   let flatten_array_array_array aaa =
     let size =
       let res = ref 0 in
@@ -193,6 +212,28 @@ module FloatData = struct
           Float32Array.set res !pos a.(k);
           incr pos;
         done;
+      done;
+    done;
+    res
+
+  let flatten_triple_array_array taa =
+    let size =
+      let res = ref 0 in
+      for i = 0 to Array.length taa - 1 do
+        let ta = taa.(i) in
+        res := !res + (Array.length ta) * 3;
+      done;
+      !res
+    in
+    let res = Float32Array.new_float32_array (`Size size) in
+    let pos = ref 0 in
+    for i = 0 to Array.length taa - 1 do
+      let ta = taa.(i) in
+      for j = 0 to Array.length ta - 1 do
+        let x,y,z = ta.(j) in
+        Float32Array.set res !pos x; incr pos;
+        Float32Array.set res !pos y; incr pos;
+        Float32Array.set res !pos z; incr pos;
       done;
     done;
     res

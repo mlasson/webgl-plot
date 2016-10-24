@@ -60,8 +60,21 @@ module SurfaceGeometry = struct
     }
 end
 
+class type t =
+  object
+    inherit object3d
 
-let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(magnetic = false) ?colors ?alpha ~parametric xs zs ys =
+    method set_alpha : float option -> unit
+    method set_wireframe: bool -> unit
+    method set_magnetic: bool -> unit
+
+    method x_projection: float -> (Float32Array.t * Float32Array.t) option
+    method z_projection: float -> (Float32Array.t * Float32Array.t) option
+
+  end
+
+
+let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(magnetic = false) ?colors ?alpha ~parametric xs zs ys : t =
   let open Shaders in
 
   let gl = scene # gl in
@@ -73,12 +86,6 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
 
   let {SurfaceGeometry.vertices; triangles; wireframe = wireframe_vertices; normals; bounds; texcoords} =
     SurfaceGeometry.create parametric xs zs ys
-  in
-
-  let alpha, opaque =
-    match alpha with
-    | Some alpha -> alpha, false
-    | None -> 1.0, true
   in
 
   let colors = match colors with
@@ -144,17 +151,20 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
 
   object(this)
     inherit identified
+    inherit with_alpha ?alpha ()
 
     val name = name
-    val wireframe = wireframe
-    val alpha = alpha
-    val opaque = opaque
+    val mutable wireframe = wireframe
 
     val mutable magnetic = magnetic
-    val mutable grid_width = 0.003
+    val grid_width = 0.003
+
+    method set_magnetic b = magnetic <- b
+    method set_wireframe b = wireframe <- b
 
     method name = name
-    method opaque = opaque
+
+    method bounds = bounds
 
     method draw shader_id round =
       let open Webgl in
@@ -262,8 +272,6 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
           done;
           Some (zs, res)
         end
-
-
 
     method x_projection x =
       if parametric then

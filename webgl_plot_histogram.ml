@@ -223,7 +223,14 @@ module HistogramGeometry = struct
     }
 end
 
-let create (scene : Webgl_plot_scene.scene) ?(name = "") ?widths ?depths ?colors ?(border = 0.001) input =
+class type t = object
+  inherit object3d
+
+  method set_alpha : float option -> unit
+  method set_border : float -> unit
+end
+
+let create (scene : Webgl_plot_scene.scene) ?(name = "") ?widths ?depths ?colors ?(border = 0.001) input : t =
   let open Shaders in
   let gl = scene # gl in
   let shader = scene # basic_shader in
@@ -241,23 +248,18 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?widths ?depths ?colors
   in
   object(this)
     inherit identified
-    inherit no_projections
+    inherit with_alpha ()
 
-    val alpha = 0.7
-    val mutable scale = (1., 1., 1.)
-    val mutable position = (0., 0., 0.)
-    val mutable border = border
     val name = name
+    val scale = (1., 1., 1.)
+    val position = (0., 0., 0.)
+
+    val mutable border = border
+
+    method set_border x =
+      border <- (x /. 1000.0)
 
     method name = name
-
-    method opaque = true
-
-    method set_scale x =
-      scale <- x
-
-    method set_position x =
-      position <- x
 
     method draw shader_id round =
       if shader_id = shader # id && round = 0 then begin
@@ -285,6 +287,8 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?widths ?depths ?colors
         shader # set_colors a_colors;
         shader # draw_arrays Shaders.Triangles (a_triangles # count);
       end
+
+    method bounds = Geometry.bounding_box triangles
 
     method ray o e = Intersection.ray_triangles triangles table o e
 

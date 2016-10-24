@@ -440,6 +440,8 @@ let create (scene : Webgl_plot_scene.scene) : t =
 
     method opaque = true
 
+    method bounds = Webgl_plot_geometry.neutral_box
+
     method draw shader_id round =
       if shader_id = texture_shader # id && round = 0 then begin
         let angle_x, angle_y, _ = scene # angle in

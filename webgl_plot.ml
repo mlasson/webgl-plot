@@ -4,7 +4,6 @@
 
 open Js_windows
 open Webgl_plot_misc
-open Js_array
 open FloatData
 
 module Scene = Webgl_plot_scene
@@ -33,6 +32,43 @@ let default_export =
     series = []
   }
 
+type histogram = Histogram.t
+type surface = Surface.t
+
+let create_grid_histogram scene ?name ?border ?widths ?depths ?colors ~x ~z ~y () =
+  let widths = option_map flatten_array_array widths in
+  let depths = option_map flatten_array_array depths in
+  let colors = option_map flatten_triple_array_array colors in
+  let x = float32_array x in
+  let z = float32_array z in
+  let y = flatten_array_array y in
+  Histogram.create scene ?widths ?colors ?depths ?name ?border (`Grid (x, z, y))
+let add_grid_histogram {scene; _} = create_grid_histogram scene
+
+let create_list_histogram scene ?name ?border ?widths ?depths ?colors centers =
+  let widths = option_map float32_array widths in
+  let depths = option_map float32_array depths in
+  let colors = option_map flatten_triple_array colors in
+  let centers = flatten_triple_array centers in
+  Histogram.create scene ?widths ?colors ?depths ?name ?border (`List centers)
+let add_list_histogram {scene; _} = create_list_histogram scene
+
+let create_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ~x ~z ~y () =
+  let colors = option_map flatten_triple_array_array colors in
+  let x = float32_array x in
+  let z = float32_array z in
+  let y = flatten_array_array y in
+  Surface.create scene ?colors ?wireframe ?name ?alpha ?magnetic ~parametric:false x z y
+let add_surface {scene; _} = create_surface scene
+
+let create_parametric_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ~a ~b ~p () =
+  let colors = option_map flatten_triple_array_array colors in
+  let a = float32_array a in
+  let b = float32_array b in
+  let p = flatten_triple_array_array p in
+  Surface.create scene ?colors ?wireframe ?name ?alpha ?magnetic ~parametric:true a b p
+let add_parametric_surface {scene; _} = create_parametric_surface scene
+
 let create ?(initial_value = default_export) () : plot =
   let {Export.x_axis; y_axis; z_axis; series; ratio} = initial_value in
   let renderer gl textbox_factory =
@@ -57,89 +93,22 @@ let create ?(initial_value = default_export) () : plot =
         option_iter ticks (repere # set_z_axis_ticks);
         option_iter bounds (repere # set_z_axis_bounds));
 
-    let update_min_max min_ref max_ref a d s =
-      let n = Float32Array.length a in
-      assert (n mod d = 0);
-      for k = 0 to n / d - 1 do
-        let x = Float32Array.get a ((d * k) + s) in
-        if x < !min_ref then min_ref := x;
-        if x > !max_ref then max_ref := x;
-      done
-    in
-
-    let x_min = ref max_float in
-    let x_max = ref min_float in
-    let y_min = ref max_float in
-    let y_max = ref min_float in
-    let z_min = ref max_float in
-    let z_max = ref min_float in
-
     List.iter (function
         | Export.Histogram Uniform {name; x; z; y; widths; depths; colors; border} ->
-          let widths = option_map flatten_array_array widths in
-          let depths = option_map flatten_array_array depths in
-          let colors = option_map flatten_array_array_array colors in
-
-          let x = float32_array x in
-          let z = float32_array z in
-          let y = flatten_array_array y in
-
-          update_min_max x_min x_max x 1 0;
-          update_min_max z_min z_max z 1 0;
-          y_min := min !y_min 0.0;
-          update_min_max y_min y_max y 1 0;
-
-          ignore (Histogram.create scene ?widths ?colors ?depths ?name ?border (`Grid (x, z, y)))
-
+          ignore (create_grid_histogram scene ?name ?border ?widths ?depths ?colors ~x ~z ~y ())
         | Histogram List {name; centers; widths; depths; colors; border} ->
-          let widths = option_map float32_array widths in
-          let depths = option_map float32_array depths in
-          let colors = option_map flatten_array_array colors in
-          let centers = flatten_array_array centers in
-
-          update_min_max x_min x_max centers 3 0;
-          y_min := min !y_min 0.0;
-          update_min_max y_min y_max centers 3 1;
-          update_min_max z_min z_max centers 3 2;
-
-          ignore (Histogram.create scene ?widths ?colors ?depths ?name ?border (`List centers))
-
+          ignore (create_list_histogram scene ?name ?border ?widths ?depths ?colors centers)
         | Surface Uniform {name; x; z; y; colors; wireframe; alpha; magnetic} ->
-          let colors = option_map flatten_array_array_array colors in
-          let x = float32_array x in
-          let z = float32_array z in
-          let y = flatten_array_array y in
-
-          update_min_max x_min x_max x 1 0;
-          update_min_max z_min z_max z 1 0;
-          update_min_max y_min y_max y 1 0;
-
-          ignore (Surface.create scene ?colors ?wireframe ?name ?alpha ?magnetic ~parametric:false x z y)
-
+          ignore (create_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ~x ~z ~y ())
         | Surface Parametric {name; a; b; p; colors; wireframe; alpha; magnetic} ->
-          let colors = option_map flatten_array_array_array colors in
-          let a = float32_array a in
-          let b = float32_array b in
-          let p = flatten_array_array_array p in
-
-          update_min_max x_min x_max p 3 0;
-          update_min_max y_min y_max p 3 1;
-          update_min_max z_min z_max p 3 2;
-
-          ignore (Surface.create scene ?colors ?wireframe ?name ?alpha ?magnetic ~parametric:true a b p)
-
+          ignore (create_parametric_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ~a ~b ~p ())
         | _ -> (* TODO *) assert false) series;
-
-    let x_min = !x_min in
-    let x_max = !x_max in
-    let y_min = !y_min in
-    let y_max = !y_max in
-    let z_min = !z_min in
-    let z_max = !z_max in
 
     let automatic_bounds axis =
       match axis with Some { Export.bounds = Some _; _} -> false | _ -> true
     in
+
+    let {Geometry.x_min; x_max; y_min; y_max; z_min; z_max} = scene # bounds in
 
     if automatic_bounds x_axis then
       repere # set_x_axis_bounds (x_min, x_max);

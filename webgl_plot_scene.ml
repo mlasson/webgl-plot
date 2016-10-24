@@ -87,6 +87,7 @@ let colored_sphere gl shader =
       method opaque = true
       method set_scale x = scale <- x
       method set_position x = position <- x
+      method bounds = Geometry.neutral_box
       method draw id round =
         if id = shader # id && round = 0 then begin
           shader # set_object_matrix
@@ -113,6 +114,7 @@ class type scene =
     method gl : Webgl.context
     method light_texture_shader : Shaders.LightAndTexture.shader
     method move : float * float * float
+    method bounds: Geometry.box
     method pointer : float * float
     method pointer_magnetic : float * float * float
     method pointer_projection : float * float * float
@@ -232,6 +234,9 @@ let prepare_scene gl component : scene =
     (* Object *)
     val mutable objects : object3d list = []
     method add (obj : object3d) = objects <- obj :: objects
+
+    method bounds =
+      List.fold_left (fun acc o -> Geometry.merge_box acc (o # bounds)) Geometry.neutral_box objects
 
     method private add_sphere position scale color =
       let obj = sphere_factory color in

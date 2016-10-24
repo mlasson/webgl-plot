@@ -18,7 +18,7 @@ module Histogram : sig
 
         widths: float array array option;
         depths: float array array option;
-        colors: float array array array option;
+        colors: (float * float * float) array array option;
       } [@js "uniform"]
 
     | List of {
@@ -26,10 +26,10 @@ module Histogram : sig
 
         border: float option;
 
-        centers: float array array;
+        centers: (float * float * float) array;
         widths: float array option;
         depths: float array option;
-        colors: float array array option;
+        colors: (float * float * float) array option;
       } [@js "list"]
 
     | Unknown of Ojs.t [@js.default]
@@ -46,7 +46,7 @@ module Surface : sig
         z: float array;
         y: float array array;
 
-        colors: float array array array option;
+        colors: (float * float * float) array array option;
         alpha: float option;
         wireframe: bool option;
         magnetic: bool option;
@@ -58,9 +58,9 @@ module Surface : sig
 
         a: float array;
         b: float array;
-        p: float array array array;
+        p: (float * float * float) array array;
 
-        colors: float array array array option;
+        colors: (float * float * float) array array option;
         alpha: float option;
         wireframe: bool option;
         magnetic: bool option;
