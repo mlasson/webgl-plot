@@ -7,7 +7,7 @@
 (** Description of histograms. *)
 module Histogram : sig
   type t =
-    | Uniform of {
+    | Grid of {
         name: string option;
 
         x: float array;
@@ -19,7 +19,7 @@ module Histogram : sig
         widths: float array array option;
         depths: float array array option;
         colors: (float * float * float) array array option;
-      } [@js "uniform"]
+      } [@js "grid"]
 
     | List of {
         name: string option;
@@ -34,12 +34,18 @@ module Histogram : sig
 
     | Unknown of Ojs.t [@js.default]
   [@@js.sum "representation"]
+
+  (**/**)
+  val t_to_js: t -> Ojs.t
+  val t_of_js: Ojs.t -> t
+  (**/**)
+
 end
 
 (** Description of surfaces. *)
 module Surface : sig
   type t =
-    | Uniform of {
+    | Graph of {
         name: string option;
 
         x: float array;
@@ -51,7 +57,7 @@ module Surface : sig
         wireframe: bool option;
         magnetic: bool option;
 
-      }[@js "uniform"]
+      }[@js "graph"]
 
     | Parametric of {
         name: string option;
@@ -69,6 +75,10 @@ module Surface : sig
     | Unknown of Ojs.t [@js.default]
   [@@js.sum "representation"]
 
+  (**/**)
+  val t_to_js: t -> Ojs.t
+  val t_of_js: Ojs.t -> t
+  (**/**)
 end
 
 type series =

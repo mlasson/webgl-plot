@@ -38,7 +38,7 @@ struct
   type t = Histogram.t
 
   let set_alpha histogram x = histogram # set_alpha x
-  let set_wireframe histogram x = histogram # set_border x
+  let set_border histogram x = histogram # set_border x
 
   let create_grid_histogram scene ?name ?border ?widths ?depths ?colors ~x ~z ~y () =
     let widths = option_map flatten_array_array widths in
@@ -69,14 +69,14 @@ module Surface =
     let set_alpha surface x = surface # set_alpha x
     let set_wireframe surface x = surface # set_wireframe x
     let set_magnetic surface x = surface # set_magnetic x
-    let x_projection surface =
-     match surface # x_projection with
-       | None -> None
-       | Some (x,y) -> Some (array_of_float32 x, array_of_float32 y)
-    let z_projection surface =
-     match surface # z_projection with
+    let x_projection (surface : t) x =
+     match surface # x_projection x with
        | None -> None
        | Some (z,y) -> Some (array_of_float32 z, array_of_float32 y)
+    let z_projection surface z =
+     match surface # z_projection z with
+       | None -> None
+       | Some (x,y) -> Some (array_of_float32 x, array_of_float32 y)
 
     let create_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ~x ~z ~y () =
       let colors = option_map flatten_triple_array_array colors in
@@ -122,11 +122,11 @@ let create ?(initial_value = default_export) () : plot =
     let open Histogram in
     let open Surface in
     List.iter (function
-        | Export.Histogram Uniform {name; x; z; y; widths; depths; colors; border} ->
+        | Export.Histogram Grid {name; x; z; y; widths; depths; colors; border} ->
           ignore (create_grid_histogram scene ?name ?border ?widths ?depths ?colors ~x ~z ~y ())
         | Histogram List {name; centers; widths; depths; colors; border} ->
           ignore (create_list_histogram scene ?name ?border ?widths ?depths ?colors centers)
-        | Surface Uniform {name; x; z; y; colors; wireframe; alpha; magnetic} ->
+        | Surface Graph {name; x; z; y; colors; wireframe; alpha; magnetic} ->
           ignore (create_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ~x ~z ~y ())
         | Surface Parametric {name; a; b; p; colors; wireframe; alpha; magnetic} ->
           ignore (create_parametric_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ~a ~b ~p ())

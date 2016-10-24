@@ -4,8 +4,44 @@ module Export = Webgl_plot_export
 
 open Webgl_plot
 
-type javascript_interface = {
+type js_histogram =
+  {
+    set_alpha: (float option -> unit);
+    set_border: (float -> unit);
+  } [@@js]
+
+let js_histogram h =
+  let open Histogram in
+  {
+    set_alpha = set_alpha h;
+    set_border = set_border h;
+  }
+
+type js_surface =
+  {
+    set_alpha: (float option -> unit);
+    set_wireframe: (bool -> unit);
+    set_magnetic: (bool -> unit);
+    x_projection: (float -> (float array * float array) option);
+    z_projection: (float -> (float array * float array) option);
+  } [@@js]
+
+let js_surface s =
+  let open Surface in
+  {
+    set_alpha = set_alpha s;
+    set_wireframe = set_wireframe s;
+    set_magnetic = set_magnetic s;
+    x_projection = x_projection s;
+    z_projection = z_projection s;
+  }
+
+type js_interface = {
   append_to: Element.t -> unit;
+
+  add_histogram: (Export.Histogram.t -> js_histogram);
+  add_surface: (Export.Surface.t -> js_surface);
+
   get_element: (unit -> Element.t);
   get_pointer_projection: (unit -> float * float * float);
   get_pointer_magnetic: (unit -> float * float * float);
@@ -34,10 +70,25 @@ type javascript_interface = {
   set_move: (float * float * float -> unit);
 } [@@js]
 
-let javascript_interface initial_value =
+let js_interface initial_value =
   let plot = create ?initial_value () in
   {
     append_to = (fun parent -> Element.append_child parent (element plot));
+
+    add_histogram = Histogram.(function
+        | Export.Histogram.Grid {name; x; z; y; border; widths; depths; colors} ->
+          js_histogram (add_grid_histogram plot ?name ?border ?widths ?depths ?colors ~x ~z ~y ())
+        | Export.Histogram.List {name; centers; border; widths; depths; colors} ->
+          js_histogram (add_list_histogram plot ?name ?border ?widths ?depths ?colors centers)
+        | _ -> assert false (* TODO *));
+
+    add_surface = Surface.(function
+        | Export.Surface.Graph {name; x; z; y; colors; alpha; wireframe; magnetic} ->
+          js_surface (add_surface plot ?name ?colors ?alpha ?wireframe ?magnetic ~x ~z ~y ())
+        | Export.Surface.Parametric {name;a; b; p; colors; alpha; wireframe; magnetic} ->
+          js_surface (add_parametric_surface plot ?name ?colors ?alpha ?wireframe ?magnetic ~a ~b ~p ())
+        | _ -> assert false (* TODO *));
+
     get_element = (fun () -> element plot);
     get_pointer_projection = (fun () -> pointer_projection plot);
     get_pointer_magnetic = (fun () -> pointer_magnetic plot);
@@ -69,4 +120,4 @@ let javascript_interface initial_value =
 let () =
   let o = Ojs.empty_obj () in
   Ojs.set Ojs.global "WebglPlot" o;
-  Ojs.set o "create" ([%js.of: Export.chart option -> javascript_interface] javascript_interface)
+  Ojs.set o "create" ([%js.of: Export.chart option -> js_interface] js_interface)

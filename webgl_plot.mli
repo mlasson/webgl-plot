@@ -89,6 +89,13 @@ module Histogram : sig
 
      - [border] is the size of the border (default: 1),
      - [colors]{_k} id the RGB code (between 0.0 and 1.0) of each box. *)
+
+
+  val set_alpha: t -> float option -> unit
+  (** Set the alpha state of an histogram. *)
+
+  val set_border: t -> float -> unit
+  (** Set the border size of an histogram. *)
 end
 
 
@@ -130,6 +137,23 @@ module Surface : sig
         - [magnetic] when on the mouse will be attraced by the (x,y,z) provided,
         - [wireframe] when on the wireframe will be displayed,
         - [colors] is the RGB code at each points (the color between each point will be interpolated). *)
+
+
+  val set_alpha: t -> float option -> unit
+  (** Set the alpha state of an histogram. *)
+
+  val set_wireframe: t -> bool -> unit
+  (** Activates or deactivate the rendering of the wireframe. *)
+
+  val set_magnetic: t -> bool -> unit
+  (** Activates or deactivate the magnetism of the surface. *)
+
+  val x_projection: t -> float -> (float array * float array) option
+  (** Returns the projection along the x-axis. *)
+
+  val z_projection: t -> float -> (float array * float array) option
+  (** Returns the projection along the z-axis. *)
+
 end
 
 
