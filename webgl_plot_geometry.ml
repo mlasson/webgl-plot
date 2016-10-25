@@ -21,10 +21,25 @@ let compute_vertices dim1 dim2 desc =
   let n, m = Array.length dim1, Array.length dim2 in
   FloatData.init3_matrix n m (fun i j -> desc dim1.(i) dim2.(j))
 
-let texcoords_from_grid n m =
-  let n' = float (n - 1) in
-  let m' = float (m - 1) in
-  FloatData.init2_matrix n m (fun i j -> 0.001 +. (float i) /. n', (float j) /. m' -. 0.001)
+let texcoords_from_grid xs zs =
+  let n = Float32Array.length xs in
+  let m = Float32Array.length zs in
+  if n > 0 && m > 0 then
+    let x_min = Float32Array.get xs 0 in
+    let x_range = (Float32Array.get xs (n-1)) -. x_min in
+    let map_x i =
+      let x = Float32Array.get xs i in
+      (x -. x_min) /. x_range
+    in
+    let z_min = Float32Array.get zs 0 in
+    let z_range = (Float32Array.get zs (m-1)) -. z_min in
+    let map_z j =
+      let z = Float32Array.get zs j in
+      (z -. z_min) /. z_range
+    in
+    FloatData.init2_matrix n m (fun i j -> map_x i, map_z j)
+
+  else FloatData.init2_matrix 0 0 (fun _ _ -> assert false)
 
 let compute_normals n m points =
   FloatData.init3_matrix n m (fun i j ->

@@ -48,7 +48,7 @@ module SurfaceGeometry = struct
     in
     let triangles = triangles_indexes_from_grid n m in
     let wireframe = lines_indexes_from_grid n m in
-    let texcoords = texcoords_from_grid n m in
+    let texcoords = texcoords_from_grid xs zs in
     let bounds = bounding_box vertices in
     {
       triangles;
@@ -184,19 +184,24 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
             let x = -1. +. 2.0 *. (x -. bounds.x_min) /. (bounds.x_max -. bounds.x_min) in
             let z = -1. +. 2.0 *. (z -. bounds.z_min) /. (bounds.z_max -. bounds.z_min) in
 
+            let scale_x, _, scale_z = scene # scale in
+
+            let grid_width_x = grid_width *. scale_x /. (bounds.x_max -. bounds.x_min) in
+            let grid_width_z = grid_width *. scale_z /. (bounds.z_max -. bounds.z_min) in
+
             a_grid # fill (Float32Array.new_float32_array (`Data [|
-                x -. grid_width;-1.0; 1.0;
-                x +. grid_width;-1.0; 1.0;
-                x -. grid_width; 1.0; 1.0;
-                x +. grid_width;-1.0; 1.0;
-                x +. grid_width; 1.0; 1.0;
-                x -. grid_width; 1.0; 1.0;
-                -1.0;z -. grid_width; 1.0;
-                -1.0;z +. grid_width; 1.0;
-                1.0;z -. grid_width; 1.0;
-                -1.0;z +. grid_width; 1.0;
-                1.0;z +. grid_width; 1.0;
-                1.0;z -. grid_width; 1.0;
+                x -. grid_width_x;-1.0; 1.0;
+                x +. grid_width_x;-1.0; 1.0;
+                x -. grid_width_x; 1.0; 1.0;
+                x +. grid_width_x;-1.0; 1.0;
+                x +. grid_width_x; 1.0; 1.0;
+                x -. grid_width_x; 1.0; 1.0;
+                -1.0;z -. grid_width_z; 1.0;
+                -1.0;z +. grid_width_z; 1.0;
+                1.0;z -. grid_width_z; 1.0;
+                -1.0;z +. grid_width_z; 1.0;
+                1.0;z +. grid_width_z; 1.0;
+                1.0;z -. grid_width_z; 1.0;
               |]));
 
             shader_texture # set_matrix identity_matrix;
