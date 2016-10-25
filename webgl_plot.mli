@@ -7,9 +7,8 @@
 type plot
 (** Representation of a plot scene. *)
 
-module Export : module type of Webgl_plot_export
+module Export = Webgl_plot_export
 (** Alias for the export module. *)
-
 
 val create : ?initial_value:Export.chart -> unit -> plot
 (** Creates a new plot.
