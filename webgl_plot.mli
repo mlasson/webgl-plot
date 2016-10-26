@@ -19,8 +19,8 @@ val create : ?initial_value:Export.chart -> unit -> plot
 val element : plot -> Js_windows.Element.t
 (** Returns the DOM element carrying the plot. *)
 
-val selected_object : plot -> string option
-(** Returns the object currently under the cursor. *)
+val selected_object : plot -> int option
+(** Returns the internal id of the object currently under the cursor. *)
 
 val pointer_projection : plot -> float * float * float
 (** Current projection of the pointer (not it is only meaningful when selected_object is not None. *)
@@ -56,6 +56,9 @@ module Histogram : sig
   type t
   (** The type of histograms. *)
 
+  val id : t -> int
+  (** Return the internal id of an histogram. *)
+
   val add_grid_histogram :
     plot ->
     ?name:string ->
@@ -89,6 +92,8 @@ module Histogram : sig
      - [border] is the size of the border (default: 1),
      - [colors]{_k} id the RGB code (between 0.0 and 1.0) of each box. *)
 
+  val get: plot -> int -> t option
+  (** Retrieve a histogram from its id. *)
 
   val set_alpha: t -> float option -> unit
   (** Set the alpha state of an histogram. *)
@@ -103,6 +108,9 @@ end
 module Surface : sig
   type t
   (** The type of surfaces. *)
+
+  val id : t -> int
+  (** Return the internal id of a surface. *)
 
   val add_surface :
     plot ->
@@ -121,7 +129,6 @@ module Surface : sig
       - [wireframe] when on the wireframe will be displayed,
       - [colors] is the RGB code at each points (the color between each point will be interpolated). *)
 
-
   val add_parametric_surface :
     plot ->
     ?colors:(float * float * float) array array ->
@@ -139,6 +146,8 @@ module Surface : sig
         - [wireframe] when on the wireframe will be displayed,
         - [colors] is the RGB code at each points (the color between each point will be interpolated). *)
 
+  val get: plot -> int -> t option
+  (** Retrieve a surface from its id. *)
 
   val set_alpha: t -> float option -> unit
   (** Set the alpha state of an histogram. *)
@@ -159,7 +168,6 @@ module Surface : sig
   (** Returns the projection along the z-axis. *)
 
 end
-
 
 (** {6 Point of view} **)
 

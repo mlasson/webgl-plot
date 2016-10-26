@@ -47,7 +47,7 @@ type js_interface = {
   get_element: (unit -> Element.t);
   get_pointer_projection: (unit -> float * float * float);
   get_pointer_magnetic: (unit -> float * float * float);
-  get_selected_object: (unit -> string option);
+  get_selected_object: (unit -> Ojs.t);
 
   set_on_double_click: ((unit -> unit) -> unit);
   set_pointer_text_formatter: ((Js_windows.Element.t -> unit) -> unit);
@@ -94,7 +94,16 @@ let js_interface initial_value =
     get_element = (fun () -> element plot);
     get_pointer_projection = (fun () -> pointer_projection plot);
     get_pointer_magnetic = (fun () -> pointer_magnetic plot);
-    get_selected_object = (fun () -> selected_object plot);
+    get_selected_object = (fun () ->
+        match selected_object plot with
+        | None -> Ojs.null
+        | Some id ->
+          match Histogram.get plot id with
+          | Some h -> [%js.of: js_histogram] (js_histogram h)
+          | None -> match Surface.get plot id with
+             | Some s -> [%js.of: js_surface] (js_surface s)
+             | None -> Ojs.null
+      );
 
     set_on_double_click = on_double_click plot;
     set_pointer_text_formatter = set_pointer_text_formatter plot;
