@@ -260,7 +260,7 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
       else
         let n = Float32Array.length xs in
         let m = Float32Array.length zs in
-        let res = Float32Array.new_float32_array (`Size m) in
+        let res = Float32Array.new_float32_array (`Size n) in
         let j =
            let j = ref 0 in
            while
@@ -279,12 +279,12 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
           let t = 1.0 -. t' in
           for i = 0 to n - 1 do
             let v =
-              (Float32Array.get zs (i * m + j')) *. t'
-              +. (Float32Array.get zs (i * m + j)) *. t
+              (Float32Array.get ys (i * m + j')) *. t'
+              +. (Float32Array.get ys (i * m + j)) *. t
             in
             Float32Array.set res i v
           done;
-          Some (zs, res)
+          Some (xs, res)
         end
 
     method x_projection x =
@@ -312,12 +312,12 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
           let t = 1.0 -. t' in
           for j = 0 to m - 1 do
             let v =
-              (Float32Array.get zs (i' * m + j)) *. t'
-              +. (Float32Array.get zs (i * m + j)) *. t
+              (Float32Array.get ys (i' * m + j)) *. t'
+              +. (Float32Array.get ys (i * m + j)) *. t
             in
             Float32Array.set res j  v
           done;
-          Some (xs, res)
+          Some (zs, res)
         end
 
     initializer scene # add (this :> object3d)
