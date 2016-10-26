@@ -83,8 +83,13 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
   let shader_texture = scene # basic2d_shader in
   let shader_wireframe = scene # basic_shader in
 
-  let min, max = match FloatData.min_max ys with Some c -> c | None -> 0.0, 1.0 in
-
+  let min, max =
+    let min = ref max_float in
+    let max = ref min_float in
+    let d, s = if parametric then 3, 1 else 1, 0 in
+    FloatData.update_min_max min max ys d s;
+    !min, !max
+  in
   let {SurfaceGeometry.vertices; triangles; wireframe = wireframe_vertices; normals; bounds; texcoords} =
     SurfaceGeometry.create parametric xs zs ys
   in
