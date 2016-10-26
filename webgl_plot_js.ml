@@ -22,6 +22,7 @@ type js_surface =
     set_alpha: (float option -> unit);
     set_wireframe: (bool -> unit);
     set_magnetic: (bool -> unit);
+    set_crosshair: (bool -> unit);
     x_projection: (float -> (float array * float array) option);
     z_projection: (float -> (float array * float array) option);
   } [@@js]
@@ -32,6 +33,7 @@ let js_surface s =
     set_alpha = set_alpha s;
     set_wireframe = set_wireframe s;
     set_magnetic = set_magnetic s;
+    set_crosshair = set_crosshair s;
     x_projection = x_projection s;
     z_projection = z_projection s;
   }
@@ -83,10 +85,10 @@ let js_interface initial_value =
         | _ -> assert false (* TODO *));
 
     add_surface = Surface.(function
-        | Export.Surface.Graph {name; x; z; y; colors; alpha; wireframe; magnetic} ->
-          js_surface (add_surface plot ?name ?colors ?alpha ?wireframe ?magnetic ~x ~z ~y ())
-        | Export.Surface.Parametric {name;a; b; p; colors; alpha; wireframe; magnetic} ->
-          js_surface (add_parametric_surface plot ?name ?colors ?alpha ?wireframe ?magnetic ~a ~b ~p ())
+        | Export.Surface.Graph {name; x; z; y; colors; alpha; wireframe; magnetic; crosshair} ->
+          js_surface (add_surface plot ?name ?colors ?alpha ?wireframe ?magnetic ?crosshair ~x ~z ~y ())
+        | Export.Surface.Parametric {name;a; b; p; colors; alpha; wireframe; magnetic; crosshair} ->
+          js_surface (add_parametric_surface plot ?name ?colors ?alpha ?wireframe ?magnetic ?crosshair ~a ~b ~p ())
         | _ -> assert false (* TODO *));
 
     get_element = (fun () -> element plot);

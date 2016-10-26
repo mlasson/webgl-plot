@@ -55,6 +55,7 @@ module Surface : sig
         colors: (float * float * float) array array option;
         alpha: float option;
         wireframe: bool option;
+        crosshair: bool option;
         magnetic: bool option;
 
       }[@js "graph"]
@@ -70,6 +71,7 @@ module Surface : sig
         alpha: float option;
         wireframe: bool option;
         magnetic: bool option;
+        crosshair: bool option;
       }[@js "parametric"]
 
     | Unknown of Ojs.t [@js.default]

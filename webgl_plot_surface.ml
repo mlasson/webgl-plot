@@ -67,6 +67,7 @@ class type t =
     method set_alpha : float option -> unit
     method set_wireframe: bool -> unit
     method set_magnetic: bool -> unit
+    method set_crosshair: bool -> unit
 
     method x_projection: float -> (Float32Array.t * Float32Array.t) option
     method z_projection: float -> (Float32Array.t * Float32Array.t) option
@@ -74,7 +75,7 @@ class type t =
   end
 
 
-let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(magnetic = false) ?colors ?alpha ~parametric xs zs ys : t =
+let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(magnetic = false) ?(crosshair = false) ?colors ?alpha ~parametric xs zs ys : t =
   let open Shaders in
 
   let gl = scene # gl in
@@ -159,8 +160,11 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
     val mutable magnetic = magnetic
     val grid_width = 0.003
 
+    val mutable crosshair = crosshair
+
     method set_magnetic b = magnetic <- b
     method set_wireframe b = wireframe <- b
+    method set_crosshair b = crosshair <- b
 
     method name = name
 
@@ -179,7 +183,7 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
           shader_texture # set_positions a_params;
           shader_texture # draw_elements Shaders.Triangles e_triangles;
 
-          if scene # projection_valid && not parametric && match scene # selected with Some obj -> obj # id = id | _ -> false then begin
+          if crosshair && scene # projection_valid && not parametric && match scene # selected with Some obj -> obj # id = id | _ -> false then begin
             let x,_,z = scene # pointer_magnetic in
             let x = -1. +. 2.0 *. (x -. bounds.x_min) /. (bounds.x_max -. bounds.x_min) in
             let z = -1. +. 2.0 *. (z -. bounds.z_min) /. (bounds.z_max -. bounds.z_min) in

@@ -111,6 +111,7 @@ module Surface : sig
     ?name:string ->
     ?alpha:float ->
     ?magnetic:bool ->
+    ?crosshair: bool ->
     x:float array ->
     z:float array -> y:float array array -> unit -> t
     (** Adds a surface specifed by the graph of a function, [y{_i,j} = f(x{_i},z{_j})].
@@ -128,6 +129,7 @@ module Surface : sig
     ?name:string ->
     ?alpha:float ->
     ?magnetic:bool ->
+    ?crosshair: bool ->
     a:float array ->
     b:float array -> p:(float * float * float) array array -> unit -> t
     (** Adds a surface specifed by a parametric surfaceo f, [(x,y,z) = (x{_i},f(x{_i},z{_j}), z{_j})].
@@ -142,10 +144,13 @@ module Surface : sig
   (** Set the alpha state of an histogram. *)
 
   val set_wireframe: t -> bool -> unit
-  (** Activates or deactivate the rendering of the wireframe. *)
+  (** Activate or deactivate the rendering of the wireframe. *)
 
   val set_magnetic: t -> bool -> unit
-  (** Activates or deactivate the magnetism of the surface. *)
+  (** Activate or deactivate the magnetism of the surface. *)
+
+  val set_crosshair: t -> bool -> unit
+  (** Activate or deactivate the display of x-z projection on the surface. *)
 
   val x_projection: t -> float -> (float array * float array) option
   (** Returns the projection along the x-axis. *)

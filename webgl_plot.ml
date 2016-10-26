@@ -69,6 +69,7 @@ module Surface =
     let set_alpha surface x = surface # set_alpha x
     let set_wireframe surface x = surface # set_wireframe x
     let set_magnetic surface x = surface # set_magnetic x
+    let set_crosshair surface x = surface # set_crosshair x
     let x_projection (surface : t) x =
      match surface # x_projection x with
        | None -> None
@@ -78,20 +79,20 @@ module Surface =
        | None -> None
        | Some (x,y) -> Some (array_of_float32 x, array_of_float32 y)
 
-    let create_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ~x ~z ~y () =
+    let create_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair ~x ~z ~y () =
       let colors = option_map flatten_triple_array_array colors in
       let x = float32_array x in
       let z = float32_array z in
       let y = flatten_array_array y in
-      Surface.create scene ?colors ?wireframe ?name ?alpha ?magnetic ~parametric:false x z y
+      Surface.create scene ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair ~parametric:false x z y
     let add_surface {scene; _} = create_surface scene
 
-    let create_parametric_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ~a ~b ~p () =
+    let create_parametric_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair ~a ~b ~p () =
       let colors = option_map flatten_triple_array_array colors in
       let a = float32_array a in
       let b = float32_array b in
       let p = flatten_triple_array_array p in
-      Surface.create scene ?colors ?wireframe ?name ?alpha ?magnetic ~parametric:true a b p
+      Surface.create scene ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair ~parametric:true a b p
     let add_parametric_surface {scene; _} = create_parametric_surface scene
   end
 
@@ -142,10 +143,10 @@ let create ?(initial_value = default_export) () : plot =
           ignore (create_grid_histogram scene ?name ?border ?widths ?depths ?colors ~x ~z ~y ())
         | Histogram List {name; centers; widths; depths; colors; border} ->
           ignore (create_list_histogram scene ?name ?border ?widths ?depths ?colors centers)
-        | Surface Graph {name; x; z; y; colors; wireframe; alpha; magnetic} ->
-          ignore (create_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ~x ~z ~y ())
-        | Surface Parametric {name; a; b; p; colors; wireframe; alpha; magnetic} ->
-          ignore (create_parametric_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ~a ~b ~p ())
+        | Surface Graph {name; x; z; y; colors; wireframe; alpha; magnetic; crosshair} ->
+          ignore (create_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair ~x ~z ~y ())
+        | Surface Parametric {name; a; b; p; colors; wireframe; alpha; magnetic; crosshair} ->
+          ignore (create_parametric_surface scene ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair ~a ~b ~p ())
         | _ -> (* TODO *) assert false) series;
 
     let automatic_bounds axis =
