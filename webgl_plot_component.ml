@@ -166,7 +166,7 @@ let create_webgl_canvas renderer =
     Element.add_event_listener canvas "selectstart" (fun evt ->
         prevent_default evt;) true;
 
-    Element.add_event_listener canvas "doubleclick" (fun evt ->
+    Element.add_event_listener canvas "dblclick" (fun evt ->
         prevent_default evt;
         state.on_double_click ()) true;
 
