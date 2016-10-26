@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Test</title>
+<script src="webgl-plot.js"></script>
+<meta charset="utf-8"/>
+<style>
+
+html, body {
+  font-family: Menlo, Consolas, monospace;
+  height: 100%;
+}
+
+</style>
+</head>
+<body>
+  <script>
+
+  window.onload = function() {
+    var res_x = 500;
+    var res_z = 2;
+
+    var new_unit_range = function(res) {
+      var a = new Array(res);
+      for (var i = 0;i < res; i++) {
+        a[i] = i / (res - 1);
+      }
+      return a;
+    };
+
+    var x = new_unit_range(res_x).map(function(x){ return 10 * x});
+    var z = new_unit_range(res_z).map(function(z){ return z});
+
+    var graph3d = function (f, x, z) {
+      var res_x = x.length;
+      var res_z = z.length;
+
+      var y = new Array(res_x);
+      for (var i = 0;i < res_x; i++) {
+        var row = new Array(res_z);
+        y[i] = row;
+        for (var j = 0;j < res_z; j++) {
+          row[j] = f(x[i],z[j]);
+        }
+      }
+      return y;
+    }
+
+    var series = [
+      {
+        kind : "surface",
+        data : {
+          name : "constant",
+          representation: "graph",
+          x : x,
+          z : z,
+          y : graph3d(function(x,z) { return Math.floor(x)}, x, z),
+	  wireframe: true, 
+	  magnetic: true,
+	  crosshair: true
+        }
+      }
+    ];
+
+    var graph = { series : series, ratio : [2.0, 1.0, 1.], xAxis : {label : "X"}, yAxis : {label: "Y"}, zAxis : {label: "Z"}};
+
+    var plot = WebglPlot.create(graph);
+
+    plot.appendTo(document.getElementById("main"));
+
+  };
+
+  </script>
+  <div id="main" style="height:95%">
+    <!-- HERE GOES THE RESULTS -->
+  </div>
+</body>
+</html>
