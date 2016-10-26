@@ -78,7 +78,7 @@ module Element : sig
   val first_child: t -> t (* May return Element.null *)
   val last_child: t -> t (* May return Element.null *)
   val next_sibling: t (* T *) -> t (* May return Element.null *)
-  val has_child_nodes: t (* T *) -> bool
+  val has_child_nodes: t (* T *) -> bool [@@js.call]
   val add_event_listener: t (* T *) -> string -> (Event.t -> unit) -> bool -> unit
 
   val has_attribute: t -> string -> bool
