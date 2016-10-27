@@ -313,4 +313,5 @@ let format_from_range r =
   else
     Printf.sprintf "%6.0f"
 
-
+let digest x =
+  Digest.string (Js_windows.JSON.stringify (Obj.magic x))

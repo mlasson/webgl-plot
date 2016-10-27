@@ -257,6 +257,8 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?widths ?depths ?colors
 
     val mutable border = border
 
+    method hash_state = digest border
+
     method set_border x =
       border <- (x /. 1000.0)
 

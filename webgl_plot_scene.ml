@@ -84,6 +84,8 @@ let colored_sphere gl shader =
       val mutable position = (0., 0., 0.)
       val mutable wireframe = false
 
+      method hash_state = digest (scale, position, wireframe)
+
       method name = "pointer"
       method opaque = true
 
@@ -127,6 +129,7 @@ class type scene =
     method pointer_projection : float * float * float
     method projection_valid : bool
     method ratio : float * float * float
+    method hash_state : string
     method render : unit
     method repere_shader : Shaders.Texture.shader
     method scale : float * float * float
@@ -240,7 +243,11 @@ let prepare_scene gl component : scene =
 
     (* Object *)
     val mutable objects : object3d list = []
+
     method add (obj : object3d) = objects <- obj :: objects
+
+    method hash_state =
+      digest (pointer_magnetic, pointer_projection, pointer, aspect, height, width, angle, move, frame, ratio, List.map (fun o -> o # hash_state) objects)
 
     method bounds =
       List.fold_left (fun acc o -> Geometry.merge_box acc (o # bounds)) Geometry.neutral_box objects
@@ -251,7 +258,16 @@ let prepare_scene gl component : scene =
       obj # set_scale scale;
       objects <- (obj :> object3d) :: objects
 
+    val mutable previous_state = ""
     method render =
+      let state = this # hash_state in
+      if state <> previous_state then begin
+        this # render_now;
+        previous_state <- state
+      end
+
+
+    method private render_now =
       let open Webgl in
       let open Constant in
 

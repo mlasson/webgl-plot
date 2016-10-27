@@ -7,6 +7,7 @@ open Js_array
 open Webgl
 open Webgl.Constant
 
+open Webgl_plot_misc
 open Webgl_plot_math
 open Webgl_plot_geometry
 open Webgl_plot_drawable
@@ -30,6 +31,10 @@ class face gl shader =
   in
   object
     val mutable size = 0
+
+    val mutable complete = false
+    method complete = complete
+    method set_complete x = complete <- x
 
     method set_triangles data =
       size <- (Float32Array.length data) / 3;
@@ -119,7 +124,10 @@ let build_cube gl texture_shader {x_min; x_max; y_min; y_max; z_min; z_max} =
   let cube = new face gl texture_shader in
   cube # set_triangles (flatten_array triangles);
   cube # set_texcoords (flatten_array texcoords);
-  delay (fun () -> cube # set_texture (Textures.create_face_texture ()));
+  delay (fun () ->
+      cube # set_texture (Textures.create_face_texture ());
+      cube # set_complete true;
+    );
   cube
 
 let coerce min max l =
@@ -192,7 +200,9 @@ let draw_axis gl texture_shader
     let face = new face gl texture_shader in
     face # set_triangles triangles;
     face # set_texcoords texcoords;
-    delay (fun () -> face # set_texture (Lazy.force face_textures.(texture_id)));
+    delay (fun () ->
+        face # set_texture (Lazy.force face_textures.(texture_id));
+        face # set_complete true);
     face
   in
   let build_face arg =
@@ -202,6 +212,11 @@ let draw_axis gl texture_shader
        Hashtbl.add memo_table arg res;
        res
     | res -> res
+  in
+  let all_complete () =
+    let result = ref true in
+    Hashtbl.iter (fun _ obj -> if not (obj # complete) then result := false) memo_table;
+    !result
   in
   let draw_face front_facing flip a u v texture_id =
     (build_face (front_facing, flip, a, u, v, texture_id) ) # draw
@@ -317,7 +332,7 @@ let draw_axis gl texture_shader
   let pi4 = 0.25 *. Math.pi in
   let pi2 = 0.5 *. Math.pi in
   let pi6 = pi4 +. pi2 in
-  begin fun angle_x angle_y ->
+  all_complete, begin fun angle_x angle_y ->
     let above_or_below, do_flip = if angle_x > 0.05 then `Top, false else `Bottom, true in
 
     if -. pi4 <= angle_y && angle_y <= 0.0 then begin
@@ -402,6 +417,16 @@ let create (scene : Webgl_plot_scene.scene) : t =
 
     method name = "system of axes"
 
+    val mutable new_state_cpt = 0
+    method hash_state =
+      if changed || (match cube with Some c -> not (c # complete) | _ -> true)
+                 || (match ticks with Some (all, _) -> not (all ()) | _ -> true)
+      then
+        (new_state_cpt <- new_state_cpt + 1;
+         digest new_state_cpt)
+      else
+        "ok"
+
     method private modify = changed <- true
 
     method set_x_axis_label s =
@@ -447,7 +472,7 @@ let create (scene : Webgl_plot_scene.scene) : t =
         let angle_x, angle_y, _ = scene # angle in
         if changed then this # compute;
         (match cube with Some cube -> cube # draw | _ -> ());
-        (match ticks with Some ticks -> ticks angle_x angle_y | _ -> ())
+        (match ticks with Some (_, ticks) -> ticks angle_x angle_y | _ -> ())
       end
 
     initializer scene # add (this :> object3d)

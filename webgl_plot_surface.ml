@@ -167,6 +167,8 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
 
     val mutable crosshair = crosshair
 
+    method hash_state = digest (wireframe, magnetic, crosshair)
+
     method set_magnetic b = magnetic <- b
     method set_wireframe b = wireframe <- b
     method set_crosshair b = crosshair <- b

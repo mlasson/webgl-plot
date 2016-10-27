@@ -22,6 +22,8 @@ class type object3d =
     method magnetize: float * float * float -> float * float * float
     method ray: three Vector.vector -> three Vector.vector -> three Vector.vector option
 
+    method hash_state : string
+
     method bounds: Webgl_plot_geometry.box
   end
 
