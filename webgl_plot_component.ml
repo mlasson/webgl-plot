@@ -24,7 +24,7 @@ type state = {
 
 class type context =
   object
-    method alt_down : bool
+    method mod_down : bool
     method new_textbox :
       < element : Js_browser.Element.t;
         set_position : float * float -> unit;
@@ -213,24 +213,24 @@ let create_webgl_canvas renderer =
 
   let gl = setup_webgl_context canvas in
 
-  let alt_down = ref false in
+  let mod_down = ref false in
 
   Element.add_event_listener (Document.body document) "keydown" (fun evt ->
-      if Event.alt_key evt then begin
+      if Event.shift_key evt then begin
         Event.prevent_default evt;
-        alt_down := true;
+        mod_down := true;
       end) true;
 
   Element.add_event_listener (Document.body document) "keyup" (fun evt ->
-      if not (Event.alt_key evt) then begin
+      if not (Event.shift_key evt) then begin
         Event.prevent_default evt;
-        alt_down := false;
+        mod_down := false;
       end) true;
 
   let scene, next_frame = renderer gl
       (object
         method new_textbox = new_textbox ()
-        method alt_down = !alt_down
+        method mod_down = !mod_down
         method set_cursor_visibility b =
           let style = Element.style canvas in
           Style.set_cursor style (if b then "auto" else "none")

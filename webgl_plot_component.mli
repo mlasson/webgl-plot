@@ -15,7 +15,7 @@ type state = {
 
 class type context =
   object
-    method alt_down : bool
+    method mod_down : bool
     method new_textbox :
       < element : Js_browser.Element.t;
         set_position : float * float -> unit;

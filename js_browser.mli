@@ -22,6 +22,7 @@ module Event : sig
   val buttons: t -> int  (* mouse *)
 
   val alt_key: t -> bool (* key *)
+  val shift_key: t -> bool (* key *)
 
   val delta_y: t -> float (* wheel *)
 end

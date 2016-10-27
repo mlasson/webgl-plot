@@ -379,7 +379,7 @@ let prepare_scene gl component : scene =
           end
         | (_, p, obj) :: _ -> begin
             pointer_projection <- Vector.to_three p;
-            if component # alt_down then
+            if component # mod_down then
               pointer_magnetic <- pointer_projection
             else
               pointer_magnetic <- obj # magnetize pointer_projection;
