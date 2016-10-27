@@ -269,7 +269,7 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?widths ?depths ?colors
     method name = name
 
     method draw shader_id round =
-      if shader_id = shader # id && round = 0 then begin
+      if shader_id = shader # id && round >= 0 && round <= 1 then begin
 
         let x_border, y_border, z_border =
           let x_scale, y_scale, z_scale = scene # scale in

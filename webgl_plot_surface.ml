@@ -180,49 +180,47 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
     method draw shader_id round =
       let open Webgl in
       let open Constant in
-      if round = 0 && shader_id = shader_texture # id then begin
+      if round = -1 && shader_id = shader_texture # id then begin
         framebuffer # bind;
 
         shader_texture # set_alpha alpha;
-        if round = 0 then begin
-          shader_texture # set_matrix texture_matrix;
-          shader_texture # set_colors a_colors;
-          shader_texture # set_positions a_params;
-          shader_texture # draw_elements Shaders.Triangles e_triangles;
+        shader_texture # set_matrix texture_matrix;
+        shader_texture # set_colors a_colors;
+        shader_texture # set_positions a_params;
+        shader_texture # draw_elements Shaders.Triangles e_triangles;
 
-          if crosshair && scene # projection_valid && not parametric && match scene # selected with Some obj -> obj # id = id | _ -> false then begin
-            let x,_,z = scene # pointer_magnetic in
-            let x = -1. +. 2.0 *. (x -. bounds.x_min) /. (bounds.x_max -. bounds.x_min) in
-            let z = -1. +. 2.0 *. (z -. bounds.z_min) /. (bounds.z_max -. bounds.z_min) in
+        if crosshair && scene # projection_valid && not parametric && match scene # selected with Some obj -> obj # id = id | _ -> false then begin
+          let x,_,z = scene # pointer_magnetic in
+          let x = -1. +. 2.0 *. (x -. bounds.x_min) /. (bounds.x_max -. bounds.x_min) in
+          let z = -1. +. 2.0 *. (z -. bounds.z_min) /. (bounds.z_max -. bounds.z_min) in
 
-            let scale_x, _, scale_z = scene # scale in
+          let scale_x, _, scale_z = scene # scale in
 
-            let grid_width_x = grid_width *. scale_x /. (bounds.x_max -. bounds.x_min) in
-            let grid_width_z = grid_width *. scale_z /. (bounds.z_max -. bounds.z_min) in
+          let grid_width_x = grid_width *. scale_x /. (bounds.x_max -. bounds.x_min) in
+          let grid_width_z = grid_width *. scale_z /. (bounds.z_max -. bounds.z_min) in
 
-            a_grid # fill (Float32Array.new_float32_array (`Data [|
-                x -. grid_width_x;-1.0; 1.0;
-                x +. grid_width_x;-1.0; 1.0;
-                x -. grid_width_x; 1.0; 1.0;
-                x +. grid_width_x;-1.0; 1.0;
-                x +. grid_width_x; 1.0; 1.0;
-                x -. grid_width_x; 1.0; 1.0;
-                -1.0;z -. grid_width_z; 1.0;
-                -1.0;z +. grid_width_z; 1.0;
-                1.0;z -. grid_width_z; 1.0;
-                -1.0;z +. grid_width_z; 1.0;
-                1.0;z +. grid_width_z; 1.0;
-                1.0;z -. grid_width_z; 1.0;
-              |]));
+          a_grid # fill (Float32Array.new_float32_array (`Data [|
+              x -. grid_width_x;-1.0; 1.0;
+              x +. grid_width_x;-1.0; 1.0;
+              x -. grid_width_x; 1.0; 1.0;
+              x +. grid_width_x;-1.0; 1.0;
+              x +. grid_width_x; 1.0; 1.0;
+              x -. grid_width_x; 1.0; 1.0;
+              -1.0;z -. grid_width_z; 1.0;
+              -1.0;z +. grid_width_z; 1.0;
+              1.0;z -. grid_width_z; 1.0;
+              -1.0;z +. grid_width_z; 1.0;
+              1.0;z +. grid_width_z; 1.0;
+              1.0;z -. grid_width_z; 1.0;
+            |]));
 
-            shader_texture # set_matrix identity_matrix;
-            shader_texture # set_colors a_grid_colors;
-            shader_texture # set_positions a_grid;
-            shader_texture # set_alpha 1.0;
-            shader_texture # draw_arrays Shaders.Triangles (a_grid # count);
+          shader_texture # set_matrix identity_matrix;
+          shader_texture # set_colors a_grid_colors;
+          shader_texture # set_positions a_grid;
+          shader_texture # set_alpha 1.0;
+          shader_texture # draw_arrays Shaders.Triangles (a_grid # count);
           end
-        end
-      end else if (shader_id = shader # id) && ((opaque && round < 2) || (not opaque && round = 2)) then begin
+      end else if round >= 0 && (shader_id = shader # id) && ((opaque && round < 2) || (not opaque && round = 2)) then begin
         shader # set_object_matrix identity_matrix;
         shader # set_texcoords a_texcoords;
         shader # set_normals a_normals;

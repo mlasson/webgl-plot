@@ -50,7 +50,20 @@ html, body {
       return y;
     }
 
+    var zeros = [[0,0],[0,0]];
     var series = [
+    {   
+        kind : "surface",
+        data : {
+          name : "floor",
+          representation: "graph",
+          x : [0, 1],
+          z : [0, 1],
+          y : zeros,
+	  colors: zeros.map(function(row){return row.map(function () { return [0., 0., 0.]})}),
+	  alpha: 0.5,
+        }
+      },
        {
         kind : "histogram",
         data : {

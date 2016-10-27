@@ -95,7 +95,7 @@ let colored_sphere gl shader =
 
       method bounds = Geometry.neutral_box
       method draw id round =
-        if id = shader # id && round <= 1 then begin
+        if round >= 0 && id = shader # id && round <= 1 then begin
           shader # set_object_matrix
             (float32_array (Vector.to_array
                (Vector.Const.scale_translation
@@ -293,19 +293,18 @@ let prepare_scene gl component : scene =
 
       let max_round = if List.for_all (fun x -> x # opaque) objects then 0 else 2 in
 
-      for round = 0 to max_round do
+      for round = -1 to max_round do
+
+        if round = 0 then begin
+          bind_framebuffer gl _FRAMEBUFFER_ None;
+          viewport gl 0 0 width height;
+        end;
 
         if round = 0 then begin
           repere_shader # use;
           repere_shader # set_world_matrix flat_matrix;
           List.iter (fun o -> o # draw (repere_shader # id) round) objects;
           repere_shader # switch;
-
-          basic2d_shader # use;
-          List.iter (fun o -> o # draw (basic2d_shader # id) round) objects;
-          basic2d_shader # switch;
-          bind_framebuffer gl _FRAMEBUFFER_ None;
-          viewport gl 0 0 width height;
         end;
 
         if round = 1 then begin
@@ -325,6 +324,10 @@ let prepare_scene gl component : scene =
           clear_color gl 0.0 0.0 0.0 0.0;
           clear gl _COLOR_BUFFER_BIT_
         end;
+
+        basic2d_shader # use;
+        List.iter (fun o -> o # draw (basic2d_shader # id) round) objects;
+        basic2d_shader # switch;
 
         light_texture_shader # use;
         light_texture_shader # set_world_matrix flat_matrix;
