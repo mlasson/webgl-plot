@@ -2,7 +2,7 @@
 (* See the attached LICENSE file.                                    *)
 (* Copyright 2016 by LexiFi.                                         *)
 
-open Js_windows
+open Js_browser
 open Webgl_plot_misc
 open FloatData
 

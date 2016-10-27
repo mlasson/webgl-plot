@@ -16,7 +16,7 @@ val create : ?initial_value:Export.chart -> unit -> plot
   Note: The DOM element is not attached at initialization, you
   need to manually append it to some parent. *)
 
-val element : plot -> Js_windows.Element.t
+val element : plot -> Js_browser.Element.t
 (** Returns the DOM element carrying the plot. *)
 
 val selected_object : plot -> int option
@@ -31,10 +31,10 @@ val pointer_magnetic : plot -> float * float * float
 val on_double_click: plot -> (unit -> unit) -> unit
 (** Register a callback called when a double click is performed by the user. *)
 
-val pointer_text_formatter: plot -> (Js_windows.Element.t -> unit)
+val pointer_text_formatter: plot -> (Js_browser.Element.t -> unit)
 (** Return the callback used to format the text below the pointer.*)
 
-val set_pointer_text_formatter: plot -> (Js_windows.Element.t -> unit) -> unit
+val set_pointer_text_formatter: plot -> (Js_browser.Element.t -> unit) -> unit
 (** Set the callback used to format the text below the pointer.*)
 
 val update_pre_render_hook: plot -> ((unit -> unit) -> unit -> unit) -> unit

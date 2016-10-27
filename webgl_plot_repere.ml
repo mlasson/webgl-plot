@@ -18,7 +18,7 @@ module Textures = Webgl_plot_textures
 module Export = Webgl_plot_export
 
 let delay f =
-  let open Js_windows in
+  let open Js_browser in
   Window.set_timeout window f 0 |> ignore
 
 class face gl shader =

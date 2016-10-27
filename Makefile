@@ -1,6 +1,6 @@
 VERSION=1.0
 
-MODULES=js_windows js_array webgl webgl_plot_export webgl_plot_math webgl_plot_misc webgl_plot_dom_helper \
+MODULES=js_browser js_array webgl webgl_plot_export webgl_plot_math webgl_plot_misc webgl_plot_dom_helper \
 	webgl_plot_geometry webgl_plot_intersection webgl_plot_shaders \
 	webgl_plot_drawable webgl_plot_histogram webgl_plot_surface \
 	webgl_plot_textures webgl_plot_repere \
@@ -9,7 +9,7 @@ MODULES=js_windows js_array webgl webgl_plot_export webgl_plot_math webgl_plot_m
 JS_INTERFACE=webgl_plot_js.cmo
 
 CMOS=$(patsubst %,%.cmo,$(MODULES))
-GENERATED=webgl.ml js_windows.ml js_array.ml webgl_plot_export.ml
+GENERATED=webgl.ml js_browser.ml js_array.ml webgl_plot_export.ml
 
 NAME=webgl-plot
 
@@ -51,7 +51,7 @@ webgl.ml: webgl.mli
 js_array.ml: js_array.mli
 	ocamlfind gen_js_api/gen_js_api $<
 
-js_windows.ml: js_windows.mli
+js_browser.ml: js_browser.mli
 	ocamlfind gen_js_api/gen_js_api $<
 
 webgl_plot_export.ml: webgl_plot_export.mli

@@ -17,7 +17,7 @@ class type context =
   object
     method alt_down : bool
     method new_textbox :
-      < element : Js_windows.Element.t;
+      < element : Js_browser.Element.t;
         set_position : float * float -> unit;
         set_text : string -> unit >
     method set_cursor_visibility : bool -> unit
@@ -27,4 +27,4 @@ val create_webgl_canvas :
   (Webgl.context ->
    context ->
    'a * (float -> state -> unit)) ->
-  Js_windows.Element.t * state * 'a
+  Js_browser.Element.t * state * 'a

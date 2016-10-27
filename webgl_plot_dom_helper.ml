@@ -2,7 +2,7 @@
 (* See the attached LICENSE file.                                    *)
 (* Copyright 2016 by LexiFi.                                         *)
 
-open Js_windows
+open Js_browser
 
 let error s =
   print_endline ("Error: "^s);

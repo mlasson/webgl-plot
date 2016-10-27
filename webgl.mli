@@ -425,7 +425,7 @@ val texture_to_js: texture -> Ojs.t
 val create_texture: context -> texture[@@js.call]
 
 val bind_texture: context -> Constant.t -> texture option -> unit
-val tex_image_2D: context -> Constant.t -> int -> Constant.t -> Constant.t -> Constant.t -> ([`Canvas of (* <canvas> *) Js_windows.Element.t | `Bytes of Uint8Array.t][@js.union]) -> unit
+val tex_image_2D: context -> Constant.t -> int -> Constant.t -> Constant.t -> Constant.t -> ([`Canvas of (* <canvas> *) Js_browser.Element.t | `Bytes of Uint8Array.t][@js.union]) -> unit
 val tex_image_2D_array: context -> Constant.t -> int -> Constant.t -> int -> int -> int -> Constant.t -> Constant.t -> ([`Bytes of Uint8Array.t][@js.union]) option -> unit [@@js.call "texImage2D"]
 val framebuffer_texture_2D: context -> Constant.t -> Constant.t -> Constant.t -> texture -> int -> unit
 val generate_mipmap: context -> Constant.t -> unit
@@ -448,9 +448,9 @@ val get_supported_extensions: context -> string array
 val get_extension: context -> string -> Ojs.t option
 val viewport: context -> int -> int -> int -> int -> unit
 
-val get_context: ?context_attribute:context_attribute -> (* <canvas> *) Js_windows.Element.t -> context_type -> context option
+val get_context: ?context_attribute:context_attribute -> (* <canvas> *) Js_browser.Element.t -> context_type -> context option
   [@@js.custom
-      val get_context: Js_windows.Element.t -> context_type -> context_attribute -> context option[@@js.call]
+      val get_context: Js_browser.Element.t -> context_type -> context_attribute -> context option[@@js.call]
       let default_context_attribute = {
         alpha = Some true;
         depth = Some true;

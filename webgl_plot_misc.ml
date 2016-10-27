@@ -314,4 +314,4 @@ let format_from_range r =
     Printf.sprintf "%6.0f"
 
 let digest x =
-  Digest.string (Js_windows.JSON.stringify (Obj.magic x))
+  Digest.string (Js_browser.JSON.stringify (Obj.magic x))

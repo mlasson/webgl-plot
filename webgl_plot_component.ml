@@ -2,7 +2,7 @@
 (* See the attached LICENSE file.                                    *)
 (* Copyright 2016 by LexiFi.                                         *)
 
-open Js_windows
+open Js_browser
 
 module Math = Webgl_plot_math
 module Helper = Webgl_plot_dom_helper
@@ -26,7 +26,7 @@ class type context =
   object
     method alt_down : bool
     method new_textbox :
-      < element : Js_windows.Element.t;
+      < element : Js_browser.Element.t;
         set_position : float * float -> unit;
         set_text : string -> unit >
     method set_cursor_visibility : bool -> unit

@@ -144,8 +144,8 @@ class type scene =
     method set_pointer : float * float -> unit
     method set_ratio : float * float * float -> unit
     method set_width : int -> unit
-    method pointer_text_formatter : Js_windows.Element.t -> unit
-    method set_pointer_text_formatter : (Js_windows.Element.t -> unit) -> unit
+    method pointer_text_formatter : Js_browser.Element.t -> unit
+    method set_pointer_text_formatter : (Js_browser.Element.t -> unit) -> unit
     method post_render_hook : (unit -> unit)
     method pre_render_hook : (unit -> unit)
     method set_post_render_hook : (unit -> unit) -> unit
@@ -412,7 +412,7 @@ let prepare_scene gl component : scene =
 
       (* The pointer_text_formatter : *)
       pointer_text_formatter <- begin fun element ->
-        let open Js_windows in
+        let open Js_browser in
         let x, y, z = this # pointer_magnetic in
         if this # selected <> None then
           Element.set_text_content element (Printf.sprintf "%.2f, %.2f, %.2f" x y z)

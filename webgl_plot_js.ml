@@ -1,4 +1,4 @@
-open Js_windows
+open Js_browser
 
 module Export = Webgl_plot_export
 
@@ -50,7 +50,7 @@ type js_interface = {
   get_selected_object: (unit -> Ojs.t);
 
   set_on_double_click: ((unit -> unit) -> unit);
-  set_pointer_text_formatter: ((Js_windows.Element.t -> unit) -> unit);
+  set_pointer_text_formatter: ((Js_browser.Element.t -> unit) -> unit);
   update_pre_render_hook: (((unit -> unit) -> unit -> unit) -> unit);
   update_post_render_hook: (((unit -> unit) -> unit -> unit) -> unit);
 
