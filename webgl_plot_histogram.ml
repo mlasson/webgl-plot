@@ -157,9 +157,11 @@ module HistogramGeometry = struct
     in
     let normals =
       flatten dim n m
-        (fun _ _ ->
+        (fun i j ->
+           let {y_min;y_max; _} = get_box i j in
            let top = [| 0.; 1.; 0.|] in
            let bot = [| 0.; -1.; 0.|] in
+           let top, bot = if y_min < y_max then top, bot else bot, top in
            let right = [| 1.; 0.; 0.|] in
            let left = [| -1.; 0.; 0.|] in
            let back = [| 0.; 0.; 1.|] in
@@ -191,21 +193,23 @@ module HistogramGeometry = struct
     in
     let shrink_directions =
       flatten dim n m
-        (fun _ _ ->
+        (fun i j ->
+           let {y_min;y_max; _} = get_box i j in
+           let top, bot = if y_min < y_max then 1., -1. else -1., 1. in
            let left_front = [| -1.; 0.; -1.|] in
            let right_front = [| 1.; 0.; -1.|] in
            let right_back = [| 1.; 0.; 1.|] in
            let left_back = [| -1.; 0.; 1.|] in
 
-           let top_front = [| 0.; 1.; -1.|] in
-           let bot_front = [| 0.; -1.; -1.|] in
-           let top_back = [| 0.; 1.; 1.|] in
-           let bot_back = [| 0.; -1.; 1.|] in
+           let top_front = [| 0.; top; -1.|] in
+           let bot_front = [| 0.; bot; -1.|] in
+           let top_back = [| 0.; top; 1.|] in
+           let bot_back = [| 0.; bot; 1.|] in
 
-           let left_top = [| -1.; 1.; 0.|] in
-           let right_top = [| 1.; 1.; 0.|] in
-           let right_bot = [| 1.; -1.; 0.|] in
-           let left_bot = [| -1.; -1.; 0.|] in
+           let left_top = [| -1.; top; 0.|] in
+           let right_top = [| 1.; top; 0.|] in
+           let right_bot = [| 1.; bot; 0.|] in
+           let left_bot = [| -1.; bot; 0.|] in
 
            Array.concat [
              left_front; right_front; right_back; right_back; left_back; left_front;
