@@ -293,7 +293,7 @@ let prepare_scene gl component : scene =
 
       let max_round = if List.for_all (fun x -> x # opaque) objects then 0 else 2 in
 
-      for round = -1 to max_round do
+      for round = 0 to max_round do
 
         if round = 0 then begin
           bind_framebuffer gl _FRAMEBUFFER_ None;

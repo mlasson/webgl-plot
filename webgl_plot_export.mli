@@ -45,12 +45,10 @@ end
 (** Description of surfaces. *)
 module Surface : sig
   type t =
-    | Graph of {
+    | Grid of {
         name: string option;
 
-        x: float array;
-        z: float array;
-        y: float array array;
+        centers: (float * float * float) array array;
 
         colors: (float * float * float) array array option;
         alpha: float option;
@@ -58,21 +56,7 @@ module Surface : sig
         crosshair: bool option;
         magnetic: bool option;
 
-      }[@js "graph"]
-
-    | Parametric of {
-        name: string option;
-
-        a: float array;
-        b: float array;
-        p: (float * float * float) array array;
-
-        colors: (float * float * float) array array option;
-        alpha: float option;
-        wireframe: bool option;
-        magnetic: bool option;
-        crosshair: bool option;
-      }[@js "parametric"]
+      }[@js "grid"]
 
     | Unknown of Ojs.t [@js.default]
   [@@js.sum "representation"]

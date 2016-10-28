@@ -51,10 +51,8 @@ html, body {
         kind : "surface",
         data : {
           name : "constant",
-          representation: "graph",
-          x : x,
-          z : z,
-          y : graph3d(function(x,z) { return Math.floor(x)}, x, z),
+          representation: "grid",
+          centers : graph3d(function(x,z) { return [x,Math.floor(x),z]}, x, z),
 	  wireframe: true, 
 	  magnetic: true,
 	  crosshair: true

@@ -21,43 +21,80 @@ module SurfaceGeometry = struct
     normals: Float32Array.t;
     wireframe : Index.t;
     triangles: Index.t;
-    texcoords: Float32Array.t;
     bounds: box;
   }
 
-  let create parametric xs zs ys =
-    let n = Float32Array.length xs in
-    let m = Float32Array.length zs in
-    let vertices =
-      if parametric then
-        FloatData.init3_matrix n m
-          (fun i j ->
-             let pos = (i * m + j) * 3 in
-             Float32Array.get ys pos,
-             Float32Array.get ys (pos + 1),
-             Float32Array.get ys (pos + 2))
-      else
-        FloatData.init3_matrix n m
-          (fun i j ->
-             Float32Array.get xs i,
-             Float32Array.get ys (i * m +j),
-             Float32Array.get zs j)
-    in
+  let create n m vertices =
     let normals =
       compute_normals n m vertices
     in
     let triangles = triangles_indexes_from_grid n m in
     let wireframe = lines_indexes_from_grid n m in
-    let texcoords = texcoords_from_grid xs zs in
     let bounds = bounding_box vertices in
     {
       triangles;
       wireframe;
       normals;
       vertices;
-      texcoords;
       bounds
     }
+
+  let contour n m vertices proj =
+    (* proj i j should gives the "signed" distance from some oriented plane *)
+
+    let result = ref [] in (* we will resturn a list of segment *)
+
+    (* This function assumes that the point (i1,j1) is in the other side of the plane than (i2,j2) and (s3,j3).
+     * In other word, s2 and s3 have the same sign and s1 the other (s1,s2,s3 are the respective distances to the plane).
+     * The side effect of the function is to add to the result the the intersection of the triangle formed by the three points
+     * and the plane (it's a simple interpolation that is justified by the "intercept theorem" (aka in French "thales").
+     * *)
+    let add_segment s1 i1 j1 s2 i2 j2 s3 i3 j3 =
+      let t2 = s1 /. (s1 -. s2) in
+      let t3 = s1 /. (s1 -. s3) in
+      let t2' = 1. -. t2 in
+      let t3' = 1. -. t3 in
+      let pos1 = 3 * (i1 * m + j1) in
+      let x1 = Float32Array.get vertices pos1 in
+      let y1 = Float32Array.get vertices (pos1 + 1) in
+      let z1 = Float32Array.get vertices (pos1 + 2) in
+      let pos2 = 3 * (i2 * m + j2) in
+      let x2 = Float32Array.get vertices pos2 in
+      let y2 = Float32Array.get vertices (pos2 + 1) in
+      let z2 = Float32Array.get vertices (pos2 + 2) in
+      let pos3 = 3 * (i3 * m + j3) in
+      let x3 = Float32Array.get vertices pos3 in
+      let y3 = Float32Array.get vertices (pos3 + 1) in
+      let z3 = Float32Array.get vertices (pos3 + 2) in
+      let a = (x1 *. t2 +. x2 *. t2', y1 *. t2 +. y2 *. t2', z1 *. t2 +. z2 *. t2') in
+      let b = (x1 *. t3 +. x3 *. t3', y1 *. t3 +. y3 *. t3', z1 *. t3 +. z3 *. t3') in
+      result := a :: b :: !result;
+    in
+    (* This function test if the triangle is intersecting the plane, and adds the intersection
+     * to the result if so. *)
+    let test i1 j1 i2 j2 i3 j3 =
+      let s1 = proj i1 j1 in
+      let s2 = proj i2 j2 in
+      let s3 = proj i3 j3 in
+      if (s1 < 0.0 && s2 > 0.0 && s3 > 0.0) ||
+         (s1 > 0.0 && s2 < 0.0 && s3 < 0.0) then
+        add_segment s1 i1 j1 s2 i2 j2 s3 i3 j3
+      else if (s2 < 0.0 && s1 > 0.0 && s3 > 0.0) ||
+              (s2 > 0.0 && s1 < 0.0 && s3 < 0.0) then
+        add_segment s2 i2 j2 s1 i1 j1 s3 i3 j3
+      else if (s3 < 0.0 && s1 > 0.0 && s2 > 0.0) ||
+              (s3 > 0.0 && s1 < 0.0 && s2 < 0.0) then
+        add_segment s3 i3 j3 s1 i1 j1 s2 i2 j2
+    in
+    (* We apply the test function on all the "squares" of our mesh: *)
+    for i = 0 to n-1 do
+      for j = 0 to m-1 do
+        test i j (i + 1) j i (j + 1);
+        test (i + 1) j (i + 1) (j + 1) i (j + 1);
+      done
+    done;
+    !result
+
 end
 
 class type t =
@@ -69,29 +106,27 @@ class type t =
     method set_magnetic: bool -> unit
     method set_crosshair: bool -> unit
 
-    method x_projection: float -> (Float32Array.t * Float32Array.t) option
-    method z_projection: float -> (Float32Array.t * Float32Array.t) option
+    method x_projection: float -> (float * float) list
+    method z_projection: float -> (float * float) list
 
   end
 
 
-let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(magnetic = false) ?(crosshair = false) ?colors ?alpha ~parametric xs zs ys : t =
+let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(magnetic = false) ?(crosshair = false) ?colors ?alpha n m vertices : t =
   let open Shaders in
 
   let gl = scene # gl in
-  let shader = scene # light_texture_shader in
-  let shader_texture = scene # basic2d_shader in
-  let shader_wireframe = scene # basic_shader in
+
+  let shader = scene # basic_shader in
 
   let min, max =
     let min = ref max_float in
     let max = ref min_float in
-    let d, s = if parametric then 3, 1 else 1, 0 in
-    FloatData.update_min_max min max ys d s;
+    FloatData.update_min_max min max vertices 3 1;
     !min, !max
   in
-  let {SurfaceGeometry.vertices; triangles; wireframe = wireframe_vertices; normals; bounds; texcoords} =
-    SurfaceGeometry.create parametric xs zs ys
+  let {SurfaceGeometry.vertices; triangles; wireframe = wireframe_vertices; normals; bounds;} =
+    SurfaceGeometry.create n m vertices
   in
 
   let colors = match colors with
@@ -103,24 +138,17 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
     | Some colors -> colors
   in
 
-  let texture_matrix =
-    let x_min, x_max = default_option (0.0, 1.0) (FloatData.min_max xs) in
-    let z_min, z_max = default_option (0.0, 1.0) (FloatData.min_max zs) in
-    let scale_x, scale_z =
-      2.0 /. (x_max -. x_min), 2.0 /. (z_max -. z_min)
-    in
-    let shift_x, shift_z =
-      -1.0 -. 2.0 *. x_min /. (x_max -. x_min),
-      -1.0 -. 2.0 *. z_min /. (z_max -. z_min)
-    in
-    (* Projects (x,_,z) into [-1,1] × [-1,1] × {1} *)
-    Float32Array.new_float32_array (`Data [|
-     scale_x; 0.; 0.; 0.;
-         0.0; 0.; 0.; 0.;
-         0.0; scale_z; 0.0; 0.0;
-     shift_x; shift_z; 1.0; 1.0
-      |])
+  let table = if true then Intersection.build_ray_table vertices triangles else [] in
+  let a_positions = create_attrib_array gl 3 vertices in
+  let a_normals = create_attrib_array gl 3 normals in
+  let a_colors_wireframe =
+    create_attrib_array gl 3 (* black *)
+      (FloatData.init3 (Float32Array.length vertices) (fun _ -> 0.0, 0.0, 0.0))
   in
+  let a_colors = create_attrib_array gl 3 colors  in
+  let e_triangles = create_element_array gl triangles in
+  let e_wireframe = create_element_array gl wireframe_vertices in
+
   let identity_matrix =
     Float32Array.new_float32_array (`Data [|
          1.0; 0.; 0.; 0.;
@@ -129,31 +157,6 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
          0.0; 0.0; 0.0; 1.0
       |])
   in
-  let table = if true then Intersection.build_ray_table vertices triangles else [] in
-  let a_positions = create_attrib_array gl 3 vertices in
-  let a_params =
-    if parametric then
-      let n = Float32Array.length xs in
-      let m = Float32Array.length zs in
-      create_attrib_array gl 3 (FloatData.init3_matrix n m (fun i j ->
-         Float32Array.get xs i, 0.0,
-         Float32Array.get zs j))
-    else
-      a_positions
-  in
-  let a_normals = create_attrib_array gl 3 normals in
-  let a_colors_wireframe =
-    create_attrib_array gl 3 (* black *)
-      (FloatData.init3 (Float32Array.length vertices) (fun _ -> 0.0, 0.0, 0.0))
-  in
-  let a_colors = create_attrib_array gl 3 colors  in
-  let a_texcoords = create_attrib_array gl 2 texcoords in
-  let e_triangles = create_element_array gl triangles in
-  let e_wireframe = create_element_array gl wireframe_vertices in
-  let a_grid = new attrib_array gl 3 in
-  let a_grid_colors = create_attrib_array gl 3 (FloatData.init3 12 (fun _ -> 0.0, 0.0, 0.0)) in
-  let texture_resolution = 1024 in
-  let framebuffer = new fbo gl texture_resolution texture_resolution in
 
   object(this)
     inherit identified
@@ -178,70 +181,28 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
     method bounds = bounds
 
     method draw shader_id round =
-      let open Webgl in
-      let open Constant in
-      if round = -1 && shader_id = shader_texture # id then begin
-        framebuffer # bind;
+      if round >= 0 && (shader_id = shader # id) && ((opaque && round < 2) || (not opaque && round = 2)) then begin
+        shader # set_alpha alpha;
+        shader # set_explode 0.0;
+        shader # set_shrink (0.0, 0.0, 0.0);
 
-        shader_texture # set_alpha alpha;
-        shader_texture # set_matrix texture_matrix;
-        shader_texture # set_colors a_colors;
-        shader_texture # set_positions a_params;
-        shader_texture # draw_elements Shaders.Triangles e_triangles;
-
-        if crosshair && scene # projection_valid && not parametric && match scene # selected with Some obj -> obj # id = id | _ -> false then begin
-          let x,_,z = scene # pointer_magnetic in
-          let x = -1. +. 2.0 *. (x -. bounds.x_min) /. (bounds.x_max -. bounds.x_min) in
-          let z = -1. +. 2.0 *. (z -. bounds.z_min) /. (bounds.z_max -. bounds.z_min) in
-
-          let scale_x, _, scale_z = scene # scale in
-
-          let grid_width_x = grid_width *. scale_x /. (bounds.x_max -. bounds.x_min) in
-          let grid_width_z = grid_width *. scale_z /. (bounds.z_max -. bounds.z_min) in
-
-          a_grid # fill (Float32Array.new_float32_array (`Data [|
-              x -. grid_width_x;-1.0; 1.0;
-              x +. grid_width_x;-1.0; 1.0;
-              x -. grid_width_x; 1.0; 1.0;
-              x +. grid_width_x;-1.0; 1.0;
-              x +. grid_width_x; 1.0; 1.0;
-              x -. grid_width_x; 1.0; 1.0;
-              -1.0;z -. grid_width_z; 1.0;
-              -1.0;z +. grid_width_z; 1.0;
-              1.0;z -. grid_width_z; 1.0;
-              -1.0;z +. grid_width_z; 1.0;
-              1.0;z +. grid_width_z; 1.0;
-              1.0;z -. grid_width_z; 1.0;
-            |]));
-
-          shader_texture # set_matrix identity_matrix;
-          shader_texture # set_colors a_grid_colors;
-          shader_texture # set_positions a_grid;
-          shader_texture # set_alpha 1.0;
-          shader_texture # draw_arrays Shaders.Triangles (a_grid # count);
-          end
-      end else if round >= 0 && (shader_id = shader # id) && ((opaque && round < 2) || (not opaque && round = 2)) then begin
         shader # set_object_matrix identity_matrix;
-        shader # set_texcoords a_texcoords;
+        shader # set_colors a_colors;
         shader # set_normals a_normals;
+        shader # set_shrink_directions a_normals;
         shader # set_positions a_positions;
-
-        Webgl.bind_texture gl _TEXTURE_2D_ (Some (framebuffer # texture));
         shader # draw_elements Shaders.Triangles e_triangles;
-        Webgl.bind_texture gl _TEXTURE_2D_ None
 
-      end else if (shader_id = shader_wireframe # id) && wireframe
-               && ((opaque && round = 0)
-            || (not opaque && round = 2)) then begin
-        shader_wireframe # set_alpha 1.0;
-        shader_wireframe # set_explode 0.0;
-        shader_wireframe # set_shrink (0.0, 0.0, 0.0);
-        shader_wireframe # set_object_matrix identity_matrix;
-        shader_wireframe # set_positions a_positions;
-        shader_wireframe # set_colors a_colors_wireframe;
-        shader_wireframe # set_normals a_normals;
-        shader_wireframe # set_shrink_directions a_normals;
-        shader_wireframe # draw_elements Shaders.Lines e_wireframe
+        if wireframe then begin
+          shader # set_alpha alpha;
+          shader # set_colors a_colors_wireframe;
+          if opaque then begin
+            shader # set_explode 0.0001;
+            shader # draw_elements Shaders.Lines e_wireframe;
+            shader # set_explode (-0.0001);
+          end;
+          shader # draw_elements Shaders.Lines e_wireframe;
+        end
       end
 
     method ray o e = Intersection.ray_triangles vertices table o e
@@ -254,71 +215,8 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
            | None -> x,y,z
       else p
 
-    method z_projection z =
-      if parametric then
-        None
-      else
-        let n = Float32Array.length xs in
-        let m = Float32Array.length zs in
-        let res = Float32Array.new_float32_array (`Size n) in
-        let j =
-           let j = ref 0 in
-           while
-             !j < m && Float32Array.get zs !j < z
-           do incr j done;
-           !j
-        in
-        if j = 0 || j = m then
-          None
-        else begin
-          let j' = j - 1 in
-          let t' =
-            let z' = Float32Array.get zs j' in
-            (z -. z') /. (Float32Array.get zs j -. z')
-          in
-          let t = 1.0 -. t' in
-          for i = 0 to n - 1 do
-            let v =
-              (Float32Array.get ys (i * m + j')) *. t'
-              +. (Float32Array.get ys (i * m + j)) *. t
-            in
-            Float32Array.set res i v
-          done;
-          Some (xs, res)
-        end
-
-    method x_projection x =
-      if parametric then
-        None
-      else
-        let n = Float32Array.length xs in
-        let m = Float32Array.length zs in
-        let res = Float32Array.new_float32_array (`Size m) in
-        let i =
-           let i = ref 0 in
-           while
-             !i < n && Float32Array.get xs !i < x
-           do incr i done;
-           !i
-        in
-        if i = 0 || i = n then
-          None
-        else begin
-          let i' = i - 1 in
-          let t' =
-            let x' = Float32Array.get xs i' in
-            (x -. x') /. (Float32Array.get xs i -. x')
-          in
-          let t = 1.0 -. t' in
-          for j = 0 to m - 1 do
-            let v =
-              (Float32Array.get ys (i' * m + j)) *. t'
-              +. (Float32Array.get ys (i * m + j)) *. t
-            in
-            Float32Array.set res j  v
-          done;
-          Some (zs, res)
-        end
+    method z_projection (z : float) = SurfaceGeometry.contour n m vertices (fun i j -> Float32Array.get vertices (3 * (i * m + j) + 2) -. z) |> List.map (fun (x,y,_) -> (x,y))
+    method x_projection (x : float) = SurfaceGeometry.contour n m vertices (fun i j -> Float32Array.get vertices (3 * (i * m + j)) -. x) |> List.map (fun (_,y,z) -> (z,y))
 
     initializer scene # add (this :> object3d)
 

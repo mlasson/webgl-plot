@@ -69,10 +69,8 @@ html, body {
         kind : "surface",
         data : {
           name : "constant",
-          representation: "parametric",
-          a : x,
-          b : z,
-          p : torus(0.5, 0.5, 0.5, 0.05, 0.2, false),
+          representation: "grid",
+          centers : torus(0.5, 0.5, 0.5, 0.05, 0.2, false),
           wireframe: false
         }
       },
@@ -80,10 +78,8 @@ html, body {
         kind : "surface",
         data : {
           name : "constant",
-          representation: "parametric",
-          a : x,
-          b : z,
-          p : torus(0.25, 0.5, 0.5, 0.05, 0.2, true),
+          representation: "grid",
+          centers : torus(0.25, 0.5, 0.5, 0.05, 0.2, true),
           colors: blue,
           alpha: 0.5,
           wireframe: false
@@ -93,10 +89,8 @@ html, body {
         kind : "surface",
         data : {
           name : "constant",
-          representation: "parametric",
-          a : x,
-          b : z,
-          p : torus(0.75, 0.5, 0.5, 0.05, 0.2, true),
+          representation: "grid",
+          centers: torus(0.75, 0.5, 0.5, 0.05, 0.2, true),
           colors: green,
           alpha: 0.5,
           wireframe: false

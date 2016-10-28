@@ -85,37 +85,18 @@ module Surface =
     let set_wireframe surface x = surface # set_wireframe x
     let set_magnetic surface x = surface # set_magnetic x
     let set_crosshair surface x = surface # set_crosshair x
-    let x_projection (surface : t) x =
-     match surface # x_projection x with
-       | None -> None
-       | Some (z,y) -> Some (array_of_float32 z, array_of_float32 y)
-    let z_projection surface z =
-     match surface # z_projection z with
-       | None -> None
-       | Some (x,y) -> Some (array_of_float32 x, array_of_float32 y)
-
-    let add_surface ({scene; _} as plot) ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair ~x ~z ~y () =
+    let x_projection surface x = surface # x_projection x
+    let z_projection surface z = surface # z_projection z
+    let add_surface ({scene; _} as plot) ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair centers =
       let s =
         let colors = option_map flatten_triple_array_array colors in
-        let x = float32_array x in
-        let z = float32_array z in
-        let y = flatten_array_array y in
-        Surface.create scene ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair ~parametric:false x z y
+        let n = Array.length centers in
+        let m = if n = 0 then 0 else Array.length centers.(0) in
+        let centers = flatten_triple_array_array centers in
+        Surface.create scene ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair n m centers
       in
       plot.surfaces <- s :: plot.surfaces;
       s
-
-    let add_parametric_surface ({scene; _} as plot) ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair ~a ~b ~p () =
-      let s =
-        let colors = option_map flatten_triple_array_array colors in
-        let a = float32_array a in
-        let b = float32_array b in
-        let p = flatten_triple_array_array p in
-        Surface.create scene ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair ~parametric:true a b p
-      in
-      plot.surfaces <- s :: plot.surfaces;
-      s
-
 
   let get {surfaces; _} id =
     try Some (List.find (fun s -> s # id = id) surfaces) with Not_found -> None
@@ -181,10 +162,8 @@ let create ?(initial_value = default_export) () : plot =
         ignore (add_grid_histogram plot ?name ?border ?widths ?depths ?colors ~x ~z ~y ())
       | Histogram List {name; centers; widths; depths; colors; border} ->
         ignore (add_list_histogram plot ?name ?border ?widths ?depths ?colors centers)
-      | Surface Graph {name; x; z; y; colors; wireframe; alpha; magnetic; crosshair} ->
-        ignore (add_surface plot ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair ~x ~z ~y ())
-      | Surface Parametric {name; a; b; p; colors; wireframe; alpha; magnetic; crosshair} ->
-        ignore (add_parametric_surface plot ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair ~a ~b ~p ())
+      | Surface Grid {name; centers; colors; wireframe; alpha; magnetic; crosshair} ->
+        ignore (add_surface plot ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair centers)
       | _ -> (* TODO *) assert false) series;
 
   let automatic_bounds axis =

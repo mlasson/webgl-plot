@@ -23,8 +23,8 @@ type js_surface =
     set_wireframe: (bool -> unit);
     set_magnetic: (bool -> unit);
     set_crosshair: (bool -> unit);
-    x_projection: (float -> (float array * float array) option);
-    z_projection: (float -> (float array * float array) option);
+    x_projection: (float -> (float * float) list);
+    z_projection: (float -> (float * float) list);
   } [@@js]
 
 let js_surface s =
@@ -85,10 +85,8 @@ let js_interface initial_value =
         | _ -> assert false (* TODO *));
 
     add_surface = Surface.(function
-        | Export.Surface.Graph {name; x; z; y; colors; alpha; wireframe; magnetic; crosshair} ->
-          js_surface (add_surface plot ?name ?colors ?alpha ?wireframe ?magnetic ?crosshair ~x ~z ~y ())
-        | Export.Surface.Parametric {name;a; b; p; colors; alpha; wireframe; magnetic; crosshair} ->
-          js_surface (add_parametric_surface plot ?name ?colors ?alpha ?wireframe ?magnetic ?crosshair ~a ~b ~p ())
+        | Export.Surface.Grid {name; centers; colors; alpha; wireframe; magnetic; crosshair} ->
+          js_surface (add_surface plot ?name ?colors ?alpha ?wireframe ?magnetic ?crosshair centers)
         | _ -> assert false (* TODO *));
 
     get_element = (fun () -> element plot);

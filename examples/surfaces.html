@@ -31,7 +31,7 @@ html, body {
     var x = new_unit_range(res_x).map(function(x){ return Math.PI * x});
     var z = new_unit_range(res_z).map(function(z){ return 2 * Math.PI * z});
 
-    var graph3d = function (f, x, z) {
+    var grid3d = function (f, x, z) {
       var res_x = x.length;
       var res_z = z.length;
 
@@ -46,22 +46,24 @@ html, body {
       return y;
     }
 
+    var graph3d = function(f, x, z) {
+       return grid3d(function(x,z) {return [x, f(x,z), z]}, x, z);
+    }
+
     var sq = function(x) { return (x * x) };
 
-    var red = graph3d(function(x,z) { return [1,0,0]}, x, z);
-    var green = graph3d(function(x,z) { return [0,1,0]}, x, z);
-    var blue = graph3d(function(x,z) { return [0,0,1]}, x, z);
+    var red = grid3d(function(x,z) { return [1,0,0]}, x, z);
+    var green = grid3d(function(x,z) { return [0,1,0]}, x, z);
+    var blue = grid3d(function(x,z) { return [0,0,1]}, x, z);
 
     var series = [
        {
         kind : "surface",
         data : {
           name : "wave",
-          representation: "graph",
+          representation: "grid",
           wireframe: true,
-          x : x,
-          z : z,
-          y : graph3d(function(x,z) { return (0.5 * (sq(Math.cos(x)) + sq (Math.sin(z))))}, x, z),
+          centers: graph3d(function(x,z) { return (0.5 * (sq(Math.cos(x)) + sq (Math.sin(z))))}, x, z),
           magnetic: true,
         }
       },
@@ -69,10 +71,8 @@ html, body {
         kind : "surface",
         data : {
           name : "constant",
-          representation: "graph",
-          x : x,
-          z : z,
-          y : graph3d(function(x,z) { return 0.5}, x, z),
+          representation: "grid",
+          centers: graph3d(function(x,z) { return 0.5}, x, z),
           alpha:0.5,
           colors: red,
         }
@@ -82,10 +82,8 @@ html, body {
         magnetic: true,
         data : {
           name : "constant",
-          representation: "graph",
-          x : x,
-          z : z,
-          y : graph3d(function(x,z) { return (x / Math.PI)}, x, z),
+          representation: "grid",
+          centers: graph3d(function(x,z) { return (x / Math.PI)}, x, z),
           alpha:0.5,
           colors: blue,
         }

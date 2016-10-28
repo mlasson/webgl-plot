@@ -120,31 +120,13 @@ module Surface : sig
     ?alpha:float ->
     ?magnetic:bool ->
     ?crosshair: bool ->
-    x:float array ->
-    z:float array -> y:float array array -> unit -> t
+    (float * float * float) array array -> t
     (** Adds a surface specifed by the graph of a function, [y{_i,j} = f(x{_i},z{_j})].
 
       - [alpha] when specified the surface will be transparent (and the value of alpha between 0 and 1 controls the opacity),
       - [magnetic] when on the mouse will be attraced by the (x,y,z) provided,
       - [wireframe] when on the wireframe will be displayed,
       - [colors] is the RGB code at each points (the color between each point will be interpolated). *)
-
-  val add_parametric_surface :
-    plot ->
-    ?colors:(float * float * float) array array ->
-    ?wireframe:bool ->
-    ?name:string ->
-    ?alpha:float ->
-    ?magnetic:bool ->
-    ?crosshair: bool ->
-    a:float array ->
-    b:float array -> p:(float * float * float) array array -> unit -> t
-    (** Adds a surface specifed by a parametric surfaceo f, [(x,y,z) = (x{_i},f(x{_i},z{_j}), z{_j})].
-
-        - [alpha] when specified the surface will be transparent (and the value of alpha between 0 and 1 controls the opacity),
-        - [magnetic] when on the mouse will be attraced by the (x,y,z) provided,
-        - [wireframe] when on the wireframe will be displayed,
-        - [colors] is the RGB code at each points (the color between each point will be interpolated). *)
 
   val get: plot -> int -> t option
   (** Retrieve a surface from its id. *)
@@ -161,10 +143,10 @@ module Surface : sig
   val set_crosshair: t -> bool -> unit
   (** Activate or deactivate the display of x-z projection on the surface. *)
 
-  val x_projection: t -> float -> (float array * float array) option
+  val x_projection: t -> float -> (float * float) list
   (** Returns the projection along the x-axis. *)
 
-  val z_projection: t -> float -> (float array * float array) option
+  val z_projection: t -> float -> (float * float) list
   (** Returns the projection along the z-axis. *)
 
 end
