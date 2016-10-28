@@ -107,6 +107,7 @@ class type t =
     method set_crosshair: bool -> unit
 
     method x_projection: float -> (float * float) list
+    method y_projection: float -> (float * float) list
     method z_projection: float -> (float * float) list
 
   end
@@ -215,8 +216,9 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
            | None -> x,y,z
       else p
 
-    method z_projection (z : float) = SurfaceGeometry.contour n m vertices (fun i j -> Float32Array.get vertices (3 * (i * m + j) + 2) -. z) |> List.map (fun (x,y,_) -> (x,y))
     method x_projection (x : float) = SurfaceGeometry.contour n m vertices (fun i j -> Float32Array.get vertices (3 * (i * m + j)) -. x) |> List.map (fun (_,y,z) -> (z,y))
+    method y_projection (y : float) = SurfaceGeometry.contour n m vertices (fun i j -> Float32Array.get vertices (3 * (i * m + j) + 1) -. y) |> List.map (fun (x,_,z) -> (x,z))
+    method z_projection (z : float) = SurfaceGeometry.contour n m vertices (fun i j -> Float32Array.get vertices (3 * (i * m + j) + 2) -. z) |> List.map (fun (x,y,_) -> (x,y))
 
     initializer scene # add (this :> object3d)
 

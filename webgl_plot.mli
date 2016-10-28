@@ -146,6 +146,9 @@ module Surface : sig
   val x_projection: t -> float -> (float * float) list
   (** Returns the projection along the x-axis. *)
 
+  val y_projection: t -> float -> (float * float) list
+  (** Returns the projection along the y-axis. *)
+
   val z_projection: t -> float -> (float * float) list
   (** Returns the projection along the z-axis. *)
 

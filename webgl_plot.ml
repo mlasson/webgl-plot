@@ -86,6 +86,7 @@ module Surface =
     let set_magnetic surface x = surface # set_magnetic x
     let set_crosshair surface x = surface # set_crosshair x
     let x_projection surface x = surface # x_projection x
+    let y_projection surface y = surface # y_projection y
     let z_projection surface z = surface # z_projection z
     let add_surface ({scene; _} as plot) ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair centers =
       let s =

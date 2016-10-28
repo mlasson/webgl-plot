@@ -24,6 +24,7 @@ type js_surface =
     set_magnetic: (bool -> unit);
     set_crosshair: (bool -> unit);
     x_projection: (float -> (float * float) list);
+    y_projection: (float -> (float * float) list);
     z_projection: (float -> (float * float) list);
   } [@@js]
 
@@ -35,6 +36,7 @@ let js_surface s =
     set_magnetic = set_magnetic s;
     set_crosshair = set_crosshair s;
     x_projection = x_projection s;
+    y_projection = y_projection s;
     z_projection = z_projection s;
   }
 
