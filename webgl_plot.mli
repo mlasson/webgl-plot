@@ -211,3 +211,6 @@ val set_y_axis_ticks : plot -> Export.tick list -> unit
 
 val set_z_axis_ticks : plot -> Export.tick list -> unit
 (** Sets the ticks text and positions on the Z axis. *)
+
+val remove: plot -> int -> unit
+(** Remove a object (eg. a surface or a histogram) of a given id. *)

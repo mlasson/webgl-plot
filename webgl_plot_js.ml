@@ -83,6 +83,8 @@ type js_interface = {
   set_angle: (float * float * float -> unit);
   get_move: (unit -> float * float * float);
   set_move: (float * float * float -> unit);
+
+  remove: (int -> unit);
 } [@@js]
 
 let js_interface initial_value =
@@ -145,6 +147,8 @@ let js_interface initial_value =
     set_angle = set_angle plot;
     get_move = (fun () -> move plot);
     set_move = set_move plot;
+
+    remove = remove plot;
   }
 
 let () =

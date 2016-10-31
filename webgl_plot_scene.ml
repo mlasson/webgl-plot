@@ -116,6 +116,7 @@ let colored_sphere gl shader =
 class type scene =
   object
     method add : Webgl_plot_drawable.object3d -> unit
+    method remove : int -> unit
     method angle : float * float * float
     method basic2d_shader : Shaders.Basic2d.shader
     method basic_shader : Shaders.Basic.shader
@@ -245,9 +246,10 @@ let prepare_scene gl component : scene =
     val mutable objects : object3d list = []
 
     method add (obj : object3d) = objects <- obj :: objects
+    method remove id = objects <- List.filter (fun o -> o # id <> id) objects
 
     method hash_state =
-      digest (pointer_magnetic, pointer_projection, pointer, aspect, height, width, angle, move, frame, ratio, List.map (fun o -> o # hash_state) objects)
+      digest (pointer_magnetic, pointer_projection, pointer, aspect, height, width, angle, move, frame, ratio, List.map (fun o -> (o # id, o # hash_state)) objects)
 
     method bounds =
       List.fold_left (fun acc o -> Geometry.merge_box acc (o # bounds)) Geometry.neutral_box objects

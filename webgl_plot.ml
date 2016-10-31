@@ -93,6 +93,7 @@ module Surface =
     let x_projection surface x = surface # x_projection x
     let y_projection surface y = surface # y_projection y
     let z_projection surface z = surface # z_projection z
+
     let add_surface ({scene; _} as plot) ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair centers =
       let s =
         let colors = option_map flatten_triple_array_array colors in
@@ -294,4 +295,7 @@ let set_x_axis_ticks {repere; _} ticks = repere # set_x_axis_ticks ticks
 let set_y_axis_ticks {repere; _} ticks = repere # set_y_axis_ticks ticks
 let set_z_axis_ticks {repere; _} ticks = repere # set_z_axis_ticks ticks
 
-
+let remove plot id =
+  plot.scene # remove id;
+  plot.histograms <- List.filter (fun h -> h # id <> id) plot.histograms;
+  plot.surfaces <- List.filter (fun s -> s # id <> id) plot.surfaces

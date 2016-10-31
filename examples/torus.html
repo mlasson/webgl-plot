@@ -120,8 +120,13 @@ html, body {
       if (surface) {
         var centers = [[[x,0,0],[x,0,1]],[[x,1,0],[x,1,1]]];
 
+	var previousCuts = plot.getFromName("cut");
+	for (var i = 0, size = previousCuts.length;i < size; i ++) {
+          plot.remove(previousCuts[i].id);
+	}
+
         plot.addSurface({   
-            name : "floor",
+            name : "cut",
             representation: "grid",
             centers : centers,
             colors: centers.map(function(row){return row.map(function () { return [0., 0., 0.]})}),
