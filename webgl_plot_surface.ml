@@ -76,19 +76,24 @@ module SurfaceGeometry = struct
       let s1 = proj i1 j1 in
       let s2 = proj i2 j2 in
       let s3 = proj i3 j3 in
-      if (s1 < 0.0 && s2 > 0.0 && s3 > 0.0) ||
-         (s1 > 0.0 && s2 < 0.0 && s3 < 0.0) then
+      if (s1 < 0.0 && s2 >= 0.0 && s3 >= 0.0) ||
+         (s1 > 0.0 && s2 <= 0.0 && s3 <= 0.0) then
         add_segment s1 i1 j1 s2 i2 j2 s3 i3 j3
-      else if (s2 < 0.0 && s1 > 0.0 && s3 > 0.0) ||
-              (s2 > 0.0 && s1 < 0.0 && s3 < 0.0) then
+      else if (s2 < 0.0 && s1 >= 0.0 && s3 >= 0.0) ||
+              (s2 > 0.0 && s1 <= 0.0 && s3 <= 0.0) then
         add_segment s2 i2 j2 s1 i1 j1 s3 i3 j3
-      else if (s3 < 0.0 && s1 > 0.0 && s2 > 0.0) ||
-              (s3 > 0.0 && s1 < 0.0 && s2 < 0.0) then
+      else if (s3 < 0.0 && s1 >= 0.0 && s2 >= 0.0) ||
+              (s3 > 0.0 && s1 <= 0.0 && s2 <= 0.0) then
         add_segment s3 i3 j3 s1 i1 j1 s2 i2 j2
+      else if s1 = 0.0 && s2 = 0.0 && s3 = 0.0 then begin
+        (* For flat triangles we take two arbitrary sides: *)
+        add_segment 0.0 i1 j1 1.0 i2 j2 1.0 i3 j3;
+        add_segment 0.0 i2 j2 1.0 i1 j1 1.0 i3 j3;
+      end
     in
     (* We apply the test function on all the "squares" of our mesh: *)
-    for i = 0 to n-1 do
-      for j = 0 to m-1 do
+    for i = 0 to n-2 do
+      for j = 0 to m-2 do
         test i j (i + 1) j i (j + 1);
         test (i + 1) j (i + 1) (j + 1) i (j + 1);
       done
