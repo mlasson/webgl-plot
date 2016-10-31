@@ -341,10 +341,12 @@ let lines_from_segments segments =
       build_line ((a.(0),a.(1)) :: acc) b
   in
   let result = ref [] in
-  Hashtbl.iter (fun a (b,not_visited) ->
+  Array.sort compare copy;
+  Array.iter (fun a ->
+      let b, not_visited = Hashtbl.find edges a in
       if !not_visited then begin
         not_visited := false;
         result := build_line [a.(0),a.(1)] b :: !result
-      end) edges;
+      end) copy;
   !result
 
