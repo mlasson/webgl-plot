@@ -50,10 +50,10 @@ module SurfaceGeometry = struct
      * and the plane (it's a simple interpolation that is justified by the "intercept theorem" (aka in French "thales").
      * *)
     let add_segment s1 i1 j1 s2 i2 j2 s3 i3 j3 =
-      let t2 = s1 /. (s1 -. s2) in
-      let t3 = s1 /. (s1 -. s3) in
-      let t2' = 1. -. t2 in
-      let t3' = 1. -. t3 in
+      let t2' = s1 /. (s1 -. s2) in
+      let t3' = s1 /. (s1 -. s3) in
+      let t2 = 1. -. t2' in
+      let t3 = 1. -. t3' in
       let pos1 = 3 * (i1 * m + j1) in
       let x1 = Float32Array.get vertices pos1 in
       let y1 = Float32Array.get vertices (pos1 + 1) in

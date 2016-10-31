@@ -3,6 +3,9 @@
 <head>
 <title>Test</title>
 <script src="webgl-plot.js"></script>
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+
 <meta charset="utf-8"/>
 <style>
 
@@ -11,14 +14,20 @@ html, body {
   height: 100%;
 }
 
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+
 </style>
 </head>
 <body>
   <script>
 
   window.onload = function() {
-    var res_x = 50;
-    var res_z = 50;
+    var res_x = 10;
+    var res_z = 10;
 
     var new_unit_range = function(res) {
       var a = new Array(res);
@@ -101,13 +110,66 @@ html, body {
     var graph = { series : series, ratio:[2.0, 1.0, 1.0]};
 
     var plot = WebglPlot.create(graph);
+
+    plot.setOnDoubleClick(function() {
+      var p = plot.getPointerMagnetic();
+      var x = p[0];
+      var y = p[1];
+      var z = p[1];
+
+      var surface = plot.getSelectedObject();
+
+      if (surface) {
+        var centers = [[[x,0,0],[x,0,1]],[[x,1,0],[x,1,1]]];
+
+        plot.addSurface({   
+            name : "floor",
+            representation: "grid",
+            centers : centers,
+            colors: centers.map(function(row){return row.map(function () { return [0., 0., 0.]})}),
+            alpha: 0.5,
+          });
+
+        var svg = d3.select("svg");
+        svg.selectAll("g").remove();
+        var  margin = {top: 20, right: 20, bottom: 30, left: 50},
+      	  width = +svg.attr("width") - margin.left - margin.right,
+          height = +svg.attr("height") - margin.top - margin.bottom,
+      	  g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+
+
+        var scaleX = d3.scaleLinear().range([0,width]).domain([0,1.0]);
+        var scaleY = d3.scaleLinear().range([height,0]).domain([0,1.0]);
+
+        var dataX = surface.xProjection(x);
+
+        var lines = [];
+
+        for (var k = 0;k < dataX.length / 2;k ++) {
+          lines.push([dataX[2*k], dataX[2*k+1]]);
+        }
+
+
+        g.selectAll("line").data(lines).enter().append("line").attr("class", "line")
+         .attr("x1", function(d) { return scaleX(d[0][0]); })
+         .attr("y1", function(d) { return scaleY(d[0][1]); })
+         .attr("x2", function(d) { return scaleX(d[1][0]); })
+         .attr("y2", function(d) { return scaleY(d[1][1]); });
+
+      }
+
+    });
+
     plot.appendTo(document.getElementById("main"));
 
   };
 
   </script>
-  <div id="main" style="height:95%">
+  <div id="main" style="display:inline-block;width:50%">
     <!-- HERE GOES THE RESULTS -->
+  </div>
+  <svg width="500" height="500" style="display:inline-block; width:40%"></svg>
   </div>
 </body>
 </html>
