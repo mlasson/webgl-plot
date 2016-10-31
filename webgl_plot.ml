@@ -359,7 +359,7 @@ let lines_from_segments segments =
       end
   in
 
-  for k = 0 to Array.length segments / 2 do
+  for k = 0 to Array.length segments / 2 - 1 do
     let a = segments.(2 * k) in
     let b = segments.(2 * k + 1) in
     add a b;
