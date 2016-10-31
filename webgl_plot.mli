@@ -214,3 +214,5 @@ val set_z_axis_ticks : plot -> Export.tick list -> unit
 
 val remove: plot -> int -> unit
 (** Remove a object (eg. a surface or a histogram) of a given id. *)
+
+val lines_from_segments: (float * float) list -> (float * float) list list
