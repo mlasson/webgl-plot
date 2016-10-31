@@ -301,19 +301,10 @@ let remove plot id =
   plot.surfaces <- List.filter (fun s -> s # id <> id) plot.surfaces
 
 
-module Line = struct
-  let segment a b = ([a], [b])
-  let first (l,_) = List.hd l
-  let last (_,l) = List.hd l
-  let to_list (front,back) = List.rev (List.rev_append back front)
-  let push (a,b) x = (x::a,b)
-  let append (a,b) x = (a, x::b)
-end
-
 let lines_from_segments segments =
   if List.length segments mod 2 = 1 then
     failwith "lines_from_segments: input should have an even length";
-  let segments = Array.of_list (List.map (fun (x,y) -> [|x;y|]) segments) in
+  let segments = Array.of_list (List.map (fun (x,y) -> [|x;y;|]) segments) in
   let copy = Array.copy segments in
   let epsilon = 1e-10 in
   let merge_points k =
@@ -333,39 +324,27 @@ let lines_from_segments segments =
   in
   merge_points 0;
   merge_points 1;
-  let starts = Hashtbl.create 117 in
-  let ends = Hashtbl.create 117 in
-
-  let add a b =
-    match Hashtbl.find starts b with
-    | l ->
-      Hashtbl.remove starts b;
-      let new_line = Line.push l a in
-      Hashtbl.add starts a new_line;
-      let last = Line.last l in
-      Hashtbl.add ends last new_line
-    | exception Not_found ->
-      begin match Hashtbl.find ends a with
-        | exception Not_found ->
-          let new_line = Line.segment a b in
-          Hashtbl.add starts a new_line;
-          Hashtbl.add ends b new_line
-        | l ->
-          Hashtbl.remove ends a;
-          let new_line = Line.append l b in
-          Hashtbl.add ends b new_line;
-          let first = Line.first l in
-          Hashtbl.add starts first new_line
-      end
-  in
-
+  let edges = Hashtbl.create 17 in
   for k = 0 to Array.length segments / 2 - 1 do
     let a = segments.(2 * k) in
     let b = segments.(2 * k + 1) in
-    add a b;
+    let not_visited = ref true in
+    Hashtbl.add edges a (b,not_visited);
+    Hashtbl.add edges b (a,not_visited);
   done;
+  let rec build_line acc a =
+    let nexts = Hashtbl.find_all edges a in
+    match List.find (fun (_, not_visited) -> !not_visited) nexts with
+    | exception Not_found -> ((a.(0),a.(1)) :: acc)
+    | b, not_visited ->
+      not_visited := false;
+      build_line ((a.(0),a.(1)) :: acc) b
+  in
   let result = ref [] in
-  Hashtbl.iter (fun _ l ->
-      result := (List.map (fun a -> (a.(0),a.(1))) (Line.to_list l)) :: !result) starts;
+  Hashtbl.iter (fun a (b,not_visited) ->
+      if !not_visited then begin
+        not_visited := false;
+        result := build_line [a.(0),a.(1)] b :: !result
+      end) edges;
   !result
 
