@@ -343,9 +343,9 @@ let lines_from_segments segments =
       let new_line = Line.push l a in
       Hashtbl.add starts a new_line;
       let last = Line.last l in
-      Hashtbl.replace ends last new_line
+      Hashtbl.add ends last new_line
     | exception Not_found ->
-      begin match Hashtbl.find ends b with
+      begin match Hashtbl.find ends a with
         | exception Not_found ->
           let new_line = Line.segment a b in
           Hashtbl.add starts a new_line;
@@ -355,7 +355,7 @@ let lines_from_segments segments =
           let new_line = Line.append l b in
           Hashtbl.add ends b new_line;
           let first = Line.first l in
-          Hashtbl.replace starts first new_line
+          Hashtbl.add starts first new_line
       end
   in
 
