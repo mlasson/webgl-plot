@@ -6,6 +6,8 @@ open Webgl_plot
 
 type js_histogram =
   {
+    id: int;
+    name: string;
     set_alpha: (float option -> unit);
     set_border: (float -> unit);
   } [@@js]
@@ -13,12 +15,16 @@ type js_histogram =
 let js_histogram h =
   let open Histogram in
   {
+    id = id h;
+    name = name h;
     set_alpha = set_alpha h;
     set_border = set_border h;
   }
 
 type js_surface =
   {
+    id: int;
+    name: string;
     set_alpha: (float option -> unit);
     set_wireframe: (bool -> unit);
     set_magnetic: (bool -> unit);
@@ -31,6 +37,8 @@ type js_surface =
 let js_surface s =
   let open Surface in
   {
+    id = id s;
+    name = name s;
     set_alpha = set_alpha s;
     set_wireframe = set_wireframe s;
     set_magnetic = set_magnetic s;
@@ -47,9 +55,12 @@ type js_interface = {
   add_surface: (Export.Surface.t -> js_surface);
 
   get_element: (unit -> Element.t);
+
+  get_object: (int -> Ojs.t option);
+  get_from_name: (string -> Ojs.t list);
   get_pointer_projection: (unit -> float * float * float);
   get_pointer_magnetic: (unit -> float * float * float);
-  get_selected_object: (unit -> Ojs.t);
+  get_selected_object: (unit -> Ojs.t option);
 
   set_on_double_click: ((unit -> unit) -> unit);
   set_pointer_text_formatter: ((Js_browser.Element.t -> unit) -> unit);
@@ -76,6 +87,13 @@ type js_interface = {
 
 let js_interface initial_value =
   let plot = create ?initial_value () in
+  let get_object id =
+    match Histogram.get plot id with
+    | Some h -> Some ([%js.of: js_histogram] (js_histogram h))
+    | None -> match Surface.get plot id with
+      | Some s -> Some ([%js.of: js_surface] (js_surface s))
+      | None -> None;
+  in
   {
     append_to = (fun parent -> Element.append_child parent (element plot));
 
@@ -92,18 +110,19 @@ let js_interface initial_value =
         | _ -> assert false (* TODO *));
 
     get_element = (fun () -> element plot);
+
+    get_object;
+    get_from_name = (fun name ->
+        ((Histogram.get_from_name plot name) |> List.map (fun h -> [%js.of: js_histogram] (js_histogram h)))
+          @
+        ((Surface.get_from_name plot name) |> List.map (fun s -> [%js.of: js_surface] (js_surface s)))
+      );
     get_pointer_projection = (fun () -> pointer_projection plot);
     get_pointer_magnetic = (fun () -> pointer_magnetic plot);
     get_selected_object = (fun () ->
         match selected_object plot with
-        | None -> Ojs.null
-        | Some id ->
-          match Histogram.get plot id with
-          | Some h -> [%js.of: js_histogram] (js_histogram h)
-          | None -> match Surface.get plot id with
-             | Some s -> [%js.of: js_surface] (js_surface s)
-             | None -> Ojs.null
-      );
+        | None -> None
+        | Some id -> get_object id);
 
     set_on_double_click = on_double_click plot;
     set_pointer_text_formatter = set_pointer_text_formatter plot;

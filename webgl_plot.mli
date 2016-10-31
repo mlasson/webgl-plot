@@ -57,7 +57,10 @@ module Histogram : sig
   (** The type of histograms. *)
 
   val id : t -> int
-  (** Return the internal id of an histogram. *)
+  (** Return the internal id of a histogram. *)
+
+  val name : t -> string
+  (** Return the name of a histogram. *)
 
   val add_grid_histogram :
     plot ->
@@ -84,7 +87,7 @@ module Histogram : sig
     ?widths:float array ->
     ?depths:float array ->
     ?colors:(float * float * float) array -> (float * float * float) array -> t
-    (** Adds an histrogram from an array of centers [x,y,z].
+    (** Adds a histrogram from an array of centers [x,y,z].
 
      Each box is defined from the rectangle of corners:
      {C ([x] - 0.5 * [width]_k, [y], [z] - 0.5 * [depth]_k) and  ([x] + 0.5 * [width]_k, [y], [z] + 0.5 * [depth]_k) }
@@ -95,11 +98,14 @@ module Histogram : sig
   val get: plot -> int -> t option
   (** Retrieve a histogram from its id. *)
 
+  val get_from_name: plot -> string -> t list
+  (** Retrieve all histograms of a given name. *)
+
   val set_alpha: t -> float option -> unit
-  (** Set the alpha state of an histogram. *)
+  (** Set the alpha state of a histogram. *)
 
   val set_border: t -> float -> unit
-  (** Set the border size of an histogram. *)
+  (** Set the border size of a histogram. *)
 end
 
 
@@ -111,6 +117,9 @@ module Surface : sig
 
   val id : t -> int
   (** Return the internal id of a surface. *)
+
+  val name : t -> string
+  (** Return the name of a surface. *)
 
   val add_surface :
     plot ->
@@ -131,8 +140,11 @@ module Surface : sig
   val get: plot -> int -> t option
   (** Retrieve a surface from its id. *)
 
+  val get_from_name: plot -> string -> t list
+  (** Retrieve all surfacess of a given name. *)
+
   val set_alpha: t -> float option -> unit
-  (** Set the alpha state of an histogram. *)
+  (** Set the alpha state of a histogram. *)
 
   val set_wireframe: t -> bool -> unit
   (** Activate or deactivate the rendering of the wireframe. *)

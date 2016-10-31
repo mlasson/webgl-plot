@@ -41,6 +41,7 @@ struct
   type t = Histogram.t
 
   let id histogram = histogram # id
+  let name histogram = histogram # name
 
   let set_alpha histogram x = histogram # set_alpha x
   let set_border histogram x = histogram # set_border x
@@ -71,6 +72,9 @@ struct
 
   let get {histograms; _} id =
     try Some (List.find (fun h -> h # id = id) histograms) with Not_found -> None
+
+  let get_from_name {histograms; _} name =
+    List.filter (fun h -> h # name = name) histograms
 end
 
 module Surface =
@@ -80,6 +84,7 @@ module Surface =
     type t = Surface.t
 
     let id surface = surface # id
+    let name surface = surface # name
 
     let set_alpha surface x = surface # set_alpha x
     let set_wireframe surface x = surface # set_wireframe x
@@ -101,6 +106,9 @@ module Surface =
 
   let get {surfaces; _} id =
     try Some (List.find (fun s -> s # id = id) surfaces) with Not_found -> None
+
+  let get_from_name {surfaces; _} name =
+    List.filter (fun s -> s # name = name) surfaces
   end
 
 let create ?(initial_value = default_export) () : plot =
