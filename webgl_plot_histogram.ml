@@ -323,7 +323,8 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?widths ?depths ?colors
              Some [|x; Float32Array.get ys (i * (m - 1) + j); z|]
            else None
         | `List centers ->
-          FloatData.closest_point 3 (fun a -> Math.sq (a.(0) -. x) +. Math.sq (a.(2) -. z)) centers
+          let scale_x, _, scale_z = scene # scale in
+          FloatData.closest_point 3 (fun a -> Math.sq ((a.(0) -. x) /. scale_x) +. Math.sq ((a.(2) -. z) /. scale_z)) centers
       with Some r -> r.(0), r.(1), r.(2)
          | None -> p
 

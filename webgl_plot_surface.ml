@@ -214,9 +214,10 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
     method ray o e = Intersection.ray_triangles vertices table o e
 
     method magnetize ((x,y,z) as p) =
+      let scale_x, scale_y, scale_z = scene # scale in
       if magnetic then
         match
-          FloatData.closest_point 3 (fun a -> Math.sq (a.(0) -. x) +. Math.sq (a.(1) -. y) +. Math.sq (a.(2) -. z)) vertices
+          FloatData.closest_point 3 (fun a -> Math.sq ((a.(0) -. x) /. scale_x) +. Math.sq ((a.(1) -. y) /. scale_y) +. Math.sq ((a.(2) -. z) /. scale_z)) vertices
         with Some r -> r.(0), r.(1), r.(2)
            | None -> x,y,z
       else p
