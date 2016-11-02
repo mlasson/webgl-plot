@@ -96,6 +96,8 @@ let colored_sphere gl shader =
       method bounds = Geometry.neutral_box
       method draw id round =
         if round >= 0 && id = shader # id && round <= 1 then begin
+          shader # set_explode (0.0, 0.0, 0.0);
+          shader # set_shrink (0.0, 0.0, 0.0);
           shader # set_object_matrix
             (float32_array (Vector.to_array
                (Vector.Const.scale_translation
