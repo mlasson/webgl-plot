@@ -184,7 +184,7 @@ module Basic = struct
   uniform mat4 u_object_matrix;
 
   uniform vec3 u_shrink;
-  uniform float u_explode;
+  uniform vec3 u_explode;
 
   varying mediump vec3 v_position;
   varying mediump vec3 v_normal;
@@ -227,7 +227,7 @@ module Basic = struct
     method id : int
 
     method set_alpha: float -> unit
-    method set_explode: float -> unit
+    method set_explode: float * float * float -> unit
     method set_shrink: float * float * float -> unit
     method set_ambient_light: float -> float -> float -> unit
     method set_light_position: float -> float -> float -> unit
@@ -282,8 +282,8 @@ module Basic = struct
         uniform1f gl alpha a
       method set_shrink (x,y,z) =
         uniform3f gl shrink x y z
-      method set_explode a =
-        uniform1f gl explode a
+      method set_explode (x,y,z) =
+        uniform3f gl explode x y z
       method set_object_matrix data =
         uniform_matrix4fv gl object_matrix false data
       method set_world_matrix data =

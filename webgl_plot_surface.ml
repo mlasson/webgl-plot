@@ -187,9 +187,10 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
     method bounds = bounds
 
     method draw shader_id round =
+      let scale_x, scale_y, scale_z = scene # scale in
       if round >= 0 && (shader_id = shader # id) && ((opaque && round < 2) || (not opaque && round = 2)) then begin
         shader # set_alpha alpha;
-        shader # set_explode 0.0;
+        shader # set_explode (0.0, 0.0, 0.0);
         shader # set_shrink (0.0, 0.0, 0.0);
 
         shader # set_object_matrix identity_matrix;
@@ -203,9 +204,9 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?(wireframe = false) ?(
           shader # set_alpha alpha;
           shader # set_colors a_colors_wireframe;
           if opaque then begin
-            shader # set_explode 0.0001;
+            shader # set_explode (0.0001 *. scale_x, 0.001 *. scale_y, 0.001 *. scale_z);
             shader # draw_elements Shaders.Lines e_wireframe;
-            shader # set_explode (-0.0001);
+            shader # set_explode (-. 0.0001 *. scale_x, -. 0.001 *. scale_y, -. 0.001 *. scale_z);
           end;
           shader # draw_elements Shaders.Lines e_wireframe;
         end

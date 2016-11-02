@@ -271,8 +271,8 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?widths ?depths ?colors
     method draw shader_id round =
       if shader_id = shader # id && round >= 0 && round <= 1 then begin
 
+        let x_scale, y_scale, z_scale = scene # scale in
         let x_border, y_border, z_border =
-          let x_scale, y_scale, z_scale = scene # scale in
           -. border *. x_scale,
           -. border *. y_scale,
           -. border *. z_scale
@@ -287,10 +287,10 @@ let create (scene : Webgl_plot_scene.scene) ?(name = "") ?widths ?depths ?colors
         shader # set_positions a_triangles;
         shader # set_colors a_border_colors;
         shader # set_shrink (0.0, 0.0, 0.0);
-        shader # set_explode 0.0;
+        shader # set_explode (0.0, 0.0, 0.0);
         shader # draw_arrays Shaders.Triangles (a_triangles # count);
         shader # set_shrink (x_border, y_border, z_border);
-        shader # set_explode 0.0001;
+        shader # set_explode (0.0001 *. x_scale, 0.0001 *. y_scale, 0.0001 *. z_scale);
         shader # set_colors a_colors;
         shader # draw_arrays Shaders.Triangles (a_triangles # count);
       end
