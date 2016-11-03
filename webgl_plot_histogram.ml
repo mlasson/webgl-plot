@@ -47,11 +47,11 @@ module HistogramGeometry = struct
       | `List centers -> Float32Array.length centers / 3, 1
     in
     let get_w = match widths with
-      | None -> fun _ _ -> 1.0
+      | None -> fun _ _ -> 0.95
       | Some w -> fun i j -> Float32Array.get w (i * m + j)
     in
     let get_h = match depths with
-      | None -> fun _ _ -> 1.0
+      | None -> fun _ _ -> 0.95
       | Some h ->
         fun i j -> Float32Array.get h (i * m + j)
     in
