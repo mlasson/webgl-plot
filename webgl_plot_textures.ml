@@ -66,9 +66,24 @@ let draw_tick context text =
   let tick_size = 0.01 *. (float real_size) in
   move_to context (-. tick_size) 0.0;
   line_to context tick_size 0.0;
-  let text_width = TextMetrics.width (measure_text context text) in
-  fill_text context text (-. tick_size -. line_width -. text_width) (0.5 *. (font_size -. line_width));
-  fill_text context text (tick_size +. line_width) (0.5 *. (font_size -. line_width))
+  let new_text = ref text in
+  let new_font_size = ref font_size in
+  let max_width = 0.25 *. inner_size in
+  let text_width = ref 0.0 in
+  while
+    set_font context (Printf.sprintf "%.0fpx Arial" !new_font_size);
+    text_width := TextMetrics.width (measure_text context !new_text);
+    !text_width > max_width && String.length !new_text > 4 do
+    if true then
+      Printf.printf "new = %S, width = %g < %g, size = %g\n%!" !new_text !text_width max_width !new_font_size;
+    if !new_font_size > 1.1 *. font_size then
+      new_font_size := 0.9 *. !new_font_size
+    else
+      new_text := (String.sub !new_text 0 ((String.length !new_text) - 4))^"..."
+  done;
+  fill_text context !new_text (-. tick_size -. line_width -. !text_width) (0.5 *. (font_size -. line_width));
+  fill_text context !new_text (tick_size +. line_width) (0.5 *. (font_size -. line_width));
+  set_font context (Printf.sprintf "%.0fpx Arial" font_size)
 
 let create_ticks_texture ratio label {values; texts} =
   let canvas = Document.create_element document "canvas" in
