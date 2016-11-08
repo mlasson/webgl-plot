@@ -45,7 +45,7 @@ module HistogramGeometry = struct
       | `Grid (_,_,ys) ->
         fun i j ->
           let y = Float32Array.get ys (i * m + j) in
-          classify_float y <> FP_nan && y <> 0.0
+          classify_float y <> FP_nan
       | _ -> fun _ _ -> true
     in
     let dim = 6 * 2 * 3 * 3 in
