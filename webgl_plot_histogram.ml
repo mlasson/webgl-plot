@@ -22,21 +22,6 @@ module HistogramGeometry = struct
     shrink_directions: Float32Array.t;
   }
 
-  (* Invariant: forall i j, length (f i j) = dim *)
-  let flatten dim n m f =
-    let points = Float32Array.new_float32_array (`Size (n * m * dim)) in
-    let pos = ref 0 in
-    for i = 0 to n - 1 do
-      for j = 0 to m - 1 do
-        let a = f i j in
-        assert (Array.length a = dim);
-        Array.iteri (fun k x ->
-            Float32Array.set points (!pos + k) x) a;
-        pos := !pos + dim;
-      done
-    done;
-    points
-
   let create ?widths ?depths ?colors input =
     let n, m =
       match input with
@@ -60,8 +45,35 @@ module HistogramGeometry = struct
       | `Grid (_,_,ys) ->
         fun i j ->
           let y = Float32Array.get ys (i * m + j) in
-          classify_float y <> FP_nan
+          classify_float y <> FP_nan && y <> 0.0
       | _ -> fun _ _ -> true
+    in
+    let dim = 6 * 2 * 3 * 3 in
+    let size =
+      let r = ref 0 in
+      for i = 0 to n - 1 do
+        for j = 0 to m - 1 do
+          if has_box i j then
+            incr r
+        done
+      done;
+      !r * dim
+    in
+    let flatten f =
+      let points = Float32Array.new_float32_array (`Size size) in
+      let pos = ref 0 in
+      for i = 0 to n - 1 do
+        for j = 0 to m - 1 do
+          if has_box i j then begin
+            let a = f i j in
+            assert (Array.length a = dim);
+            Array.iteri (fun k x ->
+                Float32Array.set points (!pos + k) x) a;
+            pos := !pos + dim;
+          end
+        done
+      done;
+      points
     in
     let get_box =
       match input with
@@ -141,100 +153,92 @@ module HistogramGeometry = struct
         let z = Float32Array.get color (pos + 2) in
         [|x;y;z|]
     in
-    let dim = 6 * 2 * 3 * 3 in
     let triangles =
-      flatten dim n m
+      flatten
         (fun i j ->
-           if has_box i j then
-             let {x_min; x_max; z_min; z_max; y_min;y_max} = get_box i j in
-             let v1 = [| x_min; y_max; z_min|] in
-             let v2 = [| x_max; y_max; z_min|] in
-             let v3 = [| x_max; y_max; z_max|] in
-             let v4 = [| x_min; y_max; z_max|] in
-             let v5 = [| x_min; y_min; z_max|] in
-             let v6 = [| x_max; y_min; z_max|] in
-             let v7 = [| x_max; y_min; z_min|] in
-             let v8 = [| x_min; y_min; z_min|] in
-             Array.concat [
-               v1;v2;v3;v3;v4;v1;
-               v5;v6;v7;v7;v8;v5;
-               v2;v7;v6;v6;v3;v2;
-               v1;v4;v5;v5;v8;v1;
-               v3;v6;v5;v5;v4;v3;
-               v1;v8;v7;v7;v2;v1;
-             ]
-           else [||])
+           let {x_min; x_max; z_min; z_max; y_min;y_max} = get_box i j in
+           let v1 = [| x_min; y_max; z_min|] in
+           let v2 = [| x_max; y_max; z_min|] in
+           let v3 = [| x_max; y_max; z_max|] in
+           let v4 = [| x_min; y_max; z_max|] in
+           let v5 = [| x_min; y_min; z_max|] in
+           let v6 = [| x_max; y_min; z_max|] in
+           let v7 = [| x_max; y_min; z_min|] in
+           let v8 = [| x_min; y_min; z_min|] in
+           Array.concat [
+             v1;v2;v3;v3;v4;v1;
+             v5;v6;v7;v7;v8;v5;
+             v2;v7;v6;v6;v3;v2;
+             v1;v4;v5;v5;v8;v1;
+             v3;v6;v5;v5;v4;v3;
+             v1;v8;v7;v7;v2;v1;
+           ]
+        )
     in
     let normals =
-      flatten dim n m
+      flatten
         (fun i j ->
-           if has_box i j then
-             let {y_min;y_max; _} = get_box i j in
-             let top = [| 0.; 1.; 0.|] in
-             let bot = [| 0.; -1.; 0.|] in
-             let top, bot = if y_min < y_max then top, bot else bot, top in
-             let right = [| 1.; 0.; 0.|] in
-             let left = [| -1.; 0.; 0.|] in
-             let back = [| 0.; 0.; 1.|] in
-             let front = [| 0.; 0.; -1.|] in
-             Array.concat [
-               top; top; top;
-               top; top; top;
-               bot; bot; bot;
-               bot; bot; bot;
-               right; right; right;
-               right; right; right;
-               left; left; left;
-               left; left; left;
-               back; back; back;
-               back; back; back;
-               front; front; front;
-               front; front; front;
-             ]
-           else [||])
+           let {y_min;y_max; _} = get_box i j in
+           let top = [| 0.; 1.; 0.|] in
+           let bot = [| 0.; -1.; 0.|] in
+           let top, bot = if y_min < y_max then top, bot else bot, top in
+           let right = [| 1.; 0.; 0.|] in
+           let left = [| -1.; 0.; 0.|] in
+           let back = [| 0.; 0.; 1.|] in
+           let front = [| 0.; 0.; -1.|] in
+           Array.concat [
+             top; top; top;
+             top; top; top;
+             bot; bot; bot;
+             bot; bot; bot;
+             right; right; right;
+             right; right; right;
+             left; left; left;
+             left; left; left;
+             back; back; back;
+             back; back; back;
+             front; front; front;
+             front; front; front;
+           ])
     in
     let colors =
-      flatten dim n m
+      flatten
         (fun i j ->
-           if has_box i j then begin
-             let a = get_color i j in
-             let r = Array.create_float dim in
-             for k = 0 to dim-1 do
-               r.(k) <- a.(k mod 3);
-             done;
-             r
-           end else [||])
+           let a = get_color i j in
+           let r = Array.create_float dim in
+           for k = 0 to dim-1 do
+             r.(k) <- a.(k mod 3);
+           done;
+           r)
     in
     let shrink_directions =
-      flatten dim n m
+      flatten
         (fun i j ->
-           if has_box i j then
-             let {y_min;y_max; _} = get_box i j in
-             let top, bot = if y_min < y_max then 1., -1. else -1., 1. in
-             let left_front = [| -1.; 0.; -1.|] in
-             let right_front = [| 1.; 0.; -1.|] in
-             let right_back = [| 1.; 0.; 1.|] in
-             let left_back = [| -1.; 0.; 1.|] in
+           let {y_min;y_max; _} = get_box i j in
+           let top, bot = if y_min < y_max then 1., -1. else -1., 1. in
+           let left_front = [| -1.; 0.; -1.|] in
+           let right_front = [| 1.; 0.; -1.|] in
+           let right_back = [| 1.; 0.; 1.|] in
+           let left_back = [| -1.; 0.; 1.|] in
 
-             let top_front = [| 0.; top; -1.|] in
-             let bot_front = [| 0.; bot; -1.|] in
-             let top_back = [| 0.; top; 1.|] in
-             let bot_back = [| 0.; bot; 1.|] in
+           let top_front = [| 0.; top; -1.|] in
+           let bot_front = [| 0.; bot; -1.|] in
+           let top_back = [| 0.; top; 1.|] in
+           let bot_back = [| 0.; bot; 1.|] in
 
-             let left_top = [| -1.; top; 0.|] in
-             let right_top = [| 1.; top; 0.|] in
-             let right_bot = [| 1.; bot; 0.|] in
-             let left_bot = [| -1.; bot; 0.|] in
+           let left_top = [| -1.; top; 0.|] in
+           let right_top = [| 1.; top; 0.|] in
+           let right_bot = [| 1.; bot; 0.|] in
+           let left_bot = [| -1.; bot; 0.|] in
 
-             Array.concat [
-               left_front; right_front; right_back; right_back; left_back; left_front;
-               left_back; right_back; right_front; right_front; left_front; left_back;
-               top_front; bot_front; bot_back; bot_back; top_back; top_front;
-               top_front; top_back; bot_back; bot_back; bot_front; top_front;
-               right_top; right_bot; left_bot; left_bot; left_top; right_top;
-               left_top; left_bot; right_bot; right_bot; right_top; left_top;
-             ]
-           else [||])
+           Array.concat [
+             left_front; right_front; right_back; right_back; left_back; left_front;
+             left_back; right_back; right_front; right_front; left_front; left_back;
+             top_front; bot_front; bot_back; bot_back; top_back; top_front;
+             top_front; top_back; bot_back; bot_back; bot_front; top_front;
+             right_top; right_bot; left_bot; left_bot; left_top; right_top;
+             left_top; left_bot; right_bot; right_bot; right_top; left_top;
+           ])
     in
     {
       triangles;
