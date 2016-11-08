@@ -74,7 +74,7 @@ let draw_tick context text =
     set_font context (Printf.sprintf "%.0fpx Arial" !new_font_size);
     text_width := TextMetrics.width (measure_text context !new_text);
     !text_width > max_width && String.length !new_text > 4 do
-    if true then
+    if false then
       Printf.printf "new = %S, width = %g < %g, size = %g\n%!" !new_text !text_width max_width !new_font_size;
     if !new_font_size > 1.1 *. font_size then
       new_font_size := 0.9 *. !new_font_size

@@ -57,10 +57,9 @@ module HistogramGeometry = struct
     in
     let has_box =
       match input with
-      | `List (centers) ->
+      | `Grid (_,_,ys) ->
         fun i j ->
-          let pos = 3 * (i * m + j) in
-          let y = Float32Array.get centers (pos + 1) in
+          let y = Float32Array.get ys (i * m + j) in
           classify_float y <> FP_nan
       | _ -> fun _ _ -> true
     in
