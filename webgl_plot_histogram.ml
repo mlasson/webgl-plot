@@ -55,6 +55,15 @@ module HistogramGeometry = struct
       | Some h ->
         fun i j -> Float32Array.get h (i * m + j)
     in
+    let has_box =
+      match input with
+      | `List (centers) ->
+        fun i j ->
+          let pos = 3 * (i * m + j) in
+          let y = Float32Array.get centers (pos + 1) in
+          classify_float y <> FP_nan
+      | _ -> fun _ _ -> true
+    in
     let get_box =
       match input with
       | `List (centers) ->
@@ -137,88 +146,96 @@ module HistogramGeometry = struct
     let triangles =
       flatten dim n m
         (fun i j ->
-           let {x_min; x_max; z_min; z_max; y_min;y_max} = get_box i j in
-           let v1 = [| x_min; y_max; z_min|] in
-           let v2 = [| x_max; y_max; z_min|] in
-           let v3 = [| x_max; y_max; z_max|] in
-           let v4 = [| x_min; y_max; z_max|] in
-           let v5 = [| x_min; y_min; z_max|] in
-           let v6 = [| x_max; y_min; z_max|] in
-           let v7 = [| x_max; y_min; z_min|] in
-           let v8 = [| x_min; y_min; z_min|] in
-           Array.concat [
-             v1;v2;v3;v3;v4;v1;
-             v5;v6;v7;v7;v8;v5;
-             v2;v7;v6;v6;v3;v2;
-             v1;v4;v5;v5;v8;v1;
-             v3;v6;v5;v5;v4;v3;
-             v1;v8;v7;v7;v2;v1;
-           ])
+           if has_box i j then
+             let {x_min; x_max; z_min; z_max; y_min;y_max} = get_box i j in
+             let v1 = [| x_min; y_max; z_min|] in
+             let v2 = [| x_max; y_max; z_min|] in
+             let v3 = [| x_max; y_max; z_max|] in
+             let v4 = [| x_min; y_max; z_max|] in
+             let v5 = [| x_min; y_min; z_max|] in
+             let v6 = [| x_max; y_min; z_max|] in
+             let v7 = [| x_max; y_min; z_min|] in
+             let v8 = [| x_min; y_min; z_min|] in
+             Array.concat [
+               v1;v2;v3;v3;v4;v1;
+               v5;v6;v7;v7;v8;v5;
+               v2;v7;v6;v6;v3;v2;
+               v1;v4;v5;v5;v8;v1;
+               v3;v6;v5;v5;v4;v3;
+               v1;v8;v7;v7;v2;v1;
+             ]
+           else [||])
     in
     let normals =
       flatten dim n m
         (fun i j ->
-           let {y_min;y_max; _} = get_box i j in
-           let top = [| 0.; 1.; 0.|] in
-           let bot = [| 0.; -1.; 0.|] in
-           let top, bot = if y_min < y_max then top, bot else bot, top in
-           let right = [| 1.; 0.; 0.|] in
-           let left = [| -1.; 0.; 0.|] in
-           let back = [| 0.; 0.; 1.|] in
-           let front = [| 0.; 0.; -1.|] in
-           Array.concat [
-             top; top; top;
-             top; top; top;
-             bot; bot; bot;
-             bot; bot; bot;
-             right; right; right;
-             right; right; right;
-             left; left; left;
-             left; left; left;
-             back; back; back;
-             back; back; back;
-             front; front; front;
-             front; front; front;
-           ])
+           if has_box i j then
+             let {y_min;y_max; _} = get_box i j in
+             let top = [| 0.; 1.; 0.|] in
+             let bot = [| 0.; -1.; 0.|] in
+             let top, bot = if y_min < y_max then top, bot else bot, top in
+             let right = [| 1.; 0.; 0.|] in
+             let left = [| -1.; 0.; 0.|] in
+             let back = [| 0.; 0.; 1.|] in
+             let front = [| 0.; 0.; -1.|] in
+             Array.concat [
+               top; top; top;
+               top; top; top;
+               bot; bot; bot;
+               bot; bot; bot;
+               right; right; right;
+               right; right; right;
+               left; left; left;
+               left; left; left;
+               back; back; back;
+               back; back; back;
+               front; front; front;
+               front; front; front;
+             ]
+           else [||])
     in
     let colors =
       flatten dim n m
         (fun i j ->
-           let a = get_color i j in
-           let r = Array.create_float dim in
-           for k = 0 to dim-1 do
-             r.(k) <- a.(k mod 3);
-           done;
-           r)
+           if has_box i j then begin
+             let a = get_color i j in
+             let r = Array.create_float dim in
+             for k = 0 to dim-1 do
+               r.(k) <- a.(k mod 3);
+             done;
+             r
+           end else [||])
     in
     let shrink_directions =
       flatten dim n m
         (fun i j ->
-           let {y_min;y_max; _} = get_box i j in
-           let top, bot = if y_min < y_max then 1., -1. else -1., 1. in
-           let left_front = [| -1.; 0.; -1.|] in
-           let right_front = [| 1.; 0.; -1.|] in
-           let right_back = [| 1.; 0.; 1.|] in
-           let left_back = [| -1.; 0.; 1.|] in
+           if has_box i j then
+             let {y_min;y_max; _} = get_box i j in
+             let top, bot = if y_min < y_max then 1., -1. else -1., 1. in
+             let left_front = [| -1.; 0.; -1.|] in
+             let right_front = [| 1.; 0.; -1.|] in
+             let right_back = [| 1.; 0.; 1.|] in
+             let left_back = [| -1.; 0.; 1.|] in
 
-           let top_front = [| 0.; top; -1.|] in
-           let bot_front = [| 0.; bot; -1.|] in
-           let top_back = [| 0.; top; 1.|] in
-           let bot_back = [| 0.; bot; 1.|] in
+             let top_front = [| 0.; top; -1.|] in
+             let bot_front = [| 0.; bot; -1.|] in
+             let top_back = [| 0.; top; 1.|] in
+             let bot_back = [| 0.; bot; 1.|] in
 
-           let left_top = [| -1.; top; 0.|] in
-           let right_top = [| 1.; top; 0.|] in
-           let right_bot = [| 1.; bot; 0.|] in
-           let left_bot = [| -1.; bot; 0.|] in
+             let left_top = [| -1.; top; 0.|] in
+             let right_top = [| 1.; top; 0.|] in
+             let right_bot = [| 1.; bot; 0.|] in
+             let left_bot = [| -1.; bot; 0.|] in
 
-           Array.concat [
-             left_front; right_front; right_back; right_back; left_back; left_front;
-             left_back; right_back; right_front; right_front; left_front; left_back;
-             top_front; bot_front; bot_back; bot_back; top_back; top_front;
-             top_front; top_back; bot_back; bot_back; bot_front; top_front;
-             right_top; right_bot; left_bot; left_bot; left_top; right_top;
-             left_top; left_bot; right_bot; right_bot; right_top; left_top;
-           ])
+             Array.concat [
+               left_front; right_front; right_back; right_back; left_back; left_front;
+               left_back; right_back; right_front; right_front; left_front; left_back;
+               top_front; bot_front; bot_back; bot_back; top_back; top_front;
+               top_front; top_back; bot_back; bot_back; bot_front; top_front;
+               right_top; right_bot; left_bot; left_bot; left_top; right_top;
+               left_top; left_bot; right_bot; right_bot; right_top; left_top;
+             ]
+           else [||])
     in
     {
       triangles;
