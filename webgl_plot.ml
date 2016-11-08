@@ -46,26 +46,28 @@ struct
   let set_alpha histogram x = histogram # set_alpha x
   let set_border histogram x = histogram # set_border x
 
-  let add_grid_histogram ({scene; _} as plot) ?name ?border ?widths ?depths ?colors ~x ~z ~y () =
+  let add_grid_histogram ({scene; _} as plot) ?name ?border ?widths ?depths ?floors ?colors ~x ~z ~y () =
     let h =
       let widths = option_map flatten_array_array widths in
       let depths = option_map flatten_array_array depths in
+      let floors = option_map flatten_array_array floors in
       let colors = option_map flatten_triple_array_array colors in
       let x = float32_array x in
       let z = float32_array z in
       let y = flatten_array_array y in
-      Histogram.create scene ?widths ?colors ?depths ?name ?border (`Grid (x, z, y))
+      Histogram.create scene ?widths ?colors ?depths ?floors ?name ?border (`Grid (x, z, y))
     in
     plot.histograms <- h :: plot.histograms;
     h
 
-  let add_list_histogram ({scene; _} as plot) ?name ?border ?widths ?depths ?colors centers =
+  let add_list_histogram ({scene; _} as plot) ?name ?border ?widths ?depths ?floors ?colors centers =
     let h =
       let widths = option_map float32_array widths in
       let depths = option_map float32_array depths in
+      let floors = option_map float32_array floors in
       let colors = option_map flatten_triple_array colors in
       let centers = flatten_triple_array centers in
-      Histogram.create scene ?widths ?colors ?depths ?name ?border (`List centers)
+      Histogram.create scene ?widths ?colors ?depths ?floors ?name ?border (`List centers)
     in
     plot.histograms <- h :: plot.histograms;
     h
@@ -168,10 +170,10 @@ let create ?(initial_value = default_export) () : plot =
   let open Histogram in
   let open Surface in
   List.iter (function
-      | Export.Histogram Grid {name; x; z; y; widths; depths; colors; border} ->
-        ignore (add_grid_histogram plot ?name ?border ?widths ?depths ?colors ~x ~z ~y ())
-      | Histogram List {name; centers; widths; depths; colors; border} ->
-        ignore (add_list_histogram plot ?name ?border ?widths ?depths ?colors centers)
+      | Export.Histogram Grid {name; x; z; y; widths; depths; floors; colors; border} ->
+        ignore (add_grid_histogram plot ?name ?border ?widths ?depths ?floors ?colors ~x ~z ~y ())
+      | Histogram List {name; centers; widths; depths; floors; colors; border} ->
+        ignore (add_list_histogram plot ?name ?border ?widths ?depths ?floors ?colors centers)
       | Surface Grid {name; centers; colors; wireframe; alpha; magnetic; crosshair} ->
         ignore (add_surface plot ?colors ?wireframe ?name ?alpha ?magnetic ?crosshair centers)
       | _ -> (* TODO *) assert false) series;

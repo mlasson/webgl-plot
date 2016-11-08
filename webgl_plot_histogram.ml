@@ -22,7 +22,7 @@ module HistogramGeometry = struct
     shrink_directions: Float32Array.t;
   }
 
-  let create ?widths ?depths ?colors input =
+  let create ?widths ?depths ?floors ?colors input =
     let n, m =
       match input with
       | `Grid (xs, zs, ys) ->
@@ -30,6 +30,10 @@ module HistogramGeometry = struct
         assert (Float32Array.length ys = n * m);
         n, m
       | `List centers -> Float32Array.length centers / 3, 1
+    in
+    let get_floor = match floors with
+      | None -> fun _ _ -> 0.0
+      | Some f -> fun i j -> Float32Array.get f (i * m + j)
     in
     let get_w = match widths with
       | None -> fun _ _ -> 0.95
@@ -89,13 +93,13 @@ module HistogramGeometry = struct
           let x_max = x +. 0.5 *. w in
           let z_min = z -. 0.5 *. h in
           let z_max = z +. 0.5 *. h in
-          let y_min = 0.0 in
+          let y_min = get_floor i j in
           let y_max = y in
           {x_min; x_max; z_min; z_max; y_min;y_max}
       | `Grid (xs,zs,ys) ->
         fun i j ->
           let y_max = Float32Array.get ys (i * m + j) in
-          let y_min = 0.0 in
+          let y_min = get_floor i j in
           let x_min = Float32Array.get xs i in
           let x_max = Float32Array.get xs (i+1) in
           let z_min = Float32Array.get zs j in
@@ -255,12 +259,12 @@ class type t = object
   method set_border : float -> unit
 end
 
-let create (scene : Webgl_plot_scene.scene) ?(name = "") ?widths ?depths ?colors ?(border = 0.001) input : t =
+let create (scene : Webgl_plot_scene.scene) ?(name = "") ?widths ?depths ?floors ?colors ?(border = 0.001) input : t =
   let open Shaders in
   let gl = scene # gl in
   let shader = scene # basic_shader in
   let {HistogramGeometry.triangles; normals; shrink_directions; colors} =
-    HistogramGeometry.create ?widths ?depths ?colors input
+    HistogramGeometry.create ?widths ?depths ?floors ?colors input
   in
   let indexes = Index.of_array (Array.init ((Float32Array.length triangles) / 3) (fun x -> x)) in
   let table = if true then Intersection.build_ray_table triangles indexes else [] in

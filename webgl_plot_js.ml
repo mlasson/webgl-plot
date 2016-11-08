@@ -100,10 +100,10 @@ let js_interface initial_value =
     append_to = (fun parent -> Element.append_child parent (element plot));
 
     add_histogram = Histogram.(function
-        | Export.Histogram.Grid {name; x; z; y; border; widths; depths; colors} ->
-          js_histogram (add_grid_histogram plot ?name ?border ?widths ?depths ?colors ~x ~z ~y ())
-        | Export.Histogram.List {name; centers; border; widths; depths; colors} ->
-          js_histogram (add_list_histogram plot ?name ?border ?widths ?depths ?colors centers)
+        | Export.Histogram.Grid {name; x; z; y; border; widths; depths; floors; colors} ->
+          js_histogram (add_grid_histogram plot ?name ?border ?widths ?depths ?floors ?colors ~x ~z ~y ())
+        | Export.Histogram.List {name; centers; border; widths; depths; floors; colors} ->
+          js_histogram (add_list_histogram plot ?name ?border ?widths ?depths ?floors ?colors centers)
         | _ -> assert false (* TODO *));
 
     add_surface = Surface.(function

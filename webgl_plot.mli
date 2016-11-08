@@ -68,6 +68,7 @@ module Histogram : sig
     ?border:float ->
     ?widths:float array array ->
     ?depths:float array array ->
+    ?floors:float array array ->
     ?colors:(float * float * float) array array ->
     x:float array ->
     z:float array -> y:float array array -> unit -> t
@@ -78,7 +79,8 @@ module Histogram : sig
 
         - [border] is the size of the border (default: 1),
         - [widths]{_i,j} (resp. [depths]{_i,j}) should be a number between 0 and 1 that control the width (resp. the depth of the box),
-        - [colors]{_i,j} id the RGB code (between 0.0 and 1.0) of each box. *)
+        - [floors]{_i,j} is the 'ground level' of the box (i,j) (default: 0.0),
+        - [colors]{_i,j} is the RGB code (between 0.0 and 1.0) of each box. *)
 
   val add_list_histogram :
     plot ->
@@ -86,6 +88,7 @@ module Histogram : sig
     ?border:float ->
     ?widths:float array ->
     ?depths:float array ->
+    ?floors:float array ->
     ?colors:(float * float * float) array -> (float * float * float) array -> t
     (** Adds a histrogram from an array of centers [x,y,z].
 
@@ -93,7 +96,8 @@ module Histogram : sig
      {C ([x] - 0.5 * [width]_k, [y], [z] - 0.5 * [depth]_k) and  ([x] + 0.5 * [width]_k, [y], [z] + 0.5 * [depth]_k) }
 
      - [border] is the size of the border (default: 1),
-     - [colors]{_k} id the RGB code (between 0.0 and 1.0) of each box. *)
+     - [floor]{_k} is the 'ground level' of each box (default : 0.0),
+     - [colors]{_k} is the RGB code (between 0.0 and 1.0) of each box. *)
 
   val get: plot -> int -> t option
   (** Retrieve a histogram from its id. *)

@@ -18,6 +18,7 @@ module Histogram : sig
 
         widths: float array array option;
         depths: float array array option;
+        floors: float array array option;
         colors: (float * float * float) array array option;
       } [@js "grid"]
 
@@ -29,6 +30,7 @@ module Histogram : sig
         centers: (float * float * float) array;
         widths: float array option;
         depths: float array option;
+        floors: float array option;
         colors: (float * float * float) array option;
       } [@js "list"]
 
