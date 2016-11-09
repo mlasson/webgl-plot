@@ -302,6 +302,8 @@ let remove plot id =
   plot.histograms <- List.filter (fun h -> h # id <> id) plot.histograms;
   plot.surfaces <- List.filter (fun s -> s # id <> id) plot.surfaces
 
+let screenshot plot f =
+  plot.user_state.pending_screenshots <- f :: plot.user_state.pending_screenshots
 
 let lines_from_segments segments =
   if List.length segments mod 2 = 1 then

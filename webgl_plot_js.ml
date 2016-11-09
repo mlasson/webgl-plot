@@ -85,6 +85,7 @@ type js_interface = {
   set_move: (float * float * float -> unit);
 
   remove: (int -> unit);
+  screenshot: ((string -> unit) -> unit);
 } [@@js]
 
 let js_interface initial_value =
@@ -149,6 +150,7 @@ let js_interface initial_value =
     set_move = set_move plot;
 
     remove = remove plot;
+    screenshot = screenshot plot;
   }
 
 let () =

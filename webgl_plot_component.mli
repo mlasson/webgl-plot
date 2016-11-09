@@ -11,6 +11,7 @@ type state = {
   mutable width : float;
   mutable height : float;
   mutable on_double_click: (unit -> unit);
+  mutable pending_screenshots: (string -> unit) list;
 }
 
 class type context =

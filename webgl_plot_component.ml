@@ -20,6 +20,7 @@ type state = {
   mutable height: float;
 
   mutable on_double_click: (unit -> unit);
+  mutable pending_screenshots: (string -> unit) list;
 }
 
 class type context =
@@ -133,6 +134,7 @@ let create_webgl_canvas renderer =
       width = 0.0;
       height = 0.0;
       on_double_click = ignore;
+      pending_screenshots = [];
     }
   in
   let new_textbox () =
@@ -265,6 +267,8 @@ let create_webgl_canvas renderer =
       (* print_state state *)
     end;
     next_frame clock state;
+    List.iter (fun f -> f (Canvas.to_data_url canvas)) state.pending_screenshots;
+    state.pending_screenshots <- [];
     );
   main, state, scene
 
