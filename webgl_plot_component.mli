@@ -28,4 +28,4 @@ val create_webgl_canvas :
   (Webgl.context ->
    context ->
    'a * (float -> state -> unit)) ->
-  Js_browser.Element.t * state * 'a
+  Js_browser.Element.t * Js_browser.Element.t * state * 'a

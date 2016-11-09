@@ -270,5 +270,5 @@ let create_webgl_canvas renderer =
     List.iter (fun f -> f (Canvas.to_data_url canvas)) state.pending_screenshots;
     state.pending_screenshots <- [];
     );
-  main, state, scene
+  main, container, state, scene
 

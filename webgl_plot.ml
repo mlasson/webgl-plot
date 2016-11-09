@@ -15,6 +15,7 @@ module Export = Webgl_plot_export
 
 type plot = {
   element: Element.t;
+  overlap: Element.t;
   user_state : Component.state;
   scene : Scene.scene;
   repere : Repere.t;
@@ -131,8 +132,8 @@ let create ?(initial_value = default_export) () : plot =
       scene # set_height (int_of_float height);
       scene # render
   in
-  let element, user_state, (scene, repere) = Component.create_webgl_canvas renderer in
-  let plot = {element; user_state; scene; repere; histograms = []; surfaces = []} in
+  let element, overlap, user_state, (scene, repere) = Component.create_webgl_canvas renderer in
+  let plot = {element; overlap; user_state; scene; repere; histograms = []; surfaces = []} in
 
   option_iter ratio (scene # set_ratio);
 
@@ -304,6 +305,9 @@ let remove plot id =
 
 let screenshot plot f =
   plot.user_state.pending_screenshots <- f :: plot.user_state.pending_screenshots
+
+let overlap plot =
+  plot.overlap
 
 let lines_from_segments segments =
   if List.length segments mod 2 = 1 then

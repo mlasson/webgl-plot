@@ -55,6 +55,7 @@ type js_interface = {
   add_surface: (Export.Surface.t -> js_surface);
 
   get_element: (unit -> Element.t);
+  get_overlap: (unit -> Element.t);
 
   get_object: (int -> Ojs.t option);
   get_from_name: (string -> Ojs.t list);
@@ -113,6 +114,7 @@ let js_interface initial_value =
         | _ -> assert false (* TODO *));
 
     get_element = (fun () -> element plot);
+    get_overlap = (fun () -> overlap plot);
 
     get_object;
     get_from_name = (fun name ->

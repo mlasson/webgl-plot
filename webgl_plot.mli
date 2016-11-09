@@ -19,6 +19,9 @@ val create : ?initial_value:Export.chart -> unit -> plot
 val element : plot -> Js_browser.Element.t
 (** Returns the DOM element carrying the plot. *)
 
+val overlap : plot -> Js_browser.Element.t
+(** Returns a div element which is exactly overlapping the canvas. *)
+
 val selected_object : plot -> int option
 (** Returns the internal id of the object currently under the cursor. *)
 
