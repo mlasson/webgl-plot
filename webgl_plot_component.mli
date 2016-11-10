@@ -11,7 +11,13 @@ type state = {
   mutable width : float;
   mutable height : float;
   mutable on_double_click: (unit -> unit);
-  mutable pending_screenshots: (string -> unit) list;
+}
+
+type component = {
+   root: Js_browser.Element.t;
+   canvas: Js_browser.Element.t;
+   overlap: Js_browser.Element.t;
+   state: state;
 }
 
 class type context =
@@ -28,4 +34,4 @@ val create_webgl_canvas :
   (Webgl.context ->
    context ->
    'a * (float -> state -> unit)) ->
-  Js_browser.Element.t * Js_browser.Element.t * state * 'a
+  component * 'a

@@ -153,6 +153,7 @@ class type scene =
     method pre_render_hook : (unit -> unit)
     method set_post_render_hook : (unit -> unit) -> unit
     method set_pre_render_hook : (unit -> unit) -> unit
+    method set_screenshot_hook : (unit -> unit) -> unit
   end
 
 let prepare_scene gl component : scene =
@@ -238,11 +239,13 @@ let prepare_scene gl component : scene =
 
     val mutable pre_render_hook = ignore
     val mutable post_render_hook = ignore
+    val mutable screenshot_hook = ignore
 
     method pre_render_hook = pre_render_hook
     method post_render_hook = post_render_hook
     method set_pre_render_hook f = pre_render_hook <- f
     method set_post_render_hook f = post_render_hook <- f
+    method set_screenshot_hook f = screenshot_hook <- f
 
     (* Object *)
     val mutable objects : object3d list = []
@@ -411,7 +414,7 @@ let prepare_scene gl component : scene =
         screen_shader # draw;
         screen_shader # switch;
       end;
-
+      screenshot_hook ();
       pointer_text_formatter (textbox # element);
       post_render_hook ()
 

@@ -20,7 +20,6 @@ type state = {
   mutable height: float;
 
   mutable on_double_click: (unit -> unit);
-  mutable pending_screenshots: (string -> unit) list;
 }
 
 class type context =
@@ -84,6 +83,14 @@ let setup_webgl_context canvas =
   ignore (get_extension gl "OES_element_index_uint");
   gl
 
+
+type component = {
+   root: Js_browser.Element.t;
+   canvas: Js_browser.Element.t;
+   overlap: Js_browser.Element.t;
+   state: state;
+}
+
 let create_webgl_canvas renderer =
   let canvas =
     let style = {css|
@@ -134,7 +141,6 @@ let create_webgl_canvas renderer =
       width = 0.0;
       height = 0.0;
       on_double_click = ignore;
-      pending_screenshots = [];
     }
   in
   let new_textbox () =
@@ -267,8 +273,6 @@ let create_webgl_canvas renderer =
       (* print_state state *)
     end;
     next_frame clock state;
-    List.iter (fun f -> f (Canvas.to_data_url canvas)) state.pending_screenshots;
-    state.pending_screenshots <- [];
     );
-  main, container, state, scene
+  {root = main; canvas; overlap = container; state}, scene
 

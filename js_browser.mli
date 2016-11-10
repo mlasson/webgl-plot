@@ -237,7 +237,7 @@ module Canvas : sig
          get_context_internal canvas "2d" {alpha}
   ]
 
-  val to_data_url: (*<canvas>*) Element.t -> string
+  val to_data_URL: (*<canvas>*) Element.t -> string [@@js.call]
   val set_fill_style: context -> ([`Color of css_color | `Gradient of gradient][@js.union]) -> unit
   val set_stroke_style: context -> ([`Color of css_color | `Gradient of gradient][@js.union]) -> unit
   val set_line_width: context -> float -> unit
