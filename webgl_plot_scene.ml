@@ -245,7 +245,11 @@ let prepare_scene gl component : scene =
     method post_render_hook = post_render_hook
     method set_pre_render_hook f = pre_render_hook <- f
     method set_post_render_hook f = post_render_hook <- f
-    method set_screenshot_hook f = screenshot_hook <- f
+
+    val mutable previous_state = ""
+    method set_screenshot_hook f =
+      previous_state <- "";
+      screenshot_hook <- f
 
     (* Object *)
     val mutable objects : object3d list = []
@@ -265,7 +269,6 @@ let prepare_scene gl component : scene =
       obj # set_scale scale;
       objects <- (obj :> object3d) :: objects
 
-    val mutable previous_state = ""
     method render =
       let state = this # hash_state in
       if state <> previous_state then begin
