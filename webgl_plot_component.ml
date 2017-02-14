@@ -115,7 +115,7 @@ let create_webgl_canvas renderer =
       pointer-events:none;
     |css} in
     Helper.create ~style "div" [] in
-  let fps_counter = Helper.create "div" [] in
+  let fps_counter = Helper.create ~style:"display:none" "div" [] in
   let overlap =
     let style = {css|
       position: relative;

@@ -304,7 +304,7 @@ end
 
 let format_from_range r =
   if r < 1e-4 || r > 1e7 then
-    Printf.sprintf "%.3g"
+    Printf.sprintf "%.2e"
   else if r < 10.0 then
     let d = - int_of_float (log10 r) + 2 in
     Printf.sprintf "%.*f" d
