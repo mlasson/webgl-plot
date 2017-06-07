@@ -120,6 +120,30 @@ let rec forward f i j =
 
 type ray_table = (rect * (int * int * int) list) list
 
+let sort_unique (a: float array) =
+  Array.sort compare a;
+  let r =
+    let previous = ref min_float in
+    let different = ref 0 in
+    Array.iter (fun x ->
+        if x > !previous then begin
+          incr different;
+          previous := x
+        end
+      ) a;
+    Array.create_float !different
+  in
+  let cpt = ref 0 in
+  let previous = ref min_float in
+  Array.iter (fun x ->
+      if x > !previous then begin
+        r.(!cpt) <- x;
+        previous := x;
+        incr cpt
+      end
+    ) a;
+  r
+
 let partition points size =
   let len = (Float32Array.length points) / 3 in
   let xs = Array.create_float len in
@@ -130,13 +154,14 @@ let partition points size =
     xs.(k) <- x;
     zs.(k) <- z;
   done;
-  Array.sort compare xs;
-  Array.sort compare zs;
-  let bag = len / size in
+  let xs = sort_unique xs in
+  let zs = sort_unique zs in
   let results = ref [] in
   for i = 0 to size - 1 do
     for j = 0 to size - 1 do
       let get_bounds k a =
+        let len = Array.length a in
+        let bag = len / size in
         if k = 0 then a.(0)
         else if k = size then a.(len - 1)
         else let pos = k * bag in
